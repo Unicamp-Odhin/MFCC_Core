@@ -218,3 +218,4 @@ old
 clockInfo.txt
 env/
 fpga/opensourceSDRLabKintex7/openFPGALoader
+*.elf
