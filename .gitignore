@@ -197,8 +197,6 @@ cython_debug/
 **/*.config
 **/*.json
 **/*.vcd
-*.hex
-*.wav
 *.bin
 *.out
 build/
