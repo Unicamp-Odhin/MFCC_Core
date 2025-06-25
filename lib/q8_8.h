@@ -24,9 +24,9 @@ typedef struct {
     q8_8 imag;
 } complex_q8_8;
 
-complex_q8_8 complex_add(complex_q8_8 a, complex_q8_8 b);
-complex_q8_8 complex_sub(complex_q8_8 a, complex_q8_8 b);
-complex_q8_8 complex_mul(complex_q8_8 a, complex_q8_8 b);
+complex_q8_8 q8_8_complex_add(complex_q8_8 a, complex_q8_8 b);
+complex_q8_8 q8_8_complex_sub(complex_q8_8 a, complex_q8_8 b);
+complex_q8_8 q8_8_complex_mul(complex_q8_8 a, complex_q8_8 b);
 
 
 #endif // !__Q8_8_H__

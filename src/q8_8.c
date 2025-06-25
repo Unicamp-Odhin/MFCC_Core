@@ -25,15 +25,15 @@ q8_8 q8_8_mul(q8_8 a, q8_8 b) {
     return (q8_8)(temp >> Q);
 }
 
-complex_q8_8 complex_add(complex_q8_8 a, complex_q8_8 b) {
+complex_q8_8 q8_8_complex_add(complex_q8_8 a, complex_q8_8 b) {
     return (complex_q8_8){q8_8_add(a.real, b.real), q8_8_add(a.imag, b.imag)};
 }
 
-complex_q8_8 complex_sub(complex_q8_8 a, complex_q8_8 b) {
+complex_q8_8 q8_8_complex_sub(complex_q8_8 a, complex_q8_8 b) {
     return (complex_q8_8){q8_8_sub(a.real, b.real), q8_8_sub(a.imag, b.imag)};
 }
 
-complex_q8_8 complex_mul(complex_q8_8 a, complex_q8_8 b) {
+complex_q8_8 q8_8_complex_mul(complex_q8_8 a, complex_q8_8 b) {
     q8_8 real = q8_8_sub(q8_8_mul(a.real, b.real), q8_8_mul(a.imag, b.imag));
     q8_8 imag = q8_8_add(q8_8_mul(a.real, b.imag), q8_8_mul(a.imag, b.real));
     return (complex_q8_8){real, imag};

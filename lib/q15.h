@@ -34,10 +34,10 @@ typedef struct {
     q15_t imag;
 } complex_q15;
 
-complex_q15 complex_add(complex_q15 a, complex_q15 b);
+complex_q15 q15_complex_add(complex_q15 a, complex_q15 b);
 
-complex_q15 complex_sub(complex_q15 a, complex_q15 b);
+complex_q15 q15_complex_sub(complex_q15 a, complex_q15 b);
 
-complex_q15 complex_mul(complex_q15 a, complex_q15 b);
+complex_q15 q15_complex_mul(complex_q15 a, complex_q15 b);
 
 #endif // !__Q15_H__

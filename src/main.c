@@ -5,6 +5,8 @@
 #include <math.h>
 #include "wav.h"
 #include "process.h"
+#include "q15_fft.h"
+#include <mel.h>
 
 #define ALPHA 0.97f
 #define FRAME_SIZE 0.025 // seconds
@@ -50,19 +52,47 @@ int main(int argc, char *argv[]) {
         hamming_window(frames[i], frame_size);
     }
 
-        // Salvar o primeiro frame em arquivo para plot
+    //int num_freqs = (frame_size / 2) + 1; // Frequências DC a Nyquist
+    int num_freqs = NFFT / 2 + 1; // Frequências DC a Nyquist, NFFT é definido no q15_fft.h
+    
+    int32_t power_spectrum[num_frames][num_freqs]; // transposição do espectro de potência
+
+    for(int i = 0; i < num_frames; i++) {
+        power_spectrum[i][0] = 0; // DC é zero
+        fft_q15_real_power(frames[i], frame_size, power_spectrum[i]);
+    }
+
+    // Salvar o primeiro frame em arquivo para plot
     FILE *fp = fopen("frame1.dat", "w");
     if (!fp) {
         perror("Erro ao criar arquivo de dados");
     } else {
-        for (int i = 0; i < frame_size; i++) {
-            fprintf(fp, "%d %d\n", i, frames[0][i]);
+        for (int i = 0; i < num_freqs; i++) {
+            fprintf(fp, "%d %d\n", i, power_spectrum[0][i]);
         }
         fclose(fp);
 
         // Abre o gnuplot para visualizar o gráfico
-        system("gnuplot -p -e \"plot 'frame1.dat' with lines title 'Frame 1 com janela Hamming'\"");
+        system("gnuplot -p -e \"plot 'frame1.dat' with lines title 'Frame 1 power'\"");
     }
+
+    float filterbank[NUM_FILTERS][NFFT/2 + 1];
+
+    create_filterbank(filterbank, header->sampleRate);
+    printf("Banco de filtros criado com sucesso.\n");
+    printf("Num frames: %d, Num filtros: %d, NFFT: %d\n", num_frames, NUM_FILTERS, NFFT);
+
+    FILE *fp3 = fopen("spectrogram_matrix.dat", "w");
+    for (int i = 0; i < num_frames; i++) {
+        float energies[NUM_FILTERS];
+        apply_filterbank(power_spectrum[i], filterbank, energies);
+
+        for (int j = 0; j < NUM_FILTERS; j++) {
+            fprintf(fp3, "%f%c", energies[j], (j == NUM_FILTERS - 1) ? '\n' : ' ');
+        }
+    }
+    fclose(fp3);
+
 
     free(frames);
     free(samples);

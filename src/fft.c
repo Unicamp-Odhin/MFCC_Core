@@ -3,12 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <math.h> 
-
-
-typedef struct {
-    double real;
-    double imag;
-} Complex;
+#include "fft.h"
 
 
 Complex complex_add(Complex a, Complex b) {
