@@ -39,15 +39,15 @@ q15_t q15_sub(q15_t a, q15_t b) {
 }
 
 
-complex_q15 complex_add(complex_q15 a, complex_q15 b) {
+complex_q15 q15_complex_add(complex_q15 a, complex_q15 b) {
     return (complex_q15){ q15_saturate(a.real + b.real), q15_saturate(a.imag + b.imag) };
 }
 
-complex_q15 complex_sub(complex_q15 a, complex_q15 b) {
+complex_q15 q15_complex_sub(complex_q15 a, complex_q15 b) {
     return (complex_q15){ q15_saturate(a.real - b.real), q15_saturate(a.imag - b.imag) };
 }
 
-complex_q15 complex_mul(complex_q15 a, complex_q15 b) {
+complex_q15 q15_complex_mul(complex_q15 a, complex_q15 b) {
     q15_t real = q15_sub(q15_mul(a.real, b.real), q15_mul(a.imag, b.imag));
     q15_t imag = q15_add(q15_mul(a.real, b.imag), q15_mul(a.imag, b.real));
     return (complex_q15){ real, imag };

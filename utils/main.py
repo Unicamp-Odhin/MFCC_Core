@@ -43,6 +43,7 @@ frame_stride = 0.01  # 10 ms - overlap of 15 ms
 frame_length, frame_step = frame_size * sr, frame_stride * sr  # Convert from seconds to samples
 signal_length = len(y_preemphasized)
 frame_length = int(round(frame_length))
+print(f"Frame length in samples: {frame_length}, sr: {sr}")
 frame_step = int(round(frame_step))
 num_frames = int(np.ceil(float(np.abs(signal_length - frame_length)) / frame_step))
 
