@@ -9,6 +9,6 @@
 int ceil_div(int a, int b);
 void hamming_window(int16_t *frame, int frame_size);
 int16_t** frame_signal_int(const int16_t *samples, int num_samples, int frame_size, int frame_step, int *out_num_frames);
-void pre_emphasis(int16_t *samples, size_t sample_count, float alpha);
+void pre_emphasis(int16_t *samples, size_t sample_count, int16_t alpha);
 
 #endif // __PROCESS_H__

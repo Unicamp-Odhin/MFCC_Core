@@ -22,7 +22,7 @@ void hamming_window(int16_t *frame, int frame_size) {
 // Pré-calcula a janela de Hamming em Q15
 void generate_hamming_window_q15(int16_t *window, int frame_size) {
     for (int i = 0; i < frame_size; i++) {
-        double w = 0.54 - 0.46 * cos(2.0 * M_PI * i / (frame_size - 1));
+        float w = 0.54 - 0.46 * cos(2 * M_PI * i / (frame_size - 1));
         window[i] = (int16_t)(w * Q15_SCALE); // conversão para Q15
     }
 }
@@ -83,8 +83,11 @@ int16_t** frame_signal_int(const int16_t *samples, int num_samples, int frame_si
     return frames;
 }
 
-void pre_emphasis(int16_t *samples, size_t sample_count, float alpha) {
+void pre_emphasis(int16_t *samples, size_t sample_count, int16_t alpha) {
+    int32_t temp;
     for (size_t i = 1; i < sample_count; i++) {
-        samples[i] = (int16_t)(samples[i] - alpha * samples[i - 1]);
+        temp = alpha * samples[i - 1];
+        temp = temp >> 15; // Ajusta para Q15
+        samples[i] = samples[i] - temp; // Ajusta para Q15
     }
 }

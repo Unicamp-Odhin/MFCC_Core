@@ -8,7 +8,7 @@
 #include "q15_fft.h"
 #include <mel.h>
 
-#define ALPHA 0.97f
+#define ALPHA 31785
 #define FRAME_SIZE 0.025 // seconds
 #define FRAME_STEP 0.01 // seconds
 
@@ -52,10 +52,22 @@ int main(int argc, char *argv[]) {
         hamming_window(frames[i], frame_size);
     }
 
-    //int num_freqs = (frame_size / 2) + 1; // Frequências DC a Nyquist
-    int num_freqs = NFFT / 2 + 1; // Frequências DC a Nyquist, NFFT é definido no q15_fft.h
+    FILE *fp = fopen("preemphasis.dat", "w");
+    if (!fp) {
+        perror("fopen");
+        return 1;
+    }
+
+    for (int i = 0; i < frame_size; i++) {
+        fprintf(fp, "%d %d\n", i, frames[0][i]);
+    }
+
+    fclose(fp);
     
-    int32_t power_spectrum[num_frames][num_freqs]; // transposição do espectro de potência
+    //int num_freqs = (frame_size / 2) + 1; // Frequências DC a Nyquist
+    int num_freqs = NFFT; // Frequências DC a Nyquist, NFFT é definido no q15_fft.h
+    
+    int16_t power_spectrum[num_frames][num_freqs]; // transposição do espectro de potência
 
     for(int i = 0; i < num_frames; i++) {
         power_spectrum[i][0] = 0; // DC é zero
@@ -63,20 +75,22 @@ int main(int argc, char *argv[]) {
     }
 
     // Salvar o primeiro frame em arquivo para plot
-    FILE *fp = fopen("frame1.dat", "w");
-    if (!fp) {
+    FILE *fp1 = fopen("frame1.dat", "w");
+    if (!fp1) {
         perror("Erro ao criar arquivo de dados");
     } else {
         for (int i = 0; i < num_freqs; i++) {
-            fprintf(fp, "%d %d\n", i, power_spectrum[0][i]);
+            fprintf(fp1, "%d %d\n", i, power_spectrum[1][i]);
         }
-        fclose(fp);
+        fclose(fp1);
 
         // Abre o gnuplot para visualizar o gráfico
         system("gnuplot -p -e \"plot 'frame1.dat' with lines title 'Frame 1 power'\"");
     }
 
     float filterbank[NUM_FILTERS][NFFT/2 + 1];
+
+    printf("Criando banco de filtros...\n");
 
     create_filterbank(filterbank, header->sampleRate);
     printf("Banco de filtros criado com sucesso.\n");

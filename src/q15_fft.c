@@ -1,8 +1,16 @@
 #include "q15.h"
 #include "q15_fft.h"
 
-int32_t complex_power_q15(complex_q15 x) {
+int32_t complex_power_q30(complex_q15 x) {
     return ((int32_t)x.real * x.real) + ((int32_t)x.imag * x.imag); // Q30
+}
+
+int16_t complex_power_q15(complex_q15 x) {
+    int32_t real_sq = (int32_t)x.real * x.real; // Q15 * Q15 = Q30
+    int32_t imag_sq = (int32_t)x.imag * x.imag; // Q30
+    int32_t sum = real_sq + imag_sq;            // Q30
+    int16_t result = (int16_t)(sum >> 15);      // Q30 -> Q15
+    return result;
 }
 
 void generate_twiddles(complex_q15* twiddles, int N) {
@@ -39,7 +47,7 @@ void fft_recursive(complex_q15* x, int N, complex_q15* twiddles) {
     free(odd);
 }
 
-void fft_q15_real_power(q15_t* x_real, int N, int32_t* power_out) {
+void fft_q15_real_power(q15_t* x_real, int N, int16_t* power_out) {
     // 1. Alocar vetor complexo
     complex_q15* x = malloc(NFFT * sizeof(complex_q15));
 
@@ -59,8 +67,23 @@ void fft_q15_real_power(q15_t* x_real, int N, int32_t* power_out) {
     fft_recursive(x, NFFT, twiddles);
 
     // 4. Calcular espectro de potência até N/2 (DC a Nyquist)
+    int32_t temppower = 0;
     for (int k = 0; k <= NFFT / 2; k++) {
-        power_out[k] = complex_power_q15(x[k]);  // Q30
+
+        //temppower = (64 * complex_power_q15(x[k])) >> 15; // (* 1/512)
+        //power_out[k] = (int16_t)temppower;  // Q30
+        temppower = complex_power_q30(x[k]); // Q30
+        
+        temppower = temppower >> 15; // Q30->Q15
+
+        // Ajuste do ganho (*1/512 = >>9)
+        temppower = temppower >> 9;  // Q15->Q6
+
+        // Saturação em int16_t
+        if (temppower > 0x7FFF) temppower = 0x7FFF;
+        else if (temppower < -0x8000) temppower = -0x8000;
+
+        power_out[k] = (int16_t)temppower; // Guarda em Q6
     }
 
     free(x);
