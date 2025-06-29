@@ -27,7 +27,10 @@ def float_to_fixed(value, total_bits=16, fractional_bits=15):
     return fixed_val
 
 # Exemplo de uso:
-alpha = 0.97
+#alpha = 0.97
+NFFT = 512  # Número de pontos na FFT
+alpha = (1.0 / NFFT)
+#alpha = 3.14159265358979323846
 fixed_alpha = float_to_fixed(alpha)
 
 print(f"Alpha em Q1.15: {fixed_alpha} (hex: {hex(fixed_alpha & 0xFFFF)})")

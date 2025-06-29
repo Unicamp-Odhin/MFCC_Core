@@ -118,12 +118,12 @@ void fft_radix2_iterative(Complex* x, int N) {
     }
 }
 
-void rfft(double* x_real, Complex* X_rfft, int N) {
+void rfft(int16_t* x_real, Complex* X_rfft, int N) {
     Complex* x_complex = (Complex*)malloc(N * sizeof(Complex));
     Complex* X_full = (Complex*)malloc(N * sizeof(Complex));
 
     for (int i = 0; i < N; i++) {
-        x_complex[i].real = x_real[i];
+        x_complex[i].real = (double)x_real[i];
         x_complex[i].imag = 0.0;
     }
 

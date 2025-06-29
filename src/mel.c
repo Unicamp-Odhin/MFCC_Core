@@ -1,8 +1,6 @@
 #include <math.h>
 #include <stdint.h>
-
-#define NFFT 512
-#define NUM_FILTERS 26
+#include "mel.h"
 
 // Converte frequência em Hz para índice de bin na FFT
 static inline int hz_to_bin(float freq, int sample_rate) {
@@ -34,7 +32,7 @@ void create_filterbank(float filterbank[NUM_FILTERS][NFFT/2 + 1], int sample_rat
 
 // Aplica o banco de filtros a um espectro de potência e calcula as energias
 void apply_filterbank(
-    int32_t power_spectrum_frame[NFFT/2 + 1],
+    int16_t power_spectrum_frame[NFFT/2 + 1],
     float filterbank[NUM_FILTERS][NFFT/2 + 1],
     float energies[NUM_FILTERS]
 ) {

@@ -19,7 +19,7 @@ void dft(Complex* x, Complex* X, int N);
 void fft_radix2(Complex* x, Complex* X, int N);
 unsigned int bit_reverse(unsigned int x, int log2n);
 void fft_radix2_iterative(Complex* x, int N);
-void rfft(double* x_real, Complex* X_rfft, int N);
+void rfft(int16_t* x_real, Complex* X_rfft, int N);
 double fft_bin_to_hz(int k, double fs, int N);
 
 #endif // __FFT_H__
