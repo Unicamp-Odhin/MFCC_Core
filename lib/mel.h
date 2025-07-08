@@ -3,7 +3,6 @@
 
 #include "q15_fft.h"
 
-#define NFFT 512 
 #define NUM_FILTERS 40
 
 void create_filterbank(float filterbank[NUM_FILTERS][NFFT/2 + 1], int sample_rate);

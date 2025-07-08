@@ -6,7 +6,8 @@
 #include "wav.h"
 #include "process.h"
 #include "q15_fft.h"
-#include <mel.h>
+#include "mel.h"
+#include "dct.h"
 
 #define ALPHA 31785
 #define FRAME_SIZE 0.025 // seconds
@@ -97,6 +98,7 @@ int main(int argc, char *argv[]) {
     printf("Num frames: %d, Num filtros: %d, NFFT: %d\n", num_frames, NUM_FILTERS, NFFT);
 
     FILE *fp3 = fopen("spectrogram_matrix.dat", "w");
+    FILE *fp4 = fopen("ceps_matrix.dat", "w");
     for (int i = 0; i < num_frames; i++) {
         float energies[NUM_FILTERS];
         apply_filterbank(power_spectrum[i], filterbank, energies);
@@ -104,9 +106,17 @@ int main(int argc, char *argv[]) {
         for (int j = 0; j < NUM_FILTERS; j++) {
             fprintf(fp3, "%f%c", energies[j], (j == NUM_FILTERS - 1) ? '\n' : ' ');
         }
-    }
-    fclose(fp3);
 
+        float ceps[NUM_CEPS];
+        dct(energies, NUM_FILTERS, ceps);
+
+        for (int j = 0; j < NUM_CEPS; j++) {
+            fprintf(fp4, "%f%c", ceps[j], (j == NUM_CEPS - 1) ? '\n' : ' ');
+        }
+    }
+
+    fclose(fp3);
+    fclose(fp4);
 
     free(frames);
     free(samples);
