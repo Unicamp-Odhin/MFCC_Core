@@ -12,8 +12,8 @@ def float_to_fixed(value, total_bits=16, fractional_bits=15):
     """
 
     # Limites com base no número de bits (considerando sinal)
-    max_int = 2**(total_bits - 1) - 1
-    min_int = -2**(total_bits - 1)
+    max_int = 2 ** (total_bits - 1) - 1
+    min_int = -(2 ** (total_bits - 1))
 
     # Multiplica para converter a fração
     fixed_val = int(round(value * (2**fractional_bits)))
@@ -26,11 +26,12 @@ def float_to_fixed(value, total_bits=16, fractional_bits=15):
 
     return fixed_val
 
+
 # Exemplo de uso:
-#alpha = 0.97
+# alpha = 0.97
 NFFT = 512  # Número de pontos na FFT
-alpha = (1.0 / NFFT)
-#alpha = 3.14159265358979323846
+alpha = 1.0 / NFFT
+# alpha = 3.14159265358979323846
 fixed_alpha = float_to_fixed(alpha)
 
-print(f"Alpha em Q1.15: {fixed_alpha} (hex: {hex(fixed_alpha & 0xFFFF)})")
+print(f'Alpha em Q1.15: {fixed_alpha} (hex: {hex(fixed_alpha & 0xFFFF)})')
