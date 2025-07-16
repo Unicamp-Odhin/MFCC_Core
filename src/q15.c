@@ -52,3 +52,43 @@ complex_q15 q15_complex_mul(complex_q15 a, complex_q15 b) {
     q15_t imag = q15_add(q15_mul(a.real, b.imag), q15_mul(a.imag, b.real));
     return (complex_q15){ real, imag };
 }
+
+
+int16_t q15_log2(int16_t x) {
+    if (x <= 0) return 0;  // log(0) ou negativo não definido
+
+    uint16_t ux = x;
+    int shift = 0;
+
+    // Normaliza x para intervalo [0.5, 1) -> [16384, 32768)
+    while (ux < (Q15_ONE / 2)) {
+        ux <<= 1;
+        shift--;
+    }
+    while (ux >= Q15_ONE) {
+        ux >>= 1;
+        shift++;
+    }
+
+    // Agora ux está em [16384, 32768)
+    // Aproximação polinomial: log2(ux) ~= y = a*(ux-Q15_ONE) + b*(ux-Q15_ONE)^2
+    // Coeficientes aproximados para o intervalo normalizado
+    int16_t y = ux - Q15_ONE;
+    int16_t a = 23170; // ~0.7071 em Q15
+    int16_t b = -11585; // ~-0.3535 em Q15
+
+    int16_t y2 = (int16_t)(((int32_t)y * y) >> Q15_SHIFT);
+    int16_t term1 = (int16_t)(((int32_t)a * y) >> Q15_SHIFT);
+    int16_t term2 = (int16_t)(((int32_t)b * y2) >> Q15_SHIFT);
+
+    int16_t log2_frac = term1 + term2;
+
+    // log2(x) = shift + log2_frac
+    int16_t shift_q15 = shift << Q15_SHIFT;
+    return shift_q15 + log2_frac;
+}
+
+int16_t q15_ln(int16_t x) {
+    int16_t log2x = q15_log2(x);
+    return (int16_t)(((int32_t)log2x * LN2_Q15) >> Q15_SHIFT);
+}

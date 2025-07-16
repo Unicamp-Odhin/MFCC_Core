@@ -10,6 +10,9 @@ typedef int16_t q15_t;
 #define Q15_SHIFT 15
 #define Q15_MAX 32767
 #define Q15_MIN -32768
+#define LN2_Q15 22713  // ln(2) ~= 0.6931 em Q15
+#define Q15_ONE (1 << Q15_SHIFT)
+#define FLOAT_TO_Q15(x) ((int16_t)((x) * Q15_ONE + 0.5f))
 
 // Conversão de float para Q15
 q15_t float_to_q15(float x);
@@ -39,5 +42,9 @@ complex_q15 q15_complex_add(complex_q15 a, complex_q15 b);
 complex_q15 q15_complex_sub(complex_q15 a, complex_q15 b);
 
 complex_q15 q15_complex_mul(complex_q15 a, complex_q15 b);
+
+int16_t q15_log2(int16_t x);
+
+int16_t q15_ln(int16_t x);
 
 #endif // !__Q15_H__
