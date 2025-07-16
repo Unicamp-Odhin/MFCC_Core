@@ -89,29 +89,29 @@ int main(int argc, char *argv[]) {
         system("gnuplot -p -e \"plot 'frame1.dat' with lines title 'Frame 1 power'\"");
     }
 
-    float filterbank[NUM_FILTERS][NFFT/2 + 1];
+    int16_t filterbank[NUM_FILTERS][NFFT/2 + 1];
 
     printf("Criando banco de filtros...\n");
 
-    create_filterbank(filterbank, header->sampleRate);
+    create_filterbank_q15(filterbank, header->sampleRate);
     printf("Banco de filtros criado com sucesso.\n");
     printf("Num frames: %d, Num filtros: %d, NFFT: %d\n", num_frames, NUM_FILTERS, NFFT);
 
     FILE *fp3 = fopen("spectrogram_matrix.dat", "w");
     FILE *fp4 = fopen("ceps_matrix.dat", "w");
     for (int i = 0; i < num_frames; i++) {
-        float energies[NUM_FILTERS];
-        apply_filterbank(power_spectrum[i], filterbank, energies);
+        int16_t energies[NUM_FILTERS];
+        apply_filterbank_q15(power_spectrum[i], filterbank, energies);
 
         for (int j = 0; j < NUM_FILTERS; j++) {
-            fprintf(fp3, "%f%c", energies[j], (j == NUM_FILTERS - 1) ? '\n' : ' ');
+            fprintf(fp3, "%d%c", energies[j], (j == NUM_FILTERS - 1) ? '\n' : ' ');
         }
 
-        float ceps[NUM_CEPS];
-        dct(energies, NUM_FILTERS, ceps);
+        int16_t ceps[NUM_CEPS];
+        dct_q15(energies, NUM_FILTERS, ceps);
 
         for (int j = 0; j < NUM_CEPS; j++) {
-            fprintf(fp4, "%f%c", ceps[j], (j == NUM_CEPS - 1) ? '\n' : ' ');
+            fprintf(fp4, "%d%c", ceps[j], (j == NUM_CEPS - 1) ? '\n' : ' ');
         }
     }
 

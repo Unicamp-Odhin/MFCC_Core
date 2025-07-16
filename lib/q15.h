@@ -47,4 +47,6 @@ int16_t q15_log2(int16_t x);
 
 int16_t q15_ln(int16_t x);
 
+int16_t q15_cos(int16_t angle_q15);
+
 #endif // !__Q15_H__
