@@ -92,3 +92,9 @@ int16_t q15_ln(int16_t x) {
     int16_t log2x = q15_log2(x);
     return (int16_t)(((int32_t)log2x * LN2_Q15) >> Q15_SHIFT);
 }
+
+int16_t q15_cos(int16_t angle_q15) {
+    float angle = ((float)angle_q15) / Q15_ONE;
+    float cos_val = cosf(angle);
+    return float_to_q15(cos_val);
+}
