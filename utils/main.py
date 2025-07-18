@@ -2,13 +2,18 @@ import numpy as np
 import librosa
 import matplotlib.pyplot as plt
 from scipy.fftpack import dct
+import sys
 
 ##################################################################
 # First step: load the audio file and visualize the waveform
 
 # Load the audio file
 # audio_path = librosa.example('trumpet')
-audio_path = 'samples/dump.wav'  # Replace with your audio file path
+if len(sys.argv) < 2:
+    print("Usage: python main.py <audio_file_path>")
+    sys.exit(1)
+
+audio_path = sys.argv[1]
 y, sr = librosa.load(audio_path)   # sr is the sampling rate
 
 # Plot the waveform
