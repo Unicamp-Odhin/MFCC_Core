@@ -3,6 +3,7 @@ import librosa
 import matplotlib.pyplot as plt
 from scipy.fftpack import dct
 import sys
+import os
 
 ##################################################################
 # First step: load the audio file and visualize the waveform
@@ -13,6 +14,10 @@ if len(sys.argv) < 2:
     print("Usage: python main.py <audio_file_path>")
     sys.exit(1)
 
+#create folder
+output_dir = "data/python"
+os.makedirs(output_dir, exist_ok=True)
+
 audio_path = sys.argv[1]
 y, sr = librosa.load(audio_path)   # sr is the sampling rate
 
@@ -22,6 +27,13 @@ plt.plot(y)
 plt.title('Waveform of the Audio Signal')
 plt.xlabel('Time')
 plt.ylabel('Amplitude')
+
+# Generate the output file name based on the audio file name
+audio_name = os.path.splitext(os.path.basename(audio_path))[0]
+output_file = os.path.join(output_dir, f"{audio_name}_waveform.png")
+plt.savefig(output_file)
+
+# Show the plot
 plt.show()
 
 
@@ -40,6 +52,12 @@ plt.plot(y_preemphasized)
 plt.title('Pre-emphasized Signal')
 plt.xlabel('Time')
 plt.ylabel('Amplitude')
+
+# Generate the output file name based on the audio file name
+audio_name = os.path.splitext(os.path.basename(audio_path))[0]
+output_file = os.path.join(output_dir, f"{audio_name}_pre_emphasized.png")
+plt.savefig(output_file)
+
 plt.show()
 
 ######################################################################
@@ -79,6 +97,13 @@ plt.plot(frames[0])
 plt.title('First Frame of the Signal')
 plt.xlabel('Samples')
 plt.ylabel('Amplitude')
+
+# Generate the output file name based on the audio file name
+audio_name = os.path.splitext(os.path.basename(audio_path))[0]
+output_file = os.path.join(output_dir, f"{audio_name}_few_frames.png")
+plt.savefig(output_file)
+
+
 plt.show()
 
 #######################################################################
@@ -93,6 +118,11 @@ plt.plot(frames[0])
 plt.title('First Frame after Windowing')
 plt.xlabel('Samples')
 plt.ylabel('Amplitude')
+# Generate the output file name based on the audio file name
+audio_name = os.path.splitext(os.path.basename(audio_path))[0]
+output_file = os.path.join(output_dir, f"{audio_name}_first_frame_windowed.png")
+plt.savefig(output_file)
+
 plt.show()
 
 #######################################################################
@@ -108,6 +138,10 @@ plt.plot(mag_frames[0])
 plt.title('Magnitude Spectrum of the First Frame')
 plt.xlabel('Frequency Bin')
 plt.ylabel('Amplitude')
+# Generate the output file name based on the audio file name
+audio_name = os.path.splitext(os.path.basename(audio_path))[0]
+output_file = os.path.join(output_dir, f"{audio_name}_magnitude_spectrum.png")
+plt.savefig(output_file)
 plt.show()
 
 #######################################################################
@@ -145,6 +179,10 @@ plt.imshow(filter_banks.T, cmap='hot', aspect='auto')
 plt.title('Filter Bank Energies')
 plt.xlabel('Frame Index')
 plt.ylabel('Filter Index')
+# Generate the output file name based on the audio file name
+audio_name = os.path.splitext(os.path.basename(audio_path))[0]
+output_file = os.path.join(output_dir, f"{audio_name}_filter_bank_energies.png")
+plt.savefig(output_file)
 plt.show()
 
 #######################################################################
@@ -160,4 +198,8 @@ plt.imshow(mfcc.T, cmap='hot', aspect='auto')
 plt.title('MFCC')
 plt.xlabel('Frame Index')
 plt.ylabel('Cepstral Coefficient Index')
+# Generate the output file name based on the audio file name
+audio_name = os.path.splitext(os.path.basename(audio_path))[0]
+output_file = os.path.join(output_dir, f"{audio_name}_mfcc.png")
+plt.savefig(output_file)
 plt.show()
