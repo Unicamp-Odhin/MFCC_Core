@@ -19,6 +19,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Usage: %s <filename>.wav\n", argv[0]);
         return 1;
     }
+    system("mkdir -p data");
 
     int16_t *samples = NULL;
     WavHeader *header = open_wav_file(argv[1], &samples);
@@ -53,7 +54,7 @@ int main(int argc, char *argv[]) {
         hamming_window(frames[i], frame_size);
     }
 
-    FILE *fp = fopen("preemphasis.dat", "w");
+    FILE *fp = fopen("data/preemphasis.dat", "w");
     if (!fp) {
         perror("fopen");
         return 1;
@@ -76,7 +77,8 @@ int main(int argc, char *argv[]) {
     }
 
     // Salvar o primeiro frame em arquivo para plot
-    FILE *fp1 = fopen("frame1.dat", "w");
+
+    FILE *fp1 = fopen("data/frame1.dat", "w");
     if (!fp1) {
         perror("Erro ao criar arquivo de dados");
     } else {
@@ -86,7 +88,7 @@ int main(int argc, char *argv[]) {
         fclose(fp1);
 
         // Abre o gnuplot para visualizar o gráfico
-        system("gnuplot -p -e \"plot 'frame1.dat' with lines title 'Frame 1 power'\"");
+        system("gnuplot -p -e \"plot 'data/frame1.dat' with lines title 'Frame 1 power'\"");
     }
 
     int16_t filterbank[NUM_FILTERS][NFFT/2 + 1];
@@ -97,8 +99,8 @@ int main(int argc, char *argv[]) {
     printf("Banco de filtros criado com sucesso.\n");
     printf("Num frames: %d, Num filtros: %d, NFFT: %d\n", num_frames, NUM_FILTERS, NFFT);
 
-    FILE *fp3 = fopen("spectrogram_matrix.dat", "w");
-    FILE *fp4 = fopen("ceps_matrix.dat", "w");
+    FILE *fp3 = fopen("data/spectrogram_matrix.dat", "w");
+    FILE *fp4 = fopen("data/ceps_matrix.dat", "w");
     for (int i = 0; i < num_frames; i++) {
         int16_t energies[NUM_FILTERS];
         apply_filterbank_q15(power_spectrum[i], filterbank, energies);

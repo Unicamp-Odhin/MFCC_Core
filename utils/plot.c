@@ -3,7 +3,7 @@
 #include <math.h>
 
 int main() {
-    FILE *fp = fopen("data.dat", "w");
+    FILE *fp = fopen("data/data.dat", "w");
     if (!fp) {
         perror("Erro ao criar arquivo");
         return 1;
@@ -16,6 +16,6 @@ int main() {
     fclose(fp);
 
     // Chama gnuplot para plotar (abre uma janela com o gráfico)
-    system("gnuplot -p -e \"plot 'data.dat' with lines\"");
+    system("gnuplot -p -e \"plot 'data/data.dat' with lines\"");
     return 0;
 }
