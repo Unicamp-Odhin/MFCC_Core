@@ -162,6 +162,7 @@ for m in range(1, nfilt + 1):
     f_m = int(bin[m])             # center
     f_m_plus = int(bin[m + 1])    # right
 
+
     for k in range(f_m_minus, f_m):
         fbank[m - 1, k] = (k - bin[m - 1]) / (bin[m] - bin[m - 1])
     for k in range(f_m, f_m_plus):
@@ -173,12 +174,21 @@ filter_banks = np.where(
 )  # Numerical stability
 filter_banks = 20 * np.log10(filter_banks)  # dB
 
+
+
+# Save the filter bank energies to a file
+spectrogram_file = os.path.join("data/spectrogram_matrix_py.dat")
+with open(spectrogram_file, "w") as fp3:
+    for frame in filter_banks:
+        fp3.write(" ".join(map(str, frame)) + "\n")
+
 # Plot the filter bank energies
 plt.figure(figsize=(14, 5))
 plt.imshow(filter_banks.T, cmap='hot', aspect='auto')
 plt.title('Filter Bank Energies')
 plt.xlabel('Frame Index')
 plt.ylabel('Filter Index')
+plt.colorbar(label='Energia (log)')
 # Generate the output file name based on the audio file name
 audio_name = os.path.splitext(os.path.basename(audio_path))[0]
 output_file = os.path.join(output_dir, f"{audio_name}_filter_bank_energies.png")
