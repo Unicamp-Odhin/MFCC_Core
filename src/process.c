@@ -85,7 +85,8 @@ int16_t** frame_signal_int(const int16_t *samples, int num_samples, int frame_si
 
 void pre_emphasis(int16_t *samples, size_t sample_count, int16_t alpha) {
     int32_t temp;
-    for (size_t i = 1; i < sample_count; i++) {
+    for (size_t i = sample_count - 1; i > 0; i--) {
+        // O correto seria multiplicar por 0.97, que é 31785 >> 15 = 
         temp = alpha * samples[i - 1];
         temp = temp >> 15; // Ajusta para Q15
         samples[i] = samples[i] - temp; // Ajusta para Q15
