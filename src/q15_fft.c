@@ -119,8 +119,10 @@ void fft_q15_real_power(q15_t* x_real, int N, int16_t* power_out) {
         //power_out[k] = (int16_t)temppower;  // Q30
         temppower = complex_power_q30(x[k]); // Q30
         
-        temppower = temppower >> 15; // Q30->Q15
-        
+        // printf("x[%d]: real=%d, imag=%d, power=%d\n", k, x[k].real, x[k].imag, temppower);
+        // temppower = temppower >> 15; // Q30->Q15
+        // printf("x[%d]: real=%d, imag=%d, power=%d\n", k, x[k].real, x[k].imag, temppower);
+
         // Ajuste do ganho (*1/512 = >>9)
         temppower = temppower >> 9;  // Q15->Q6
 
@@ -130,6 +132,7 @@ void fft_q15_real_power(q15_t* x_real, int N, int16_t* power_out) {
 
         power_out[k] = (int16_t)temppower; // Guarda em Q6
     }
+    printf("\n");
     printf("\n");
 
     free(x);
