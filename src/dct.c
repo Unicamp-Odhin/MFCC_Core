@@ -69,11 +69,7 @@ void dct_q15(int16_t energies_q15[], int num_filters, int16_t ceps_q15[NUM_CEPS]
         int32_t sum = 0;
 
         for (int n = 0; n < num_filters; n++) {
-            // angle = pi * (n + 0.5) * k / num_filters
-            float angle_f = M_PI * (n + 0.5f) * k / num_filters;
-            int16_t angle_q15 = float_to_q15(angle_f);
-
-            int16_t cos_q15 = q15_cos(angle_q15);
+            int16_t cos_q15 = cos_table[n][k];
             int16_t prod_q15 = q15_mul(energies_q15[n], cos_q15);
 
             sum += prod_q15;
