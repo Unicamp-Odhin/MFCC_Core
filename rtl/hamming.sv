@@ -1,8 +1,26 @@
 module Hamming_Window (
-    input logic signed [15:0] frame [306],
-    output logic signed [15:0] hamming_frame [306]
+    input  logic clk,
+    input  logic rst_n,
+
+    input  logic start_i,
+
+    input  logic valid_to_read_i,
+    output logic rd_en_o,
+
+    output logic [8:0] frame_ptr_o,
+
+    input  logic signed [15:0] frame_sample_i,
+    output logic signed [15:0] hamming_sample_o,
+    output logic out_valid_o,
+    output logic done_o
 );
-    logic signed [15:0] hamming_window_lut [306] = '{
+    localparam NUM_COEFFICIENTS = 306;
+
+    logic signed [15:0] hamming_window_lut [0:305];
+    
+    initial begin
+
+    hamming_window_lut = '{
         16'sd2621, 16'sd2624, 16'sd2634, 16'sd2650, 16'sd2672, 16'sd2701, 16'sd2736, 16'sd2777, 
         16'sd2825, 16'sd2879, 16'sd2940, 16'sd3006, 16'sd3079, 16'sd3158, 16'sd3244, 16'sd3335, 
         16'sd3432, 16'sd3536, 16'sd3645, 16'sd3761, 16'sd3882, 16'sd4010, 16'sd4143, 16'sd4281, 
@@ -44,10 +62,67 @@ module Hamming_Window (
         16'sd2624, 16'sd2621
     };
 
+    end
     // Aplica a janela de Hamming usando a tabela pré-calculada
-    always_comb begin
+    /*always_comb begin
         for (int i = 0; i < 306; i++) begin
             hamming_frame[i] = (frame[i] * hamming_window_lut[i]) >>> 15;
+        end
+    end*/
+
+    typedef enum logic [1:0] { 
+        IDLE,
+        CALC,
+        FINISH
+    } hamming_state_t;
+
+    hamming_state_t hamming_state;
+
+    int calc_pointer;
+    logic [8:0] frame_ptr;
+
+    always_ff @( posedge clk or negedge rst_n) begin
+        rd_en_o     <= 0;
+        done_o      <= 0;
+        out_valid_o <= 0;
+
+        if(!rst_n) begin
+            hamming_state <= IDLE;
+            frame_ptr_o   <= 0;
+            frame_ptr     <= 0;
+        end else begin
+            case (hamming_state)
+                IDLE: begin
+                    if(start_i) begin
+                        hamming_state <= CALC;
+                        calc_pointer  <= 0;
+                        frame_ptr_o   <= 0;
+                        frame_ptr     <= 0;
+                    end
+                end
+                CALC: begin
+                    if(valid_to_read_i) begin
+                        out_valid_       <= 1;
+                        rd_en_o          <= 1;
+                        hamming_sample_o <= (frame_sample_i * 
+                            hamming_window_lut[calc_pointer]) >>> 15;
+                        calc_pointer     <= calc_pointer + 1;
+                        frame_ptr        <= frame_ptr    + 1;
+                        frame_ptr_o      <= frame_ptr;
+                    end
+
+                    if(calc_pointer == NUM_COEFFICIENTS - 1) begin
+                        hamming_state <= FINISH;
+                    end else begin
+                        hamming_state <= CALC;
+                    end
+                end
+                FINISH: begin
+                    done_o <= 1;
+                    hamming_state <= IDLE;
+                end
+                default: hamming_state <= IDLE;
+            endcase
         end
     end
 
