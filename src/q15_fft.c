@@ -16,44 +16,16 @@ int16_t complex_power_q15(complex_q15 x) {
 }
 
 void generate_twiddles(complex_q15* twiddles, int N) {
-    // 32767
-    // 65535
-    // 2147483647
     for (int k = 0; k < N / 2; k++) {
         float angle = -2.0f * M_PI * k / N;
-        twiddles[k].real = (int32_t)((Q15_MAX) * cosf(angle)); // Scale to Q15
-        twiddles[k].imag = (int32_t)((Q15_MAX) * sinf(angle)); // Scale to Q15
+        // A versão comentada gera um errar os coeficientes, mas gera um grafico visualmente mais próximo do programa em python
+        // twiddles[k].real = (int32_t)((Q15_MAX) * cosf(angle)); // Scale to Q15
+        // twiddles[k].imag = (int32_t)((Q15_MAX) * sinf(angle)); // Scale to Q15
+        twiddles[k].real = float_to_q15(cosf(angle)); // Scale to Q15
+        twiddles[k].imag = float_to_q15(sinf(angle)); // Scale to Q15
     }
 }
 
-
-
-void fft_recursive(complex_q15* x, int N, complex_q15* twiddles, int N_total) {
-    if (N <= 1) return;
-
-    int half = N / 2;
-    complex_q15* even = malloc(half * sizeof(complex_q15));
-    complex_q15* odd  = malloc(half * sizeof(complex_q15));
-
-    for (int i = 0; i < half; i++) {
-        even[i] = x[2 * i];
-        odd[i]  = x[2 * i + 1];
-    }
-
-    fft_recursive(even, half, twiddles, N_total);
-    fft_recursive(odd,  half, twiddles, N_total);
-
-    for (int k = 0; k < half; k++) {
-        int twiddle_index = k * (N_total / N);  // Correção aqui
-        complex_q15 t = q15_complex_mul(twiddles[twiddle_index], odd[k]);
-
-        x[k]        = q15_complex_add(even[k], t);
-        x[k + half] = q15_complex_sub(even[k], t);
-    }
-
-    free(even);
-    free(odd);
-}
 
 void fft_iterative(complex_q15* x, int N, complex_q15* twiddles) {
     int logN = 0;
@@ -108,26 +80,17 @@ void fft_q15_real_power(q15_t* x_real, int N, int32_t* power_out) {
     complex_q15* twiddles = malloc((NFFT / 2) * sizeof(complex_q15));
     generate_twiddles(twiddles, NFFT);
 
-    // Print all twiddles
-    for (int i = 0; i < NFFT / 2; i++) {
-        printf("Twiddle[%d]: real = %d, imag = %d\n", i, twiddles[i].real, twiddles[i].imag);
-    }
-
     // 3. Executar FFT
     fft_iterative(x, NFFT, twiddles);
-    // fft_recursive(x, NFFT, twiddles, NFFT / 2);
 
     // 4. Calcular espectro de potência até N/2 (DC a Nyquist)
     for (int k = 0; k <= NFFT / 2; k++) {
         int64_t temppower = complex_power_q30(x[k]); // Q30
+        // printf("x[%d] = {real: %" PRId16 ", imag: %" PRId16 "}, pow = %" PRId64 "\n", 
+        //        k, x[k].real, x[k].imag, temppower);
 
-        
         // Ajuste do ganho (*1/512 = >>9)
         temppower = temppower >> 9;  // Q30->Q21
-
-        // printf("temppower: %" PRId64 ", x[%d].real: %d, x[%d].imag: %d\n", temppower, k, x[k].real, k, x[k].imag);
-    
-        
 
         power_out[k] = (int32_t)temppower; // Guarda em Q21
     }

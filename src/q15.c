@@ -5,7 +5,7 @@
 q15_t float_to_q15(float x) {
     if (x >= 1.0f) return Q15_MAX;
     if (x <= -1.0f) return Q15_MIN;
-    return (q15_t)(x * (1 << Q15_SHIFT));
+    return (q15_t)(x * ((1 << Q15_SHIFT) - 1));
 }
 
 // Conversão de Q15 para float
@@ -75,8 +75,8 @@ int32_t q15_log2(int32_t x) {
     // Aproximação polinomial: log2(ux) ~= y = a*(ux-Q15_ONE) + b*(ux-Q15_ONE)^2
     // Coeficientes aproximados para o intervalo normalizado
     int32_t y = ux - Q15_ONE;
-    int32_t a = 23170; // ~0.7071 em Q15
-    int32_t b = -11585; // ~-0.3535 em Q15
+    int32_t a = 1518485687; // ~0.7071 em Q15
+    int32_t b = -759135469; // ~-0.3535 em Q15
 
     int32_t y2 = (int32_t)(((int32_t)y * y) >> Q15_SHIFT);
     int32_t term1 = (int32_t)(((int32_t)a * y) >> Q15_SHIFT);
