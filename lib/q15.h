@@ -8,15 +8,11 @@
 typedef int32_t q15_t;
 
 #define Q15_SHIFT 31
-// #define Q15_MAX 32767
-// #define Q15_MIN -32768
-// #define Q15_MAX 65535
-// #define Q15_MIN -65536
 #define Q15_MAX 2147483647
 #define Q15_MIN -2147483648
-#define LN2_Q15 22713  // ln(2) ~= 0.6931 em Q15
+#define LN2_Q15 1488420916  // ln(2) ~= 0.6931 em Q15
 #define Q15_ONE (1 << Q15_SHIFT)
-#define FLOAT_TO_Q15(x) ((int16_t)((x) * Q15_ONE + 0.5f))
+#define FLOAT_TO_Q15(x) ((q15_t)((x) * Q15_ONE + 0.5f))
 
 // Conversão de float para Q15
 q15_t float_to_q15(float x);
@@ -28,7 +24,7 @@ float q15_to_float(q15_t x);
 q15_t q15_mul(q15_t a, q15_t b);
 
 // Saturação
-q15_t q15_saturate(int32_t x);
+q15_t q15_saturate(q15_t x);
 
 // Soma Q15 com saturação
 q15_t q15_add(q15_t a, q15_t b);
@@ -47,10 +43,10 @@ complex_q15 q15_complex_sub(complex_q15 a, complex_q15 b);
 
 complex_q15 q15_complex_mul(complex_q15 a, complex_q15 b);
 
-int32_t q15_log2(int32_t x);
+q15_t q15_log2(q15_t x);
 
-int32_t q15_ln(int32_t x);
+q15_t q15_ln(q15_t x);
 
-int32_t q15_cos(int32_t angle_q15);
+q15_t q15_cos(q15_t angle_q15);
 
 #endif // !__Q15_H__

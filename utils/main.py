@@ -121,14 +121,11 @@ def plot_windowed_frame(frames, output_dir, audio_name):
 def compute_spectrum(frames, NFFT=NFFT):
     """Step 5: Compute the magnitude spectrum of each frame"""
     fft_frames = np.fft.rfft(frames, NFFT)
-    # Calculate the minimum number of bits required to store the real and imaginary parts
-    real_bits = np.ceil(np.log2(np.max(np.abs(fft_frames.real)) + 1))
-    imag_bits = np.ceil(np.log2(np.max(np.abs(fft_frames.imag)) + 1))
-
-    print(f"Minimum bits required for real part: {real_bits}")
-    print(f"Minimum bits required for imaginary part: {imag_bits}")
     mag_frames = np.absolute(fft_frames)
-    pow_frames = (1.0 / NFFT) * ((mag_frames) ** 2)
+    pow_frames = np.zeros_like(mag_frames)
+    for i in range(len(mag_frames)):
+        pow_frames[i] = (mag_frames[i] ** 2) / NFFT
+
     return mag_frames, pow_frames
 
 def plot_spectrum(mag_frames, output_dir, audio_name):
@@ -161,12 +158,8 @@ def apply_mel_filterbank(pow_frames, sample_rate, NFFT=NFFT, nfilt=NFILT):
         for k in range(f_m, f_m_plus):
             fbank[m - 1, k] = (bin[m + 1] - k) / (bin[m + 1] - bin[m])
 
-    # Print the filter bank as integers
-    for i, fbank_row in enumerate(fbank):
-        print(f"{list(map(float, fbank_row))}")
-
     filter_banks = np.dot(pow_frames, fbank.T)
-    filter_banks = np.where(filter_banks == 0, np.finfo(float).eps, filter_banks)
+    filter_banks = np.where(filter_banks <= 0, np.finfo(float).eps, filter_banks)
     filter_banks = 20 * np.log10(filter_banks)
     return filter_banks
 

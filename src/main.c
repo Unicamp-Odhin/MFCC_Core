@@ -59,6 +59,7 @@ int main(int argc, char *argv[]) {
     
     int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step, &num_frames);
 
+
     if (!frames) {
         fprintf(stderr, "Failed to create frames from samples.\n");
         free(samples);
@@ -93,11 +94,7 @@ int main(int argc, char *argv[]) {
         power_spectrum[i][0] = 0; // DC é zero
         fft_q15_real_power(frames[i], frame_size, power_spectrum[i]);
     }
-
-
-    print_samples(power_spectrum[0], num_freqs);
-    printf("a\n");
-
+    
     // Salvar o primeiro frame em arquivo para plot
     FILE *fp1 = fopen("data/frame1.dat", "w");
     if (!fp1) {
@@ -116,7 +113,6 @@ int main(int argc, char *argv[]) {
 
     #if defined(CONFIG_USE_FLOAT_MEL)
         float filterbank[NUM_FILTERS][NFFT/2 + 1];
-        // Print the filterbank for debugging
         
         // load_filterbank_from_file(filterbank);
         create_filterbank(filterbank, header->sampleRate);
@@ -129,17 +125,20 @@ int main(int argc, char *argv[]) {
             perror("Erro ao abrir arquivos de saída");
             return 1;
         }
-
+        
         float energies[NUM_FILTERS];
         for (int i = 0; i < num_frames; i++) {
             apply_filterbank(power_spectrum[i], filterbank, energies);
-
+            
             for (int j = 0; j < NUM_FILTERS; j++) {
                 fprintf(fp3, "%.6f%c", energies[j], (j == NUM_FILTERS - 1) ? '\n' : ' ');
             }
+            
+            
+            
             float ceps[NUM_CEPS];
             dct(energies, NUM_FILTERS, ceps);
-
+            
             for (int j = 0; j < NUM_CEPS; j++) {
                 fprintf(fp4, "%.6f%c", ceps[j], (j == NUM_CEPS - 1) ? '\n' : ' ');
             }
