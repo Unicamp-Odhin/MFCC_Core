@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include "q15_fft.h"
 
-int32_t complex_power_q30(complex_q15 x) {
-    return ((int32_t)x.real * x.real) + ((int32_t)x.imag * x.imag); // Q30
+int64_t complex_power_q30(complex_q15 x) {
+    return ((int64_t)x.real * x.real) + ((int64_t)x.imag * x.imag); // Q30
 }
 
 int16_t complex_power_q15(complex_q15 x) {
@@ -90,19 +90,17 @@ void fft_iterative(complex_q15* x, int N, complex_q15* twiddles) {
     }
 }
 
-void fft_q15_real_power(q15_t* x_real, int N, int16_t* power_out) {
+void fft_q15_real_power(q15_t* x_real, int N, int32_t* power_out) {
     // 1. Alocar vetor complexo
     complex_q15* x = malloc(NFFT * sizeof(complex_q15));
 
     for (int i = 0; i < NFFT; i++) {
-        if(i >= N)
+        if (i >= N)
             x[i].real = 0;
         else
             x[i].real = x_real[i];
         x[i].imag = 0;
     }
-
-
     // 2. Gerar twiddles
     complex_q15* twiddles = malloc((NFFT / 2) * sizeof(complex_q15));
     generate_twiddles(twiddles, NFFT);
@@ -112,28 +110,14 @@ void fft_q15_real_power(q15_t* x_real, int N, int16_t* power_out) {
     // fft_recursive(x, NFFT, twiddles, NFFT / 2);
 
     // 4. Calcular espectro de potência até N/2 (DC a Nyquist)
-    int32_t temppower = 0;
     for (int k = 0; k <= NFFT / 2; k++) {
-
-        //temppower = (64 * complex_power_q15(x[k])) >> 15; // (* 1/512)
-        //power_out[k] = (int16_t)temppower;  // Q30
-        temppower = complex_power_q30(x[k]); // Q30
-        
-        // printf("x[%d]: real=%d, imag=%d, power=%d\n", k, x[k].real, x[k].imag, temppower);
-        // temppower = temppower >> 15; // Q30->Q15
-        // printf("x[%d]: real=%d, imag=%d, power=%d\n", k, x[k].real, x[k].imag, temppower);
+        int64_t temppower = complex_power_q30(x[k]); // Q30
 
         // Ajuste do ganho (*1/512 = >>9)
-        temppower = temppower >> 9;  // Q15->Q6
+        temppower = temppower >> 9;  // Q30->Q21
 
-        // Saturação em int16_t
-        if (temppower > 0x7FFF) temppower = 0x7FFF;
-        else if (temppower < -0x8000) temppower = -0x8000;
-
-        power_out[k] = (int16_t)temppower; // Guarda em Q6
+        power_out[k] = (int32_t)temppower; // Guarda em Q21
     }
-    printf("\n");
-    printf("\n");
 
     free(x);
     free(twiddles);

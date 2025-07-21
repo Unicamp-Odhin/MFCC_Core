@@ -14,6 +14,11 @@
 #define FRAME_STEP 0.01 // seconds
 
 
+void print_samples(int32_t *samples, int num_samples) {
+    for (int i = 0; i < num_samples; i++) {
+        printf("Sample[%d]: %d\n", i, samples[i]);
+    }
+}
 
 
 int main(int argc, char *argv[]) {
@@ -31,17 +36,28 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    printf("WAV file opened successfully:\n");
-
     int sample_rate = header->sampleRate;
     int frame_size  = (int)ceil(sample_rate * FRAME_SIZE);
     int frame_step  = (int)ceil(sample_rate * FRAME_STEP);
     int num_samples = header->subchunk2Size / sizeof(uint16_t);
     int num_frames;
-
+    
+    printf("Número total de frames: %d\n", num_frames);
+    printf("Sample rate: %d Hz\n", sample_rate);
+    printf("Frame size: %d samples\n", frame_size);
+    printf("Frame step: %d samples\n", frame_step);
+    printf("Number of samples: %d\n", num_samples);
+    printf("Number of frames: %d\n", num_frames);
+    int num_to_print = (num_samples < 20) ? num_samples : 20;
+    printf("First 20 samples in sequence: ");
+    for (int i = 0; i < num_to_print; i++) {
+        printf("%d ", samples[i]);
+    }
+    printf("\n");
+    
     pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), ALPHA);
-
-    int16_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step, &num_frames);
+    
+    int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step, &num_frames);
 
     if (!frames) {
         fprintf(stderr, "Failed to create frames from samples.\n");
@@ -50,36 +66,39 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    printf("Número total de frames: %d\n", num_frames);
 
     for(int i = 0; i < num_frames; i++) {
         hamming_window(frames[i], frame_size);
     }
 
+    
     FILE *fp = fopen("data/preemphasis.dat", "w");
     if (!fp) {
         perror("fopen");
         return 1;
     }
-
+    
     for (int i = 0; i < frame_size; i++) {
         fprintf(fp, "%d %d\n", i, frames[0][i]);
     }
-
+    
     fclose(fp);
     
     //int num_freqs = (frame_size / 2) + 1; // Frequências DC a Nyquist
     int num_freqs = NFFT; // Frequências DC a Nyquist, NFFT é definido no q15_fft.h
     
-    int16_t power_spectrum[num_frames][num_freqs]; // transposição do espectro de potência
-
+    int32_t power_spectrum[num_frames][num_freqs]; // transposição do espectro de potência
+    
     for(int i = 0; i < num_frames; i++) {
         power_spectrum[i][0] = 0; // DC é zero
         fft_q15_real_power(frames[i], frame_size, power_spectrum[i]);
     }
 
-    // Salvar o primeiro frame em arquivo para plot
 
+    print_samples(power_spectrum[0], num_freqs);
+    printf("a\n");
+
+    // Salvar o primeiro frame em arquivo para plot
     FILE *fp1 = fopen("data/frame1.dat", "w");
     if (!fp1) {
         perror("Erro ao criar arquivo de dados");
@@ -97,6 +116,9 @@ int main(int argc, char *argv[]) {
 
     #if defined(CONFIG_USE_FLOAT_MEL)
         float filterbank[NUM_FILTERS][NFFT/2 + 1];
+        // Print the filterbank for debugging
+        
+        // load_filterbank_from_file(filterbank);
         create_filterbank(filterbank, header->sampleRate);
         printf("Banco de filtros criado com sucesso.\n");
         printf("Num frames: %d, Num filtros: %d, NFFT: %d\n", num_frames, NUM_FILTERS, NFFT);
@@ -108,8 +130,8 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
+        float energies[NUM_FILTERS];
         for (int i = 0; i < num_frames; i++) {
-            float energies[NUM_FILTERS];
             apply_filterbank(power_spectrum[i], filterbank, energies);
 
             for (int j = 0; j < NUM_FILTERS; j++) {
@@ -122,6 +144,7 @@ int main(int argc, char *argv[]) {
                 fprintf(fp4, "%.6f%c", ceps[j], (j == NUM_CEPS - 1) ? '\n' : ' ');
             }
         }
+
     #else
         int16_t filterbank[NUM_FILTERS][NFFT/2 + 1];
         create_filterbank_q15(filterbank, header->sampleRate);

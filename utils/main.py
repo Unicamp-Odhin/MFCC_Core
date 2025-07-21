@@ -1,3 +1,4 @@
+from math import log2
 import numpy as np
 import librosa
 import wave
@@ -17,7 +18,7 @@ NUM_CEPS = 12
 
 def print_samples(samples, num_samples):
     for i in range(min(num_samples, len(samples))):
-        print(f"Sample[{i}]: {samples[i]}")
+        print(f"Sample[{i}]: {int(samples[i])}")
 
 def load_audio(audio_path):
     """Step 1: Load the audio file and visualize the waveform"""
@@ -120,6 +121,12 @@ def plot_windowed_frame(frames, output_dir, audio_name):
 def compute_spectrum(frames, NFFT=NFFT):
     """Step 5: Compute the magnitude spectrum of each frame"""
     fft_frames = np.fft.rfft(frames, NFFT)
+    # Calculate the minimum number of bits required to store the real and imaginary parts
+    real_bits = np.ceil(np.log2(np.max(np.abs(fft_frames.real)) + 1))
+    imag_bits = np.ceil(np.log2(np.max(np.abs(fft_frames.imag)) + 1))
+
+    print(f"Minimum bits required for real part: {real_bits}")
+    print(f"Minimum bits required for imaginary part: {imag_bits}")
     mag_frames = np.absolute(fft_frames)
     pow_frames = (1.0 / NFFT) * ((mag_frames) ** 2)
     return mag_frames, pow_frames
@@ -153,6 +160,10 @@ def apply_mel_filterbank(pow_frames, sample_rate, NFFT=NFFT, nfilt=NFILT):
             fbank[m - 1, k] = (k - bin[m - 1]) / (bin[m] - bin[m - 1])
         for k in range(f_m, f_m_plus):
             fbank[m - 1, k] = (bin[m + 1] - k) / (bin[m + 1] - bin[m])
+
+    # Print the filter bank as integers
+    for i, fbank_row in enumerate(fbank):
+        print(f"{list(map(float, fbank_row))}")
 
     filter_banks = np.dot(pow_frames, fbank.T)
     filter_banks = np.where(filter_banks == 0, np.finfo(float).eps, filter_banks)
@@ -224,6 +235,8 @@ def main():
     # Step 5: Compute spectrum
     mag_frames, pow_frames = compute_spectrum(frames)
     plot_spectrum(mag_frames, output_dir, audio_name)
+
+    print_samples(pow_frames[0], len(pow_frames[0]))
 
     # Step 6: Apply Mel filterbank
     filter_banks = apply_mel_filterbank(pow_frames, sample_rate)

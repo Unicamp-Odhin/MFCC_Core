@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "mel.h"
 #include "q15.h"
+#include "q15_fft.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -13,56 +14,67 @@ static inline int hz_to_bin(float freq, int sample_rate) {
     return (int)((freq / (sample_rate / 2.0f)) * (NFFT / 2));
 }
 
-// Cria um banco de filtros triangulares lineares
-void create_filterbank(float filterbank[NUM_FILTERS][NFFT/2 + 1], int sample_rate) {
-    float low_freq = 0.0f;
-    float high_freq = 2595 * log10(1 + (sample_rate / 2) / 700); // Convert Hz to Mel using log base 10
-    printf("High Frequency (Mel): %f\n", high_freq);
-
-    float bin[NUM_FILTERS + 2];
-    float mel_points, hz_points;
-    for (int i = 0; i < NUM_FILTERS + 2; i++) {
-        mel_points = low_freq + i * ((high_freq - low_freq) / (NUM_FILTERS)); // contem um erro proposital, deveria ser (NUM_FILTERS + 1) ao inves de (NUM_FILTERS)
-        printf("%f ", mel_points);
-        hz_points = 700 * (pow(10, mel_points / 2595) - 1);
-        bin[i] = (floor)(512) * (hz_points / sample_rate);
+// Carrega o filterbank da memória a partir de um arquivo
+void load_filterbank_from_file(float filterbank[NUM_FILTERS][NFFT/2 + 1]) {
+    const char *filepath = "src/filter_bank.dat";
+    FILE *file = fopen(filepath, "r");
+    if (!file) {
+        perror("Erro ao abrir o arquivo de filterbank");
+        exit(EXIT_FAILURE);
     }
-    
-    for (int m = 1; m <= NUM_FILTERS; m++) {
 
-        int bin_left   = bin[m - 1];
-        int bin_center = bin[m];
-        int bin_right  = bin[m + 1];
-
-        printf("m = %d: ", m);
-
-        for (int k = bin_left; k < bin_center && k < NFFT/2 + 1; k++) {
-            filterbank[m - 1][k] = (float)(k - bin_left) / (float) (bin_center - bin_left);
-            printf("%d ", k);
-        }
-        for (int k = bin_center; k < bin_right && k < NFFT/2 + 1; k++) {
-            filterbank[m - 1][k] = (float)(bin_right - k) / (float) (bin_right - bin_center);
-            printf("%d ", k);
-        }
-        printf("\n");
-    }
-    int erro = 0;
     for (int i = 0; i < NUM_FILTERS; i++) {
-        for (int j = 0; j < NFFT / 2 + 1; j++) {
-            if (isnan(filterbank[i][j])) {
-                printf("Erro: Filtro %d, Bin %d\n", i, j);
-                erro = 1;
+        for (int j = 0; j < (NFFT/2 + 1); j++) {
+            if (fscanf(file, "%f", &filterbank[i][j]) != 1) {
+                fprintf(stderr, "Erro ao ler o arquivo de filterbank na linha %d, coluna %d\n", i, j);
+                fclose(file);
+                exit(EXIT_FAILURE);
             }
         }
     }
-    // if (erro) exit(1);
-        
-        
+
+    fclose(file);
+}
+
+// Cria um banco de filtros triangulares lineares na escala Mel
+void create_filterbank(float filterbank[NUM_FILTERS][NFFT/2 + 1], int sample_rate) {
+    // Inicializa o filterbank com zeros
+    memset(filterbank, 0, NUM_FILTERS * (NFFT/2 + 1) * sizeof(float));
+
+    float low_freq_mel = 0.0f;
+    float high_freq_mel = 2595.0f * log10f(1.0f + (sample_rate / 2.0f) / 700.0f); // Convert Hz to Mel
+
+    float mel_points;
+    float hz_points;
+    int bin[NUM_FILTERS + 2];
+
+    // Gera pontos igualmente espaçados na escala Mel
+    for (int i = 0; i < NUM_FILTERS + 2; i++) {
+        mel_points = low_freq_mel + i * ((high_freq_mel - low_freq_mel) / (NUM_FILTERS + 1));
+        hz_points = 700.0f * (powf(10.0f, mel_points / 2595.0f) - 1.0f);
+        bin[i] = (int)floorf((NFFT + 1) * hz_points / sample_rate);
+    }
+
+    // Cria filtros triangulares
+    for (int m = 1; m <= NUM_FILTERS; m++) {
+        int f_m_minus = bin[m - 1];  // esquerda
+        int f_m       = bin[m];      // centro
+        int f_m_plus  = bin[m + 1];  // direita
+
+        for (int k = f_m_minus; k < f_m && k < NFFT/2 + 1; k++) {
+            filterbank[m - 1][k] = (k - f_m_minus) / (float)(f_m - f_m_minus);
+        }
+
+        for (int k = f_m; k < f_m_plus && k < NFFT/2 + 1; k++) {
+            filterbank[m - 1][k] = (f_m_plus - k) / (float)(f_m_plus - f_m);
+        }
+    }
+
 }
 
 // Aplica o banco de filtros a um espectro de potência e calcula as energias em dB
 void apply_filterbank(
-    int16_t power_spectrum_frame[NFFT/2 + 1],
+    int32_t power_spectrum_frame[NFFT/2 + 1],
     float filterbank[NUM_FILTERS][NFFT/2 + 1],
     float energies[NUM_FILTERS]
 ) {
@@ -70,12 +82,15 @@ void apply_filterbank(
         float sum = 0.0f;
 
         for (int k = 0; k < NFFT/2 + 1; k++) {
-            sum += (float)power_spectrum_frame[k] * filterbank[m][k];
+            sum += power_spectrum_frame[k] * filterbank[m][k];
         }
 
-        sum = (sum == 0.0f) ? FLT_EPSILON : sum;
+        // Garante estabilidade numérica (evita log de zero ou negativo)
+        if (sum <= 0.0f) {
+            sum = FLT_EPSILON;
+        }
         
-        energies[m] = 20 * log10f(sum);
+        energies[m] = 20.0f * log10f(sum);
     }
 }
 
