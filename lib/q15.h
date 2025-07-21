@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-typedef int16_t q15_t;
+typedef int32_t q15_t;
 
 #define Q15_SHIFT 15
 #define Q15_MAX 32767
