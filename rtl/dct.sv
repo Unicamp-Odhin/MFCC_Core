@@ -1,5 +1,8 @@
-module DCT (
-    ports
+module DCT #(
+    parameter NUM_CEPS = 12
+) (
+    input  logic clk,
+    input  logic rst_n,
 );
 
 logic signed [15:0] cos_table [40][12] = '{
