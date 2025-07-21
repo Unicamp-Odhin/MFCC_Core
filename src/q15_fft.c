@@ -16,10 +16,13 @@ int16_t complex_power_q15(complex_q15 x) {
 }
 
 void generate_twiddles(complex_q15* twiddles, int N) {
+    // 32767
+    // 65535
+    // 2147483647
     for (int k = 0; k < N / 2; k++) {
         float angle = -2.0f * M_PI * k / N;
-        twiddles[k].real = (q15_t)(32767 * cosf(angle));
-        twiddles[k].imag = (q15_t)(32767 * sinf(angle));
+        twiddles[k].real = (int32_t)((Q15_MAX) * cosf(angle)); // Scale to Q15
+        twiddles[k].imag = (int32_t)((Q15_MAX) * sinf(angle)); // Scale to Q15
     }
 }
 
@@ -105,6 +108,11 @@ void fft_q15_real_power(q15_t* x_real, int N, int32_t* power_out) {
     complex_q15* twiddles = malloc((NFFT / 2) * sizeof(complex_q15));
     generate_twiddles(twiddles, NFFT);
 
+    // Print all twiddles
+    for (int i = 0; i < NFFT / 2; i++) {
+        printf("Twiddle[%d]: real = %d, imag = %d\n", i, twiddles[i].real, twiddles[i].imag);
+    }
+
     // 3. Executar FFT
     fft_iterative(x, NFFT, twiddles);
     // fft_recursive(x, NFFT, twiddles, NFFT / 2);
@@ -113,8 +121,13 @@ void fft_q15_real_power(q15_t* x_real, int N, int32_t* power_out) {
     for (int k = 0; k <= NFFT / 2; k++) {
         int64_t temppower = complex_power_q30(x[k]); // Q30
 
+        
         // Ajuste do ganho (*1/512 = >>9)
         temppower = temppower >> 9;  // Q30->Q21
+
+        // printf("temppower: %" PRId64 ", x[%d].real: %d, x[%d].imag: %d\n", temppower, k, x[k].real, k, x[k].imag);
+    
+        
 
         power_out[k] = (int32_t)temppower; // Guarda em Q21
     }
