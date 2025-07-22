@@ -1,3 +1,5 @@
+`timescale 1ns/1ps
+
 module Hamming_Window (
     input  logic clk,
     input  logic rst_n,

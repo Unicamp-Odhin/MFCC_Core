@@ -1,3 +1,5 @@
+`timescale 1ns/1ps
+
 module Window_Buffer #(
     parameter WIDTH = 16
 )(
