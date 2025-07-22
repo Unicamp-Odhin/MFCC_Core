@@ -1,52 +1,45 @@
 #include <verilated.h>
 #include <verilated_vcd_c.h>
-#include "VWindow_Buffer.h"
+#include "VMEL.h"
 
 #define CLOCK_PERIOD 5 // 100 MHz -> 10 ns por ciclo
 #define SIMULATION_CYCLES 40 / 1 // segundos de simulação
 
 int main(int argc, char **argv, char **env) {
     Verilated::commandArgs(argc, argv);
-    VWindow_Buffer *window = new VWindow_Buffer;
+    VMEL *mel = new VMEL;
     
     VerilatedVcdC *trace = new VerilatedVcdC;
     Verilated::traceEverOn(true);
     
-    window->trace(trace, 100);
+    mel->trace(trace, 100);
     trace->set_time_unit("1ns");  // Define a resolução mínima de 1ns
-    trace->open("build/window.vcd");
+    trace->open("build/mel.vcd");
     
     
     // Inicializa sinais
-    window->clk = 0;
-    window->rst_n = 0;
-    window->start_move = 0;
-    window->fifo_rd_en_o = 0;
-    window->fifo_data_i = 0;
-    window->fifo_empty_i = 0;
-    window->fifo_full_i = 0;
-    window->rd_en_i = 0;
-    window->read_data_o = 0;
-    window->valid_to_read_o = 0;
+    mel->clk = 0;
+    mel->rst_n = 0;
+
 
     // Reset
     int i = 0;
     for (i = 0; i < 10; i++) {
-        window->clk = !window->clk;
-        window->eval();
+        mel->clk = !mel->clk;
+        mel->eval();
         trace->dump(i * CLOCK_PERIOD);
     }
-    window->rst_n = 1;
+    mel->rst_n = 1;
 
     // Simulação
     for (; i < SIMULATION_CYCLES; i++) {
-        window->clk = !window->clk;
-        window->eval();
+        mel->clk = !mel->clk;
+        mel->eval();
         trace->dump(i * CLOCK_PERIOD);
     }
 
     trace->close();
-    delete window;
+    delete mel;
     delete trace;
     return 0;
 }

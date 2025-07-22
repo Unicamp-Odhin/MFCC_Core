@@ -1,52 +1,45 @@
 #include <verilated.h>
 #include <verilated_vcd_c.h>
-#include "VWindow_Buffer.h"
+#include "VPre_Emphasis.h"
 
 #define CLOCK_PERIOD 5 // 100 MHz -> 10 ns por ciclo
 #define SIMULATION_CYCLES 40 / 1 // segundos de simulação
 
 int main(int argc, char **argv, char **env) {
     Verilated::commandArgs(argc, argv);
-    VWindow_Buffer *window = new VWindow_Buffer;
+    VPre_Emphasis *pre_emphasis = new VPre_Emphasis;
     
     VerilatedVcdC *trace = new VerilatedVcdC;
     Verilated::traceEverOn(true);
     
-    window->trace(trace, 100);
+    pre_emphasis->trace(trace, 100);
     trace->set_time_unit("1ns");  // Define a resolução mínima de 1ns
-    trace->open("build/window.vcd");
+    trace->open("build/pre_emphasis.vcd");
     
     
     // Inicializa sinais
-    window->clk = 0;
-    window->rst_n = 0;
-    window->start_move = 0;
-    window->fifo_rd_en_o = 0;
-    window->fifo_data_i = 0;
-    window->fifo_empty_i = 0;
-    window->fifo_full_i = 0;
-    window->rd_en_i = 0;
-    window->read_data_o = 0;
-    window->valid_to_read_o = 0;
+    pre_emphasis->clk = 0;
+    pre_emphasis->rst_n = 0;
+
 
     // Reset
     int i = 0;
     for (i = 0; i < 10; i++) {
-        window->clk = !window->clk;
-        window->eval();
+        pre_emphasis->clk = !pre_emphasis->clk;
+        pre_emphasis->eval();
         trace->dump(i * CLOCK_PERIOD);
     }
-    window->rst_n = 1;
+    pre_emphasis->rst_n = 1;
 
     // Simulação
     for (; i < SIMULATION_CYCLES; i++) {
-        window->clk = !window->clk;
-        window->eval();
+        pre_emphasis->clk = !pre_emphasis->clk;
+        pre_emphasis->eval();
         trace->dump(i * CLOCK_PERIOD);
     }
 
     trace->close();
-    delete window;
+    delete pre_emphasis;
     delete trace;
     return 0;
 }

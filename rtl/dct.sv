@@ -1,3 +1,5 @@
+`timescale 1ns/1ps
+
 module DCT #(
     parameter NUM_CEPS = 12
 ) (

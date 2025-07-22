@@ -1,4 +1,6 @@
-module pre_emphasis (
+`timescale 1ns/1ps
+
+module Pre_Emphasis (
     input  logic clk,
     input  logic rst_n,
 

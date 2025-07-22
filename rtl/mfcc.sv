@@ -1,3 +1,5 @@
+`timescale 1ns/1ps
+
 module MFCC_Core #(
     parameter int NUM_COEFFICIENTS = 12,    // Número de coeficientes MFCC
     parameter int FRAME_SIZE       = 306,   // Tamanho do quadro de entrada
@@ -19,7 +21,7 @@ module MFCC_Core #(
     logic fifo_empty, fifo_full, fifo_rd_en;
     logic [15:0] fifo_read_data;
 
-    pre_emphasis u_pre_emphasis (
+    Pre_Emphasis u_pre_emphasis (
         .clk       (clk),
         .rst_n     (rst_n),
 
@@ -54,7 +56,7 @@ module MFCC_Core #(
 
     Window_Buffer #(
         .WIDTH                (16)
-    ) u_Window_Buffer (
+    ) u_window_buffer (
         .clk                  (clk),                         // 1 bit
         .rst_n                (rst_n),                       // 1 bit
 
