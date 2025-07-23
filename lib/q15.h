@@ -10,7 +10,8 @@ typedef int32_t q15_t;
 #define Q15_SHIFT 31
 #define Q15_MAX 2147483647
 #define Q15_MIN -2147483648
-#define LN2_Q15 1488420916  // ln(2) ~= 0.6931 em Q15
+#define LN2_Q15 1488420916      // ln(2) ~= 0.6931 em Q15
+#define LOG10_2_Q15 4944763835  //ln(10) ≃ 2.3025
 #define Q15_ONE (1 << Q15_SHIFT)
 #define FLOAT_TO_Q15(x) ((q15_t)((x) * Q15_ONE + 0.5f))
 
@@ -43,9 +44,13 @@ complex_q15 q15_complex_sub(complex_q15 a, complex_q15 b);
 
 complex_q15 q15_complex_mul(complex_q15 a, complex_q15 b);
 
+int32_t q15_pow(int32_t x, int32_t a, int32_t b);
+
 q15_t q15_log2(q15_t x);
 
 q15_t q15_ln(q15_t x);
+
+q15_t q15_log10(q15_t x);
 
 q15_t q15_cos(q15_t angle_q15);
 

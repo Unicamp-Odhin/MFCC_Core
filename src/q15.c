@@ -54,7 +54,6 @@ complex_q15 q15_complex_mul(complex_q15 a, complex_q15 b) {
     return (complex_q15){ real, imag };
 }
 
-
 int32_t q15_log2(int32_t x) {
     if (x <= 0) return 0;  // log(0) ou negativo não definido
 
@@ -87,6 +86,11 @@ int32_t q15_log2(int32_t x) {
     // log2(x) = shift + log2_frac
     int32_t shift_q15 = shift << Q15_SHIFT;
     return shift_q15 + log2_frac;
+}
+
+q15_t q15_log10(q15_t x) {
+    int32_t log2x = q15_log2(x);
+    return (q15_t)(((int32_t)log2x * LOG10_2_Q15) >> Q15_SHIFT);
 }
 
 int32_t q15_ln(int32_t x) {
