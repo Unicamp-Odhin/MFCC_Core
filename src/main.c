@@ -20,7 +20,6 @@ void print_samples(int32_t *samples, int num_samples) {
     }
 }
 
-
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <filename>.wav\n", argv[0]);
@@ -111,21 +110,25 @@ int main(int argc, char *argv[]) {
 
     printf("Criando banco de filtros...\n");
 
-    #if defined(CONFIG_USE_FLOAT_MEL)
-        float filterbank[NUM_FILTERS][NFFT/2 + 1];
-        
-        // load_filterbank_from_file(filterbank);
-        create_filterbank(filterbank, header->sampleRate);
-        printf("Banco de filtros criado com sucesso.\n");
-        printf("Num frames: %d, Num filtros: %d, NFFT: %d\n", num_frames, NUM_FILTERS, NFFT);
 
-        FILE *fp3 = fopen("data/spectrogram_matrix.dat", "w");
-        FILE *fp4 = fopen("data/ceps_matrix.dat", "w");
-        if (!fp3 || !fp4) {
-            perror("Erro ao abrir arquivos de saída");
-            return 1;
+    float filterbank[NUM_FILTERS][NFFT/2 + 1];
+    load_filterbank_from_file(filterbank);
+    
+    int32_t filterbank_15[NUM_FILTERS][NFFT/2 + 1];
+    for (int i = 0; i < NUM_FILTERS; i++) {
+        for (int j = 0; j < NFFT / 2 + 1; j++) {
+            filterbank_15[i][j] = (int32_t)float_to_q15(filterbank[i][j]);
         }
-        
+    }
+
+    FILE *fp3 = fopen("data/spectrogram_matrix.dat", "w");
+    FILE *fp4 = fopen("data/ceps_matrix.dat", "w");
+    if (!fp3 || !fp4) {
+        perror("Erro ao abrir arquivos de saída");
+        return 1;
+    }
+
+    #if defined(CONFIG_USE_FLOAT_MEL)       
         float energies[NUM_FILTERS];
         for (int i = 0; i < num_frames; i++) {
             apply_filterbank(power_spectrum[i], filterbank, energies);
@@ -133,8 +136,6 @@ int main(int argc, char *argv[]) {
             for (int j = 0; j < NUM_FILTERS; j++) {
                 fprintf(fp3, "%.6f%c", energies[j], (j == NUM_FILTERS - 1) ? '\n' : ' ');
             }
-            
-            
             
             float ceps[NUM_CEPS];
             dct(energies, NUM_FILTERS, ceps);
@@ -145,21 +146,9 @@ int main(int argc, char *argv[]) {
         }
 
     #else
-        int16_t filterbank[NUM_FILTERS][NFFT/2 + 1];
-        create_filterbank_q15(filterbank, header->sampleRate);
-        printf("Banco de filtros criado com sucesso.\n");
-        printf("Num frames: %d, Num filtros: %d, NFFT: %d\n", num_frames, NUM_FILTERS, NFFT);
-
-        FILE *fp3 = fopen("data/spectrogram_matrix.dat", "w");
-        FILE *fp4 = fopen("data/ceps_matrix.dat", "w");
-        if (!fp3 || !fp4) {
-            perror("Erro ao abrir arquivos de saída");
-            return 1;
-        }
-
+        int16_t energies[NUM_FILTERS];
         for (int i = 0; i < num_frames; i++) {
-            int16_t energies[NUM_FILTERS];
-            apply_filterbank_q15(power_spectrum[i], filterbank, energies);
+            apply_filterbank_q15(power_spectrum[i], filterbank_15, energies);
 
             for (int j = 0; j < NUM_FILTERS; j++) {
                 fprintf(fp3, "%d%c", energies[j], (j == NUM_FILTERS - 1) ? '\n' : ' ');
