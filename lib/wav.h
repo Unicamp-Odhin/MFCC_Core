@@ -1,6 +1,10 @@
 #ifndef __WAV_H__
 #define __WAV_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 typedef struct {
@@ -24,5 +28,9 @@ typedef struct {
 } WavHeader;
 
 WavHeader * open_wav_file(const char *filename, int16_t **samples);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __WAV_H__

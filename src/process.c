@@ -36,6 +36,14 @@ void hamming_window_fixed(int32_t *frame, const int16_t *window_q15, int frame_s
     }
 }
 
+void hamming_window_fixed_table(int32_t *frame, int frame_size) {
+    // Aplica a janela Hamming usando a tabela pré-calculada
+    for (int i = 0; i < frame_size; i++) {
+        int32_t temp = (int32_t)frame[i] * hamming_window_lut[i];
+        frame[i] = (temp >> 15);  // Ajusta para Q15
+    }
+}
+
 void hamming_window(int32_t *frame, int frame_size) {
     // Aloca espaço para a janela Hamming em Q15
     int16_t window_q15[frame_size];
