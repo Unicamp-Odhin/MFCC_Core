@@ -55,37 +55,12 @@ complex_q15 q15_complex_mul(complex_q15 a, complex_q15 b) {
 }
 
 int32_t q15_log2(int32_t x) {
-    if (x <= 0) return 0;  // log(0) ou negativo não definido
-
-    uint32_t ux = x;
-    int shift = 0;
-
-    // Normaliza x para intervalo [0.5, 1) -> [16384, 32768)
-    while (ux < (Q15_ONE / 2)) {
-        ux <<= 1;
-        shift--;
+    int32_t log = 0; 
+    while (x > 1) {
+        x >>=1;
+        log += 1;
     }
-    while (ux >= Q15_ONE) {
-        ux >>= 1;
-        shift++;
-    }
-
-    // Agora ux está em [16384, 32768)
-    // Aproximação polinomial: log2(ux) ~= y = a*(ux-Q15_ONE) + b*(ux-Q15_ONE)^2
-    // Coeficientes aproximados para o intervalo normalizado
-    int32_t y = ux - Q15_ONE;
-    int32_t a = 1518485687; // ~0.7071 em Q15
-    int32_t b = -759135469; // ~-0.3535 em Q15
-
-    int32_t y2 = (int32_t)(((int32_t)y * y) >> Q15_SHIFT);
-    int32_t term1 = (int32_t)(((int32_t)a * y) >> Q15_SHIFT);
-    int32_t term2 = (int32_t)(((int32_t)b * y2) >> Q15_SHIFT);
-
-    int32_t log2_frac = term1 + term2;
-
-    // log2(x) = shift + log2_frac
-    int32_t shift_q15 = shift << Q15_SHIFT;
-    return shift_q15 + log2_frac;
+    return log;
 }
 
 q15_t q15_log10(q15_t x) {

@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
         }
 
     #else
-        int16_t energies[NUM_FILTERS];
+        int32_t energies[NUM_FILTERS];
         for (int i = 0; i < num_frames; i++) {
             apply_filterbank_q15(power_spectrum[i], filterbank_15, energies);
 
@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
                 fprintf(fp3, "%d%c", energies[j], (j == NUM_FILTERS - 1) ? '\n' : ' ');
             }
             int16_t ceps[NUM_CEPS];
-            dct_q15(energies, NUM_FILTERS, ceps);
+            dct_q15((int16_t *)energies, NUM_FILTERS, ceps);
 
             for (int j = 0; j < NUM_CEPS; j++) {
                 fprintf(fp4, "%d%c", ceps[j], (j == NUM_CEPS - 1) ? '\n' : ' ');
