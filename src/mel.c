@@ -138,7 +138,7 @@ void create_filterbank_q15(int16_t filterbank[NUM_FILTERS][NFFT/2 + 1], int samp
 void apply_filterbank_q15(
     int32_t power_spectrum_frame[NFFT/2 + 1],
     int32_t filterbank[NUM_FILTERS][NFFT/2 + 1],
-    int16_t energies_q15[NUM_FILTERS]  // Saída em Q1.15 (log)
+    int32_t energies_q15[NUM_FILTERS]  // Saída em Q1.15 (log)
 ) {
     for (int m = 0; m < NUM_FILTERS; m++) {
         int32_t sum = 0;
@@ -150,13 +150,16 @@ void apply_filterbank_q15(
         // Normaliza soma de Q30 para Q15
         // int16_t sum_q15 = (int16_t)(sum >> Q15_SHIFT);
         
-        printf("Energia[%d]: %d\n", m, sum);
-
+        
         // Proteção contra log(0)
         if (sum <= 0) {
             energies_q15[m] = MIN_LOG_ENERGY_Q15;
         } else {
-            energies_q15[m] = 20 * q15_log10(sum);
+            energies_q15[m] = 6 * q15_log2(sum);
+            // energies_q15[m] = q15_log2(sum);
+
+            // energies_q15[m] = q15_mul(float_to_q15(20.0f), q15_log10(sum));
         }
+        printf("%d: Energia: %d | Sum: %d\n", m, energies_q15[m], sum);
     }
 }
