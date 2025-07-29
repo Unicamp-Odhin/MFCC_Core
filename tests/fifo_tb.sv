@@ -15,8 +15,8 @@ module fifo_tb;
 
     // Instância do DUT (Device Under Test)
     FIFO #(
-        .DEPTH(DEPTH),
-        .WIDTH(WIDTH)
+        .DEPTH        (DEPTH),
+        .WIDTH        (WIDTH)
     ) uut (
         .clk          (clk),
         .rst_n        (rst_n),
@@ -44,6 +44,15 @@ module fifo_tb;
 
         // Escrever até encher a FIFO
         for (int i = 0; i < DEPTH; i++) begin
+            if(i < DEPTH - 1) begin
+                assert(!full_o) else $error("Erro: FIFO não deveria estar cheia! i: %0d", i);
+            end else begin
+                // Último elemento, a FIFO deve estar cheia
+                assert(full_o) else $error("Erro: FIFO deveria estar cheia!");
+            end
+
+            #10
+            
             write_data_i = i;
             wr_en_i = 1;
             #10;
@@ -63,10 +72,21 @@ module fifo_tb;
         
         // Ler até esvaziar
         for (int i = 0; i < DEPTH; i++) begin
+            if(i < DEPTH - 1) begin
+                assert(!empty_o) else $error("Erro: FIFO não deveria estar vazia! i: %0d", i);
+            end else begin
+                // Último elemento, a FIFO deve estar vazia
+                assert(empty_o) else $error("Erro: FIFO deveria estar vazia!");
+            end
+
             rd_en_i = 1;
             #10;
             rd_en_i = 0;
-            assert(read_data_o == i) else $error("Erro: Dados lidos incorretamente!");
+
+            if(i < DEPTH - 1) begin
+                assert(read_data_o == i) else $error("Erro: Dados lidos incorretamente! i: %0d", i);
+            end
+
             #10;
         end
         

@@ -104,7 +104,7 @@ module Hamming_Window (
                 end
                 CALC: begin
                     if(valid_to_read_i) begin
-                        out_valid_       <= 1;
+                        out_valid_o      <= 1;
                         rd_en_o          <= 1;
                         hamming_sample_o <= (frame_sample_i * 
                             hamming_window_lut[calc_pointer]) >>> 15;

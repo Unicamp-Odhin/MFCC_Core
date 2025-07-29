@@ -50,6 +50,7 @@ module FIFO #(
     end
 
     // FIFO cheia: ocorre quando o próximo `write_ptr` encontra `read_ptr`
+    /* verilator lint_off WIDTHEXPAND */
     assign full_o  = ((write_ptr + 1) == read_ptr) || 
         ((write_ptr == (DEPTH - 1)) && (read_ptr == 0));
 

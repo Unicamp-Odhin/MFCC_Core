@@ -77,23 +77,23 @@ module MFCC_Core #(
     logic hamming_done, hamming_out_valid;
     logic [8:0] frame_ptr;
     logic signed [15:0] hamming_sample;
-    logic signed [15:0] hamming_frame [0:305]
+    logic signed [15:0] hamming_frame [0:305];
 
     Hamming_Window u_hamming_window (
-        .clk             (clk),
-        .rst_n           (rst_n),
+        .clk              (clk),
+        .rst_n            (rst_n),
 
-        .start_i         (start_hamming),
+        .start_i          (start_hamming),
 
-        .valid_to_read_i (window_valid_to_read),
-        .rd_en_o         (window_rd_en),
+        .valid_to_read_i  (window_valid_to_read),
+        .rd_en_o          (window_rd_en),
 
-        .frame_ptr_o     (frame_ptr),
-        .frame_sample_i  (window_buffer_data_o),  // Sinal de entrada
-        .hamming_frame_o (hamming_sample),        // Sinal de saída
+        .frame_ptr_o      (frame_ptr),
+        .frame_sample_i   (window_buffer_data_o),  // Sinal de entrada
+        .hamming_sample_o (hamming_sample),        // Sinal de saída
 
-        .out_valid_o     (hamming_out_valid)
-        .done_o          (hamming_done)
+        .out_valid_o      (hamming_out_valid),
+        .done_o           (hamming_done)
     );
 
     always_ff @( posedge clk ) begin

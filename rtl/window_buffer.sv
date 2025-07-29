@@ -16,7 +16,7 @@ module Window_Buffer #(
     input  logic                       fifo_full_i,
 
     // Read Interface
-    input  logic [9:0]                 rd_en_i,
+    input  logic                       rd_en_i,
     output logic [WIDTH-1:0]           read_data_o,
     output logic                       valid_to_read_o,
     
@@ -52,6 +52,8 @@ module Window_Buffer #(
     end
 
     always_comb begin
+        next_state = current_state;
+        
         unique case (current_state)
             IDLE: begin
                 if (start_move) next_state = MOVE;

@@ -29,7 +29,8 @@ module Pre_Emphasis (
             x_mul       <= x_in;
 
             // Ajuste de escala: Desloca 15 bits para a direita (divisão por 2^15 para manter Q1.15)
-            y_out <= x_mul - (mult_result >>> 15);
+            // y_out <= x_mul - (mult_result >>> 15);
+            y_out <= x_mul - mult_result[16:1];
 
             // Atualiza x[n-1] para a próxima amostra
             x_prev    <= (in_valid) ? x_in : x_prev;
