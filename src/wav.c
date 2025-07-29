@@ -39,12 +39,6 @@ WavHeader * open_wav_file(const char *filename, int16_t **samples) {
         return NULL;
     }
 
-    
-    printf("Num canais: %d\n", header->numChannels);
-    printf("Sample Rate: %d Hz\n", header->sampleRate);
-    printf("Bits por sample: %d\n", header->bitsPerSample);
-    printf("Tamanho dos dados de áudio: %d bytes\n", header->subchunk2Size);
-
     *samples = (int16_t *)malloc(header->subchunk2Size);
 
     if (!*samples) {
