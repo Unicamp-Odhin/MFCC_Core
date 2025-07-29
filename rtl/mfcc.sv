@@ -3,6 +3,7 @@
 module MFCC_Core #(
     parameter SAMPLE_WIDTH     = 16,       // Largura do sample de áudio
     parameter NUM_COEFFICIENTS = 12,       // Número de coeficientes MFCC
+    parameter NUM_FILTERS      = 40,       // Número de filtros Mel
     parameter FRAME_SIZE       = 306,      // Tamanho do quadro de entrada
     parameter FRAME_MOVE       = 123,      // Tamanho do movimento do quadro
     parameter SAMPLE_RATE      = 12207,    // Taxa de amostragem
@@ -111,5 +112,26 @@ module MFCC_Core #(
             hamming_frame[frame_ptr] <= hamming_sample;
         end
     end
+
+    FFT #(
+        .NFFT (FFT_SIZE)
+    ) u_fft (
+        .clk   (clk),
+        .rst_n (rst_n)
+    );
+
+    MEL #(
+        .NUM_FILTERS (NUM_FILTERS)
+    ) u_mel (
+        .clk   (clk),
+        .rst_n (rst_n)
+    );
+
+    DCT #(
+        .NUM_CEPS (NUM_COEFFICIENTS)
+    ) u_dct (
+        .clk   (clk),
+        .rst_n (rst_n)
+    );
 
 endmodule
