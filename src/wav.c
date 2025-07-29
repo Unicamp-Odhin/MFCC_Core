@@ -4,7 +4,7 @@
 #include <string.h>
 
 WavHeader * open_wav_file(const char *filename, int16_t **samples) {
-    WavHeader *header = malloc(sizeof(WavHeader));
+    WavHeader *header = (WavHeader *)malloc(sizeof(WavHeader));
     if (!header) {
         fprintf(stderr, "Memory allocation failed for WavHeader\n");
         return NULL;
