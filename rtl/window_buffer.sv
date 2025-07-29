@@ -1,7 +1,9 @@
 `timescale 1ns/1ps
 
 module Window_Buffer #(
-    parameter WIDTH = 16
+    parameter WIDTH       = 16,
+    parameter FRAME_SIZE  = 306,
+    parameter MOVE_SIZE   = 123
 )(
     input  logic clk,
     input  logic rst_n,
@@ -22,11 +24,7 @@ module Window_Buffer #(
     
     output logic                       start_next_state_o
 );
-
-    localparam TOTAL_SIZE = 306;
-    localparam MOVE_SIZE  = 123;
-
-    logic [WIDTH-1:0] buffer [0:TOTAL_SIZE-1];
+    logic [WIDTH - 1:0] buffer [0:FRAME_SIZE - 1];
     int write_ptr;
     int internal_read_ptr;
     int read_ptr;
@@ -82,11 +80,11 @@ module Window_Buffer #(
             case (current_state)
                 START: begin
                     internal_read_ptr  <= 0;
-                    move_counter       <= TOTAL_SIZE - 1;
+                    move_counter       <= FRAME_SIZE - 1;
                     start_next_state_o <= 1;
                 end
                 MOVE: begin
-                    internal_read_ptr  <= (internal_read_ptr + MOVE_SIZE) % TOTAL_SIZE;
+                    internal_read_ptr  <= (internal_read_ptr + MOVE_SIZE) % FRAME_SIZE;
                     move_counter       <= MOVE_SIZE - 1;
                     start_next_state_o <= 1;
                 end
@@ -95,7 +93,7 @@ module Window_Buffer #(
                 end
                 FILL: begin
                     buffer[write_ptr] <= fifo_data_i;
-                    write_ptr         <= (write_ptr + 1) % TOTAL_SIZE;
+                    write_ptr         <= (write_ptr + 1) % FRAME_SIZE;
                     move_counter      <= move_counter - 1;
                 end
                 IDLE: begin
@@ -115,12 +113,12 @@ module Window_Buffer #(
             read_ptr <= 0;
         end else begin
             if(rd_en_i && valid_to_read_o) begin
-                read_ptr <= (read_ptr + 1) % TOTAL_SIZE;
+                read_ptr <= (read_ptr + 1) % FRAME_SIZE;
             end
         end
     end
 
-    assign valid_to_read_o = read_ptr < (TOTAL_SIZE - move_counter) && (current_state != MOVE) && (current_state != START);
-    assign read_data_o = buffer[(read_ptr + internal_read_ptr) % TOTAL_SIZE];
+    assign valid_to_read_o = read_ptr < (FRAME_SIZE - move_counter) && (current_state != MOVE) && (current_state != START);
+    assign read_data_o = buffer[(read_ptr + internal_read_ptr) % FRAME_SIZE];
 
 endmodule

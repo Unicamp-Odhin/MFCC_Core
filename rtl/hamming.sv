@@ -1,6 +1,9 @@
 `timescale 1ns/1ps
 
-module Hamming_Window (
+module Hamming_Window #(
+    parameter SAMPLE_WIDTH     = 16, // Largura do sample de áudio
+    parameter NUM_COEFFICIENTS = 306 // Número de coeficientes da janela de Hamming
+) (
     input  logic clk,
     input  logic rst_n,
 
@@ -11,15 +14,13 @@ module Hamming_Window (
 
     output logic [8:0] frame_ptr_o,
 
-    input  logic signed [15:0] frame_sample_i,
-    output logic signed [15:0] hamming_sample_o,
+    input  logic signed [SAMPLE_WIDTH - 1:0] frame_sample_i,
+    output logic signed [SAMPLE_WIDTH - 1:0] hamming_sample_o,
     output logic out_valid_o,
     output logic done_o
 );
-    localparam NUM_COEFFICIENTS = 306;
+    logic signed [SAMPLE_WIDTH - 1:0] hamming_window_lut [0:NUM_COEFFICIENTS - 1];
 
-    logic signed [15:0] hamming_window_lut [0:305];
-    
     initial begin
 
     hamming_window_lut = '{

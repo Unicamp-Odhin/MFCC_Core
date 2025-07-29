@@ -1,27 +1,32 @@
 `timescale 1ns/1ps
 
 module MFCC_Core #(
-    parameter int NUM_COEFFICIENTS = 12,    // Número de coeficientes MFCC
-    parameter int FRAME_SIZE       = 306,   // Tamanho do quadro de entrada
-    parameter int FRAME_MOVE       = 123,   // Tamanho do movimento do quadro
-    parameter int SAMPLE_RATE      = 12207, // Taxa de amostragem
-    parameter int FFT_SIZE         = 512,   // Tamanho da FFT
-    parameter int PCM_FIFO_DEPTH   = 256    // Profundidade do FIFO de PCM
+    parameter SAMPLE_WIDTH     = 16,       // Largura do sample de áudio
+    parameter NUM_COEFFICIENTS = 12,       // Número de coeficientes MFCC
+    parameter FRAME_SIZE       = 306,      // Tamanho do quadro de entrada
+    parameter FRAME_MOVE       = 123,      // Tamanho do movimento do quadro
+    parameter SAMPLE_RATE      = 12207,    // Taxa de amostragem
+    parameter FFT_SIZE         = 512,      // Tamanho da FFT
+    parameter PCM_FIFO_DEPTH   = 256,      // Profundidade do FIFO de PCM
+    parameter ALPHA            = 16'd31785 // Alpha em Q1.15 (0.97 ≈ 31785)
 ) (
     input  logic clk,
     input  logic rst_n,
 
     // audio input
-    input  logic [15:0] pcm_in,
+    input  logic [SAMPLE_WIDTH - 1:0] pcm_in,
     input  logic pcm_ready_i
 );
     logic pre_emphasis_valid;
-    logic [15:0] pre_emphasized_signal;
+    logic [SAMPLE_WIDTH - 1:0] pre_emphasized_signal;
 
     logic fifo_empty, fifo_full, fifo_rd_en;
-    logic [15:0] fifo_read_data;
+    logic [SAMPLE_WIDTH - 1:0] fifo_read_data;
 
-    Pre_Emphasis u_pre_emphasis (
+    Pre_Emphasis #(
+        .SAMPLE_WIDTH (SAMPLE_WIDTH),
+        .ALPHA        (ALPHA) // Alpha em Q1.15 (0.97 ≈ 31785)
+    ) u_pre_emphasis (
         .clk       (clk),
         .rst_n     (rst_n),
 
@@ -34,7 +39,7 @@ module MFCC_Core #(
 
     FIFO #(
         .DEPTH        (PCM_FIFO_DEPTH),
-        .WIDTH        (16)
+        .WIDTH        (SAMPLE_WIDTH)
     ) tx_fifo (
         .clk          (clk),
         .rst_n        (rst_n),
@@ -48,14 +53,16 @@ module MFCC_Core #(
         .read_data_o  (fifo_read_data)
     );
 
-    logic [15:0] window_buffer_data_o;
+    logic [SAMPLE_WIDTH - 1:0] window_buffer_data_o;
     logic window_valid_to_read;
     logic window_rd_en;
     logic start_move;
     logic start_hamming;
 
     Window_Buffer #(
-        .WIDTH                (16)
+        .WIDTH                (SAMPLE_WIDTH),
+        .FRAME_SIZE           (FRAME_SIZE),
+        .MOVE_SIZE            (FRAME_MOVE)
     ) u_window_buffer (
         .clk                  (clk),                         // 1 bit
         .rst_n                (rst_n),                       // 1 bit
@@ -76,10 +83,13 @@ module MFCC_Core #(
 
     logic hamming_done, hamming_out_valid;
     logic [8:0] frame_ptr;
-    logic signed [15:0] hamming_sample;
-    logic signed [15:0] hamming_frame [0:305];
+    logic signed [SAMPLE_WIDTH - 1:0] hamming_sample;
+    logic signed [SAMPLE_WIDTH - 1:0] hamming_frame [0:FRAME_SIZE - 1];
 
-    Hamming_Window u_hamming_window (
+    Hamming_Window #(
+        .SAMPLE_WIDTH     (SAMPLE_WIDTH),
+        .NUM_COEFFICIENTS (FRAME_SIZE)
+    ) u_hamming_window (
         .clk              (clk),
         .rst_n            (rst_n),
 
