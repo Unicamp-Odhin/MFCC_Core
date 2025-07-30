@@ -41,7 +41,6 @@ void create_filterbank(float filterbank[NUM_FILTERS][NFFT/2 + 1], int sample_rat
     // Inicializa o filterbank com zeros
     memset(filterbank, 0, NUM_FILTERS * (NFFT/2 + 1) * sizeof(float));
 
-    float low_freq_mel = 0.0f;
     float high_freq_mel = 2595.0f * log10f(1.0f + (sample_rate / 2.0f) / 700.0f); // Convert Hz to Mel
 
     float mel_points;
@@ -50,7 +49,7 @@ void create_filterbank(float filterbank[NUM_FILTERS][NFFT/2 + 1], int sample_rat
 
     // Gera pontos igualmente espaçados na escala Mel
     for (int i = 0; i < NUM_FILTERS + 2; i++) {
-        mel_points = low_freq_mel + i * ((high_freq_mel - low_freq_mel) / (NUM_FILTERS + 1));
+        mel_points = i * (high_freq_mel / (NUM_FILTERS + 1));
         hz_points = 700.0f * (powf(10.0f, mel_points / 2595.0f) - 1.0f);
         bin[i] = (int)floorf((NFFT + 1) * hz_points / sample_rate);
     }
@@ -134,11 +133,29 @@ void create_filterbank_q15(int16_t filterbank[NUM_FILTERS][NFFT/2 + 1], int samp
     }
 }
 
+// Function to plot the filterbank in q30 format in .dat file
+void plot_filterbank_q30(int32_t filterbank[NUM_FILTERS][NFFT/2 + 1]) {
+    FILE *fp = fopen("data/filterbank_q30.dat", "w");
+    if (!fp) {
+        perror("Erro ao abrir o arquivo de filterbank Q15");
+        exit(EXIT_FAILURE);
+    }
+
+    for (int m = 0; m < NUM_FILTERS; m++) {
+        for (int k = 0; k < NFFT/2 + 1; k++) {
+            fprintf(fp, "%X ",filterbank[m][k]);
+        }
+        fprintf(fp, "\n");
+    }
+
+    fclose(fp);
+}
+
 // Aplica o banco de filtros Q1.15 ao espectro de potência Q1.15
 void apply_filterbank_q15(
     int32_t power_spectrum_frame[NFFT/2 + 1],
     int32_t filterbank[NUM_FILTERS][NFFT/2 + 1],
-    int32_t energies_q15[NUM_FILTERS]  // Saída em Q1.15 (log)
+    int8_t energies_q15[NUM_FILTERS]  // Saída em Q1.15 (log)
 ) {
     for (int m = 0; m < NUM_FILTERS; m++) {
         int32_t sum = 0;
@@ -153,9 +170,10 @@ void apply_filterbank_q15(
         
         // Proteção contra log(0)
         if (sum <= 0) {
-            energies_q15[m] = MIN_LOG_ENERGY_Q15;
+            //energies_q15[m] = MIN_LOG_ENERGY_Q15;
+            energies_q15[m] = 0x80;
         } else {
-            energies_q15[m] = 6 * q15_log2(sum);
+            energies_q15[m] = (int8_t)6 * q15_log2(sum);
             // energies_q15[m] = q15_log2(sum);
 
             // energies_q15[m] = q15_mul(float_to_q15(20.0f), q15_log10(sum));

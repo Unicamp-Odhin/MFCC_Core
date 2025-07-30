@@ -112,14 +112,20 @@ int main(int argc, char *argv[]) {
 
 
     float filterbank[NUM_FILTERS][NFFT/2 + 1];
-    load_filterbank_from_file(filterbank);
+    //load_filterbank_from_file(filterbank);
+
+    create_filterbank(filterbank, sample_rate);
     
     int32_t filterbank_15[NUM_FILTERS][NFFT/2 + 1];
+    int16_t filterbank_152[NUM_FILTERS][NFFT/2 + 1];
     for (int i = 0; i < NUM_FILTERS; i++) {
         for (int j = 0; j < NFFT / 2 + 1; j++) {
             filterbank_15[i][j] = (int32_t)float_to_q15(filterbank[i][j]);
         }
     }
+
+    // Plotar o banco de filtros
+    plot_filterbank_q30(filterbank_15);
 
     FILE *fp3 = fopen("data/spectrogram_matrix.dat", "w");
     FILE *fp4 = fopen("data/ceps_matrix.dat", "w");
@@ -146,7 +152,7 @@ int main(int argc, char *argv[]) {
         }
 
     #else
-        int32_t energies[NUM_FILTERS];
+        int8_t energies[NUM_FILTERS];
         for (int i = 0; i < num_frames; i++) {
             apply_filterbank_q15(power_spectrum[i], filterbank_15, energies);
 
