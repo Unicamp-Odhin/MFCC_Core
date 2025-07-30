@@ -81,24 +81,35 @@ int main(int argc, char **argv, char **env) {
         window->eval();
         trace->dump(i * CLOCK_PERIOD);
     }
+    
     window->rst_n = 1;
     window->start_move = 1; // Inicia o movimento do buffer
+    window->clk = !window->clk;
+    window->eval();
+    trace->dump(i * CLOCK_PERIOD);
+    i++;
 
     int sample_index = 0;
+    int move_sample = 0;
 
     // Simulação
     for (; i < SIMULATION_CYCLES; i++) {
         window->clk = !window->clk;
 
-        if(window->fifo_rd_en_o){
+        if(move_sample){
             window->fifo_data_i = samples[sample_index];
             sample_index++;
             if (sample_index >= num_samples) {
                 sample_index = 0; // Reinicia o índice se exceder o número de amostras
             }
+            move_sample = 0; // Reseta o sinal de movimento
         }
         
+        if(window->fifo_rd_en_o)
+            move_sample = 1;
+
         window->eval();
+
         trace->dump(i * CLOCK_PERIOD);
 
         window->start_move = 0; // Continua o movimento do buffer
