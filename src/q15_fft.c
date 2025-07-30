@@ -26,14 +26,30 @@ void generate_twiddles(complex_q15* twiddles, int N) {
     }
 }
 
+void save_twiddles(complex_q15* twiddles, int N) {
+    FILE* file = fopen("data/twiddles.hex", "w");
+    if (!file) {
+        perror("Failed to open file for saving twiddles");
+        return;
+    }
+
+    for (int i = 0; i < N / 2; i++) {
+        fprintf(file, "%.8X%.8X\n", twiddles[i].real, twiddles[i].imag);
+    }
+
+    fclose(file);
+}
 
 void fft_iterative(complex_q15* x, int N, complex_q15* twiddles) {
     int logN = 0;
     for (int temp = N; temp > 1; temp >>= 1) logN++;
 
+    //printf("FFT Iterative: N = %d, logN = %d\n", N, logN);
+
     // Bit-reversal permutation
     for (int i = 0, j = 0; i < N; i++) {
         if (i < j) {
+            //printf("Swapping indices %d and %d\n", i, j);
             complex_q15 temp = x[i];
             x[i] = x[j];
             x[j] = temp;
@@ -67,7 +83,7 @@ void fft_iterative(complex_q15* x, int N, complex_q15* twiddles) {
 
 void fft_q15_real_power(q15_t* x_real, int N, int32_t* power_out) {
     // 1. Alocar vetor complexo
-    complex_q15* x = malloc(NFFT * sizeof(complex_q15));
+    complex_q15* x = (complex_q15*)malloc(NFFT * sizeof(complex_q15));
 
     for (int i = 0; i < NFFT; i++) {
         if (i >= N)
@@ -77,8 +93,9 @@ void fft_q15_real_power(q15_t* x_real, int N, int32_t* power_out) {
         x[i].imag = 0;
     }
     // 2. Gerar twiddles
-    complex_q15* twiddles = malloc((NFFT / 2) * sizeof(complex_q15));
+    complex_q15* twiddles = (complex_q15*)malloc((NFFT / 2) * sizeof(complex_q15));
     generate_twiddles(twiddles, NFFT);
+    save_twiddles(twiddles, NFFT);
 
     // 3. Executar FFT
     fft_iterative(x, NFFT, twiddles);
