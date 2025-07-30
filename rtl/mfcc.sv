@@ -114,10 +114,19 @@ module MFCC_Core #(
     end
 
     FFT #(
-        .NFFT (FFT_SIZE)
+        .NFFT          (FFT_SIZE),
+        .INPUT_WIDTH   (SAMPLE_WIDTH),
+        .COMPLEX_WIDTH (32),
+        .FRAME_SIZE    (FRAME_SIZE)
     ) u_fft (
-        .clk   (clk),
-        .rst_n (rst_n)
+        .clk         (clk),
+        .rst_n       (rst_n),
+
+        .in_valid    (hamming_out_valid),
+        .frame_ptr_i (frame_ptr),
+        .real_in     (hamming_sample),
+
+        .start_i     ()
     );
 
     MEL #(
