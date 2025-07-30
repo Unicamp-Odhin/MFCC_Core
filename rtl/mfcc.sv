@@ -89,7 +89,8 @@ module MFCC_Core #(
 
     Hamming_Window #(
         .SAMPLE_WIDTH     (SAMPLE_WIDTH),
-        .NUM_COEFFICIENTS (FRAME_SIZE)
+        .NUM_COEFFICIENTS (FRAME_SIZE),
+        .NFFT_SIZE        (FFT_SIZE)
     ) u_hamming_window (
         .clk              (clk),
         .rst_n            (rst_n),
@@ -126,7 +127,7 @@ module MFCC_Core #(
         .frame_ptr_i (frame_ptr),
         .real_in     (hamming_sample),
 
-        .start_i     ()
+        .start_i     (hamming_done)
     );
 
     MEL #(
