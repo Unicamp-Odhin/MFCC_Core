@@ -50,12 +50,18 @@ int main(int argc, char *argv[]) {
     int num_to_print = (num_samples < 20) ? num_samples : 20;
     printf("First 20 samples in sequence: ");
     for (int i = 0; i < num_to_print; i++) {
-        printf("%d ", samples[i]);
+        printf("%X ", samples[i]);
     }
     printf("\n");
     
     pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), ALPHA);
-    
+
+    printf("Samples after pre-emphasis: ");
+    for (int i = 0; i < 20; i++) {
+        printf("%X ", samples[i]);
+    }
+    printf("\n");
+
     int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step, &num_frames);
 
 

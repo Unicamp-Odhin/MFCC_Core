@@ -26,7 +26,7 @@ module MFCC_Core #(
     logic fifo_empty, fifo_full, fifo_rd_en;
     logic [SAMPLE_WIDTH - 1:0] fifo_read_data;
 
-    Pre_Emphasis #(
+    pre_emphasis #(
         .SAMPLE_WIDTH (SAMPLE_WIDTH),
         .ALPHA        (ALPHA) // Alpha em Q1.15 (0.97 ≈ 31785)
     ) u_pre_emphasis (
