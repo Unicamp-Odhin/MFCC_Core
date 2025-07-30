@@ -68,6 +68,8 @@ void fft_iterative(complex_q15* x, int N, complex_q15* twiddles) {
         int half_m = m >> 1;
         int twiddle_step = N / m;
 
+        //printf("Stage %d: m = %d, half_m = %d, twiddle_step = %d\n", s, m, half_m, twiddle_step);
+
         for (int k = 0; k < N; k += m) {
             for (int j = 0; j < half_m; j++) {
                 int twiddle_index = j * twiddle_step;

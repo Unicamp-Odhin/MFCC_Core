@@ -18,6 +18,8 @@ module MFCC_Core #(
     input  logic [SAMPLE_WIDTH - 1:0] pcm_in,
     input  logic pcm_ready_i
 );
+    localparam RFFT_SIZE = FFT_SIZE/2;
+
     logic pre_emphasis_valid;
     logic [SAMPLE_WIDTH - 1:0] pre_emphasized_signal;
 
@@ -28,14 +30,14 @@ module MFCC_Core #(
         .SAMPLE_WIDTH (SAMPLE_WIDTH),
         .ALPHA        (ALPHA) // Alpha em Q1.15 (0.97 ≈ 31785)
     ) u_pre_emphasis (
-        .clk       (clk),
-        .rst_n     (rst_n),
+        .clk          (clk),
+        .rst_n        (rst_n),
 
-        .in_valid  (pcm_ready_i),
-        .out_valid (pre_emphasis_valid),
+        .in_valid     (pcm_ready_i),
+        .out_valid    (pre_emphasis_valid),
 
-        .x_in      (pcm_in), // Sinal de entrada
-        .y_out     (pre_emphasized_signal) // Sinal de saída
+        .x_in         (pcm_in), // Sinal de entrada
+        .y_out        (pre_emphasized_signal) // Sinal de saída
     );
 
     FIFO #(
@@ -114,21 +116,39 @@ module MFCC_Core #(
         end
     end
 
+    logic [8:0] fft_ptr;
+    logic [31:0] fft_power_sample;
+    logic fft_power_valid, fft_done;
+
     FFT #(
-        .NFFT          (FFT_SIZE),
-        .INPUT_WIDTH   (SAMPLE_WIDTH),
-        .COMPLEX_WIDTH (32),
-        .FRAME_SIZE    (FRAME_SIZE)
+        .NFFT           (FFT_SIZE),
+        .INPUT_WIDTH    (SAMPLE_WIDTH),
+        .COMPLEX_WIDTH  (32),
+        .FRAME_SIZE     (FRAME_SIZE)
     ) u_fft (
-        .clk         (clk),
-        .rst_n       (rst_n),
+        .clk            (clk),
+        .rst_n          (rst_n),
 
-        .in_valid    (hamming_out_valid),
-        .frame_ptr_i (frame_ptr),
-        .real_in     (hamming_sample),
+        .in_valid       (hamming_out_valid),
+        .frame_ptr_i    (frame_ptr),
+        .real_in        (hamming_sample),
 
-        .start_i     (hamming_done)
+        .start_i        (hamming_done),
+
+        .power_ptr_o    (fft_ptr),
+        .power_valid_o  (fft_power_valid),
+        .power_sample_o (fft_power_sample),
+
+        .fft_done_o     (fft_done)
     );
+
+    logic [31:0] rfft_power_buffer [0: RFFT_SIZE];
+
+    always_ff @( posedge clk ) begin
+        if(fft_power_valid) begin
+            rfft_power_buffer[fft_ptr] <= fft_power_sample;
+        end
+    end   
 
     MEL #(
         .NUM_FILTERS (NUM_FILTERS)

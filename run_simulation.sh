@@ -60,9 +60,9 @@ function run_dct_test {
 
 function run_mfcc_test {
     echo "Executando teste MFCC"
-    verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module MFCC tests/mfcc_tb.cpp \
+    verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module MFCC_Core tests/mfcc_tb.cpp \
     rtl/mfcc.sv rtl/complex.sv rtl/fft.sv rtl/dct.sv rtl/mel.sv rtl/base2log.sv rtl/hamming.sv rtl/pre_emphasis.sv rtl/window_buffer.sv \
-    src/wav.c src/process.c src/q15.c src/q15_fft.c src/mel.c src/dct.c --CFLAGS "-I../lib"
+    rtl/fifo.sv src/wav.c src/process.c src/q15.c src/q15_fft.c src/mel.c src/dct.c --CFLAGS "-I../lib"
    ./obj_dir/VMFCC
 }
 
