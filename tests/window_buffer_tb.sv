@@ -103,41 +103,93 @@ initial begin
 
     wait(idle);
 
+    assert(u_window_buffer.internal_read_ptr == 0) else begin
+        $error("Erro: internal_read_ptr está na posição errada. %d, esperada: %d", u_window_buffer.internal_read_ptr, 0);
+        $finish;
+    end
+
+    assert(u_window_buffer.write_ptr == 0) else begin
+        $error("Erro: write_ptr não está zerado após o encher o buffer pela primeira vez. %d", u_window_buffer.write_ptr);
+        $finish;
+    end
+
     #(20); // Espera 10 ciclos de clock
 
+    $display("Iniciando o primeiro movimento do buffer");
+
     start_move = 1; // Inicia o movimento do buffer
 
     #2 // espera 1 ciclo de clock
 
     start_move = 0; // Desativa o sinal de início
 
+    @(negedge clk); // Espera o próximo ciclo de clock
+
+    assert(u_window_buffer.internal_read_ptr == 123) else begin
+        $error("Erro: internal_read_ptr está na posição errada. %d, esperada: %d", u_window_buffer.internal_read_ptr, 123);
+        $finish;
+    end
+
     #(20);
 
     wait(idle);
+
+    assert(u_window_buffer.write_ptr == 123) else begin
+        $error("Erro: write_ptr não está correto após o segundo movimento. %d, esperada: %d", u_window_buffer.write_ptr, 123);
+        $finish;
+    end
 
     #20 // Espera 10 ciclos de clock
 
+    $display("Iniciando o segundo movimento do buffer");
+
     start_move = 1; // Inicia o movimento do buffer
 
     #2 // espera 1 ciclo de clock
 
     start_move = 0; // Desativa o sinal de início
 
+    @(negedge clk); // Espera o próximo ciclo de clock
+
+    assert(u_window_buffer.internal_read_ptr == 246) else begin
+        $error("Erro: internal_read_ptr não está correto após o segundo movimento. %d, esperada: %d", u_window_buffer.internal_read_ptr, 246);
+        $finish;
+    end
+
     #(20);
 
     wait(idle);
+
+    assert(u_window_buffer.write_ptr == 246) else begin
+        $error("Erro: write_ptr não está correto após o terceiro movimento. %d, esperada: %d", u_window_buffer.write_ptr, 246);
+        $finish;
+    end
 
     #20 // Espera 10 ciclos de clock
 
+    $display("Iniciando o terceiro movimento do buffer");
+
     start_move = 1; // Inicia o movimento do buffer
 
     #2 // espera 1 ciclo de clock
 
     start_move = 0; // Desativa o sinal de início
 
+    @(negedge clk); // Espera o próximo ciclo de clock
+
+    assert(u_window_buffer.internal_read_ptr == 63) else begin
+        $error("Erro: internal_read_ptr não está correto após o terceiro movimento. %d, esperada: %d", u_window_buffer.internal_read_ptr, 63);
+        $finish;
+    end
+
     #(20);
 
     wait(idle);
+
+    assert(u_window_buffer.write_ptr == 63) else begin
+        $error("Erro: write_ptr não está correto após o terceiro movimento. %d, esperada: %d", u_window_buffer.write_ptr, 63);
+        $finish;
+    end
 
     #20 // Espera 10 ciclos de clock
 
