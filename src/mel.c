@@ -130,32 +130,6 @@ void create_filterbank_q15(int16_t filterbank[NUM_FILTERS][NFFT/2 + 1], int samp
         }
     }
 }
-void optimization_filterbank_q15(int32_t filterbank[NUM_FILTERS][NFFT/2 + 1]) {
-    int16_t init_index;
-    int16_t end_index;
-
-    for (int i = 0; i < NUM_FILTERS; i++) {
-        for (init_index = 0; filterbank[i][end_index]; init_index++);
-
-        for (end_index = NFFT / 2; filterbank[i][end_index]; end_index--);
-
-        int32_t temp[2 + (NFFT/2 + 1)];
-        temp[0] = init_index;
-        temp[1] = end_index;
-
-        int k = 2;
-        for (int j = init_index; j <= end_index; j++) {
-            temp[k++] = filterbank[i][j];
-        }
-
-        for (int j = 0; j < NFFT / 2 + 1; j++) {
-            filterbank[i][j] = 0;
-        }
-        for (int j = 0; j < k; j++) {
-            filterbank[i][j] = temp[j];
-        }
-    }
-}
 
 
 // Aplica o banco de filtros Q1.15 ao espectro de potência Q1.15
@@ -178,5 +152,55 @@ void apply_filterbank_q15(
 
         }
         printf("%d: Energia: %d | Sum: %d\n", m, energies_q15[m], sum);
+    }
+}
+
+void optimization_filterbank_q15(int32_t filterbank[NUM_FILTERS][NFFT/2 + 1]) {
+    int16_t init_index;
+    int16_t end_index;
+
+    for (int i = 0; i < NUM_FILTERS; i++) {
+        for (init_index = 0; init_index < NFFT / 2 + 1 && !filterbank[i][init_index]; init_index++);
+
+        for (end_index = NFFT / 2; end_index >= 0 && !filterbank[i][end_index]; end_index--);
+
+        int32_t temp[2 + (NFFT/2 + 1)];
+        temp[0] = init_index;
+        temp[1] = end_index;
+
+        int k = 2;
+        for (int j = init_index; j <= end_index; j++) {
+            temp[k++] = filterbank[i][j];
+        }
+        for (int j = 0; j < NFFT / 2 + 1; j++) {
+            filterbank[i][j] = 0;
+        }
+        for (int j = 0; j < k; j++) {
+            filterbank[i][j] = temp[j];
+        }
+    }
+}
+
+void optimization_apply_q15(
+    int32_t power_spectrum_frame[NFFT/2 + 1],
+    int32_t filterbank[NUM_FILTERS][NFFT/2 + 1],
+    int32_t energies_q15[NUM_FILTERS] 
+) {
+    for (int i = 0; i < NUM_FILTERS; i++) {
+        int32_t sum = 0;
+
+        int init_index = filterbank[i][0];
+        int end_index = filterbank[i][1] + 1;
+
+        for (int k = init_index; k < end_index ; k++) {
+            sum = q15_add(sum, q15_mul(power_spectrum_frame[k], filterbank[i][2 + k - init_index]));
+        }
+
+        if (sum <= 0) {
+            energies_q15[i] = MIN_LOG_ENERGY_Q15;
+        } else {
+            energies_q15[i] = 6 * q15_log2(sum);
+        }
+        printf("%d: Energia: %d | Sum: %d\n", i, energies_q15[i], sum);
     }
 }

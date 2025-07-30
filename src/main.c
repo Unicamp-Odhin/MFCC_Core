@@ -147,8 +147,10 @@ int main(int argc, char *argv[]) {
 
     #else
         int32_t energies[NUM_FILTERS];
+        optimization_filterbank_q15(filterbank_15);
         for (int i = 0; i < num_frames; i++) {
-            apply_filterbank_q15(power_spectrum[i], filterbank_15, energies);
+            // apply_filterbank_q15(power_spectrum[i], filterbank_15, energies);
+            optimization_apply_q15(power_spectrum[i], filterbank_15, energies);
 
             for (int j = 0; j < NUM_FILTERS; j++) {
                 fprintf(fp3, "%d%c", energies[j], (j == NUM_FILTERS - 1) ? '\n' : ' ');
