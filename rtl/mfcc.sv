@@ -62,7 +62,7 @@ module MFCC_Core #(
     logic start_move;
     logic start_hamming;
 
-    Window_Buffer #(
+    window_buffer #(
         .WIDTH                (SAMPLE_WIDTH),
         .FRAME_SIZE           (FRAME_SIZE),
         .MOVE_SIZE            (FRAME_MOVE)

@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-module Window_Buffer #(
+module window_buffer #(
     parameter WIDTH       = 16,
     parameter FRAME_SIZE  = 306,
     parameter MOVE_SIZE   = 123
@@ -22,7 +22,8 @@ module Window_Buffer #(
     output logic [WIDTH-1:0]           read_data_o,
     output logic                       valid_to_read_o,
     
-    output logic                       start_next_state_o
+    output logic                       start_next_state_o,
+    output logic                       idle
 );
     logic [WIDTH - 1:0] buffer [0:FRAME_SIZE - 1];
     int write_ptr;
@@ -51,7 +52,8 @@ module Window_Buffer #(
 
     always_comb begin
         next_state = current_state;
-        
+        idle = (current_state == IDLE);
+
         unique case (current_state)
             IDLE: begin
                 if (start_move) next_state = MOVE;
@@ -71,6 +73,7 @@ module Window_Buffer #(
 
     always_ff @(posedge clk or negedge rst_n) begin
         start_next_state_o <= 0;
+        fifo_rd_en_o       <= 0;
 
         if (!rst_n) begin
             move_counter      <= 0;
@@ -118,7 +121,8 @@ module Window_Buffer #(
         end
     end
 
-    assign valid_to_read_o = read_ptr < (FRAME_SIZE - move_counter) && (current_state != MOVE) && (current_state != START);
+    assign valid_to_read_o = read_ptr < (FRAME_SIZE - move_counter) && (current_state != MOVE) && 
+        (current_state != START) && (read_ptr != write_ptr);
     assign read_data_o = buffer[(read_ptr + internal_read_ptr) % FRAME_SIZE];
 
 endmodule

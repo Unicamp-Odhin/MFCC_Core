@@ -37,8 +37,11 @@ function run_pre_emphasis_test {
 
 function run_window_buffer_test {
    echo "Executando teste Window Buffer"
-   verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module Window_Buffer tests/window_buffer_tb.cpp rtl/window_buffer.sv src/wav.c src/process.c --CFLAGS "-I../lib"
-   ./obj_dir/VWindow_Buffer
+   #verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module Window_Buffer tests/window_buffer_tb.cpp rtl/window_buffer.sv src/wav.c src/process.c --CFLAGS "-I../lib"
+   verilator tests/window_buffer_tb.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv -Wall --assert --language 1800-2017  \
+      --timing --trace-structs --binary -Wno-fatal --trace-fst --x-assign unique --x-initial unique
+   ./obj_dir/Vwindow_buffer_tb
+   #./obj_dir/Window_Buffer
 }
 
 function run_hamming_test {
