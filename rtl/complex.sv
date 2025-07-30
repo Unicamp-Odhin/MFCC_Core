@@ -29,5 +29,9 @@ package complex_pkg;
         c_mul.re = re_tmp[63:32];
         c_mul.im = im_tmp[63:32];
     endfunction
+
+    function logic [63:0] c_power(complex z);
+        c_power = (z.re * z.re) + (z.im * z.im);
+    endfunction
 endpackage
 `endif // OPCODES_PKG
