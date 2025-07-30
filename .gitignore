@@ -219,3 +219,4 @@ fpga/opensourceSDRLabKintex7/openFPGALoader
 *.dat
 data/
 obj_dir
+x.c

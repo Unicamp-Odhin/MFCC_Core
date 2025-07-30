@@ -1,8 +1,9 @@
 `timescale 1ns/1ps
 
 module Hamming_Window #(
-    parameter SAMPLE_WIDTH     = 16, // Largura do sample de áudio
-    parameter NUM_COEFFICIENTS = 306 // Número de coeficientes da janela de Hamming
+    parameter SAMPLE_WIDTH     = 16,  // Largura do sample de áudio
+    parameter NUM_COEFFICIENTS = 306, // Número de coeficientes da janela de Hamming
+    parameter NFFT_SIZE        = 512  // Tamanho do FFT
 ) (
     input  logic clk,
     input  logic rst_n,
@@ -20,6 +21,8 @@ module Hamming_Window #(
     output logic done_o
 );
     logic signed [SAMPLE_WIDTH - 1:0] hamming_window_lut [0:NUM_COEFFICIENTS - 1];
+
+    localparam PADDING_SIZE = NFFT_SIZE - NUM_COEFFICIENTS;
 
     initial begin
 
@@ -76,6 +79,7 @@ module Hamming_Window #(
     typedef enum logic [1:0] { 
         IDLE,
         CALC,
+        PADDING,
         FINISH
     } hamming_state_t;
 
@@ -115,9 +119,19 @@ module Hamming_Window #(
                     end
 
                     if(calc_pointer == NUM_COEFFICIENTS - 1) begin
-                        hamming_state <= FINISH;
+                        hamming_state <= PADDING;
                     end else begin
                         hamming_state <= CALC;
+                    end
+                end
+                PADDING: begin
+                    if(frame_ptr < NFFT_SIZE) begin
+                        hamming_sample_o <= 0;
+                        out_valid_o      <= 1;
+                        rd_en_o          <= 1;
+                        frame_ptr        <= frame_ptr + 1;
+                    end else begin
+                        hamming_state <= FINISH;
                     end
                 end
                 FINISH: begin
