@@ -32,7 +32,8 @@ module mel_tb;
   always #5 clk = ~clk;
 
   // Memória para simular a entrada
-  logic [31:0] power_spectrum_mem [0:NFFT-1];
+//   logic [31:0] power_spectrum_mem [0:NFFT-1];
+  logic [31:0] power_spectrum_mem [0:NUM_FILTERS-1];
   logic [8:0]  energie_expected [0:NUM_FILTERS-1];
 
   // Para armazenar resultados
@@ -56,10 +57,10 @@ module mel_tb;
     #10;
 
     // Teste 1
-    test_with_data("data/power_spectrum_1.hex", "data/energie_1.hex");
+    test_with_data("tests/data/power_spectrum_1.hex", "tests/data/energie_1.hex");
 
     // Teste 2
-    test_with_data("data/power_spectrum_2.hex", "data/energie_2.hex");
+    test_with_data("tests/data/power_spectrum_2.hex", "tests/data/energie_2.hex");
 
     $display("---- Teste Finalizado ----");
     $finish;
@@ -84,27 +85,6 @@ module mel_tb;
 
       // Fornece dados conforme solicitado
       wait (mel_done_o == 1); // Espera terminar
-      
-      fork
-        begin
-          forever begin
-            @(posedge clk);
-            value_power_spectrum_frame <= power_spectrum_mem[prt_power_spectrum_frame];
-          end
-        end
-
-        begin
-          idx = 0;
-          while (!mel_done_o) begin
-            @(posedge clk);
-            if (mel_valid) begin
-              energie_out[mel_prt_energies] = mel_value_energies;
-              idx++;
-            end
-          end
-        end
-      join_any
-      disable fork;
 
       // Verifica resultados
       for (idx = 0; idx < NUM_FILTERS; idx++) begin
@@ -116,5 +96,16 @@ module mel_tb;
       #50;
     end
   endtask
+
+
+always @(posedge clk) begin
+    value_power_spectrum_frame <= power_spectrum_mem[prt_power_spectrum_frame];
+end
+
+always @(posedge clk) begin
+    if (mel_valid) begin
+        energie_out[mel_prt_energies] <= mel_value_energies;
+    end
+end
 
 endmodule
