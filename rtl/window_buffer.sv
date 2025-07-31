@@ -73,10 +73,6 @@ module window_buffer #(
         endcase
     end
 
-    //logic temp;
-
-    //assign temp = (read_ptr < (FRAME_SIZE - move_counter));
-
     always_ff @(posedge clk or negedge rst_n) begin
         start_next_state_o <= 0;
         fifo_rd_en_o       <= 0;

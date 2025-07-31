@@ -223,3 +223,4 @@ x.c
 buffer_dump.hex
 dumps/
 samples_dump.hex
+pre_emphasis.hex

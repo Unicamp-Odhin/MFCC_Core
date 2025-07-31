@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
     }
     printf("\n");
 
-    dump_buffer_to_hex("samples_dump.hex", (int32_t *)samples, num_samples);
+    dump_buffer_to_hex("data/samples_dump.hex", (int32_t *)samples, num_samples);
     
     pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), ALPHA);
 
