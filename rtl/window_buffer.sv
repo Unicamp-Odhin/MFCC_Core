@@ -64,8 +64,10 @@ module window_buffer #(
             FILL: begin 
                 if (~|move_counter) 
                     next_state = IDLE;
-                else 
+                else if (fifo_empty_i) 
                     next_state = REQUEST_DATA;
+                else
+                    next_state = FILL;
             end
             default: next_state = current_state;
         endcase
@@ -98,6 +100,7 @@ module window_buffer #(
                     buffer[write_ptr] <= fifo_data_i;
                     write_ptr         <= (write_ptr + 1) % FRAME_SIZE;
                     move_counter      <= move_counter - 1;
+                    fifo_rd_en_o      <= 1 & ~fifo_empty_i;
                 end
                 IDLE: begin
                     if (start_move) begin

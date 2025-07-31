@@ -35,7 +35,7 @@ logic equal_frame;
 logic [8:0] frame_ptr_reversal;
 
 initial begin
-    $readmemh("twiddles.hex", twiddles);
+    $readmemh("tables/twiddles.hex", twiddles);
 end
 
 

@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-module window_buffer_tb ();
+module hamming_tb ();
 
 localparam AUDIO_PATH     = "data/seno_440Hz.hex";
 localparam MAX_AUDIO_SIZE = 1600;
@@ -8,6 +8,7 @@ localparam PCM_FIFO_DEPTH = 256;
 localparam FRAME_SIZE     = 400;
 localparam FRAME_MOVE     = 160;
 localparam ALPHA          = 16'd31785;
+localparam FFT_SIZE       = 512;
 
 logic clk;
 logic rst_n;
@@ -82,14 +83,46 @@ window_buffer #(
     .idle                 (idle)                         // 1 bit
 );
 
+    logic hamming_done, hamming_out_valid;
+    logic [8:0] frame_ptr;
+    logic signed [SAMPLE_WIDTH - 1:0] hamming_sample;
+    logic signed [SAMPLE_WIDTH - 1:0] hamming_frame [0:FRAME_SIZE - 1];
+
+    Hamming_Window #(
+        .SAMPLE_WIDTH     (SAMPLE_WIDTH),
+        .NUM_COEFFICIENTS (FRAME_SIZE),
+        .NFFT_SIZE        (FFT_SIZE)
+    ) u_hamming_window (
+        .clk              (clk),
+        .rst_n            (rst_n),
+
+        .start_i          (start_hamming),
+
+        .valid_to_read_i  (window_valid_to_read),
+        .rd_en_o          (window_rd_en),
+
+        .frame_ptr_o      (frame_ptr),
+        .frame_sample_i   (window_buffer_data),  // Sinal de entrada
+        .hamming_sample_o (hamming_sample),        // Sinal de saída
+
+        .out_valid_o      (hamming_out_valid),
+        .done_o           (hamming_done)
+    );
+
+    always_ff @( posedge clk ) begin
+        if(hamming_out_valid) begin
+            hamming_frame[frame_ptr] <= hamming_sample;
+        end
+    end
+
 integer i;
 
 initial begin
     $readmemh(AUDIO_PATH, samples);
-    $dumpfile("build/window_buffer_tb.vcd");
-    $dumpvars(0, window_buffer_tb);
+    $dumpfile("build/hamming_tb.vcd");
+    $dumpvars(0, hamming_tb);
 
-    $display("Iniciando teste de Window Buffer");
+    $display("Iniciando teste de Hamming");
 
     start_move = 0;
     rst_n = 0;
@@ -103,95 +136,13 @@ initial begin
 
     wait(idle);
 
-    assert(u_window_buffer.internal_read_ptr == 0) else begin
-        $error("Erro: internal_read_ptr está na posição errada. %d, esperada: %d", u_window_buffer.internal_read_ptr, 0);
-        $finish;
-    end
-
-    assert(u_window_buffer.write_ptr == 0) else begin
-        $error("Erro: write_ptr não está zerado após o encher o buffer pela primeira vez. %d", u_window_buffer.write_ptr);
-        $finish;
-    end
-
-    #(20); // Espera 10 ciclos de clock
-
-    $display("Iniciando o primeiro movimento do buffer");
-
-    start_move = 1; // Inicia o movimento do buffer
-
-    #2 // espera 1 ciclo de clock
-
-    start_move = 0; // Desativa o sinal de início
-
-    @(negedge clk); // Espera o próximo ciclo de clock
-
-    assert(u_window_buffer.internal_read_ptr == 160) else begin
-        $error("Erro: internal_read_ptr está na posição errada. %d, esperada: %d", u_window_buffer.internal_read_ptr, 160);
-        $finish;
-    end
-
-    #(20);
-
-    wait(idle);
-
-    assert(u_window_buffer.write_ptr == 160) else begin
-        $error("Erro: write_ptr não está correto após o segundo movimento. %d, esperada: %d", u_window_buffer.write_ptr, 160);
-        $finish;
-    end
-
     #20 // Espera 10 ciclos de clock
 
-    $display("Iniciando o segundo movimento do buffer");
+    //wait(!idle);
 
-    start_move = 1; // Inicia o movimento do buffer
+    #20
 
-    #2 // espera 1 ciclo de clock
-
-    start_move = 0; // Desativa o sinal de início
-
-    @(negedge clk); // Espera o próximo ciclo de clock
-
-    assert(u_window_buffer.internal_read_ptr == 320) else begin
-        $error("Erro: internal_read_ptr não está correto após o segundo movimento. %d, esperada: %d", u_window_buffer.internal_read_ptr, 320);
-        $finish;
-    end
-
-    #(20);
-
-    wait(idle);
-
-    assert(u_window_buffer.write_ptr == 320) else begin
-        $error("Erro: write_ptr não está correto após o terceiro movimento. %d, esperada: %d", u_window_buffer.write_ptr, 320);
-        $finish;
-    end
-
-    #20 // Espera 10 ciclos de clock
-
-    $display("Iniciando o terceiro movimento do buffer");
-
-    start_move = 1; // Inicia o movimento do buffer
-
-    #2 // espera 1 ciclo de clock
-
-    start_move = 0; // Desativa o sinal de início
-
-    @(negedge clk); // Espera o próximo ciclo de clock
-
-    assert(u_window_buffer.internal_read_ptr == 80) else begin
-        $error("Erro: internal_read_ptr não está correto após o terceiro movimento. %d, esperada: %d", u_window_buffer.internal_read_ptr, 80);
-        $finish;
-    end
-
-    #(20);
-
-    wait(idle);
-
-    assert(u_window_buffer.write_ptr == 80) else begin
-        $error("Erro: write_ptr não está correto após o terceiro movimento. %d, esperada: %d", u_window_buffer.write_ptr, 80);
-        $finish;
-    end
-
-    #20 // Espera 10 ciclos de clock
+    //wait(idle);
 
     $finish;
 end
@@ -212,5 +163,7 @@ always_ff @(posedge clk or negedge rst_n) begin
         end
     end
 end
+
+assign start_move = hamming_done && idle;
 
 endmodule
