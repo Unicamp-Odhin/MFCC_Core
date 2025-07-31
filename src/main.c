@@ -92,6 +92,12 @@ int main(int argc, char *argv[]) {
         hamming_window(frames[i], frame_size);
     }
     
+    for(int i = 0; i < num_frames; i++) {
+        char file_name[50];
+        snprintf(file_name, sizeof(file_name), "dumps/hamming_frame_%d.hex", i);
+        dump_buffer_to_hex(file_name, frames[i], frame_size);
+    }
+
     FILE *fp = fopen("data/preemphasis.dat", "w");
     if (!fp) {
         perror("fopen");

@@ -120,6 +120,11 @@ window_buffer #(
     logic [31:0] fft_power_sample;
     logic fft_power_valid, fft_done;
 
+    logic [15:0] fft_test_buffer [0:FFT_SIZE - 1];
+    logic [15:0] fft_test_sample;
+    logic [9:0] fft_test_ptr;
+    logic fft_test_valid, start_fft;
+
     FFT #(
         .NFFT           (FFT_SIZE),
         .INPUT_WIDTH    (SAMPLE_WIDTH),
@@ -128,12 +133,17 @@ window_buffer #(
     ) u_fft (
         .clk            (clk),
         .rst_n          (rst_n),
-
+/*
         .in_valid       (hamming_out_valid),
         .frame_ptr_i    (frame_ptr),
         .real_in        (hamming_sample),
+*/
+        .in_valid       (fft_test_valid),
+        .frame_ptr_i    (fft_test_ptr),
+        .real_in        (fft_test_sample),
 
-        .start_i        (hamming_done),
+        //.start_i        (hamming_done),
+        .start_i        (start_fft),
 
         .power_ptr_o    (fft_ptr),
         .power_valid_o  (fft_power_valid),
@@ -156,7 +166,7 @@ task dump_buffer_to_hex;
   begin
     fd = $fopen("buffer_dump.hex", "w");
     for (i = 0; i < FRAME_SIZE; i = i + 1) begin
-      $fwrite(fd, "%h\n", hamming_frame[i]);
+        $fwrite(fd, "%h\n", u_window_buffer.buffer[i]);
     end
     $fclose(fd);
   end
@@ -167,8 +177,8 @@ task dump_hamming_to_hex;
   integer i;
   begin
     fd = $fopen("hamming_dump.hex", "w");
-    for (i = 0; i < FRAME_SIZE; i = i + 1) begin
-      $fwrite(fd, "%h\n", u_window_buffer.buffer[i]);
+    for (i = 0; i < FFT_SIZE; i = i + 1) begin
+      $fwrite(fd, "%h\n", hamming_frame[i]);
     end
     $fclose(fd);
   end
@@ -178,7 +188,7 @@ task dump_fft_buffer_to_hex;
   integer fd;
   integer i;
   begin
-    fd = $fopen("fft_dump.hex", "w");
+    fd = $fopen("data/fft_dump.hex", "w");
     for (i = 0; i < RFFT_SIZE; i = i + 1) begin
       $fwrite(fd, "%h\n", rfft_power_buffer[i]);
     end
@@ -186,10 +196,11 @@ task dump_fft_buffer_to_hex;
   end
 endtask
 
-integer i;
+integer i, j;
 
 initial begin
     $readmemh(AUDIO_PATH, samples);
+    $readmemh("dumps/hamming_frame_0.hex", fft_test_buffer);
     $dumpfile("build/fft_tb.vcd");
     $dumpvars(0, fft_tb);
 
@@ -202,12 +213,32 @@ initial begin
     rst_n = 1;
 
     $display("Iniciando processamento de áudio");
-    
-    #(1000); // Espera 1ms para garantir que o reset foi aplicado
 
-    wait(idle);
+    #10
+
+    wait(finished);
+
+    #100;
+
+    start_fft = 1;
+    #2;
+    start_fft = 0;
+    
+
+    //#(1000); // Espera 1ms para garantir que o reset foi aplicado
+
+
+    //wait(hamming_done);
+
+    //dump_hamming_to_hex;
+
+    #20; // Espera 20 ciclos de clock
+
+    wait(fft_done);
 
     #20; // Espera 10 ciclos de clock
+
+    dump_fft_buffer_to_hex;
 
     //wait(!idle);
 
@@ -237,6 +268,24 @@ always_ff @(posedge clk or negedge rst_n) begin
     end
 end
 
-assign start_move = hamming_done && idle;
+logic finished;
+
+always_ff @(posedge clk or negedge rst_n) begin
+    finished <= 0;
+    if (!rst_n) begin
+        j <= 0;
+        fft_test_valid <= 0;
+    end else begin
+        if (j < FFT_SIZE) begin
+            fft_test_sample <= fft_test_buffer[j];
+            fft_test_valid <= 1;
+            fft_test_ptr <= j;
+            j           <= j + 1;
+        end else begin
+            fft_test_valid <= 0;
+            finished <= 1;
+        end
+    end
+end
 
 endmodule
