@@ -36,6 +36,20 @@ void hamming_window_fixed(int32_t *frame, const int16_t *window_q15, int frame_s
     }
 }
 
+void save_window_to_file(const char *filename, const int16_t *window, int size) {
+    FILE *file = fopen(filename, "w");
+    if (!file) {
+        fprintf(stderr, "Erro ao abrir o arquivo %s para escrita.\n", filename);
+        return;
+    }
+
+    for (int i = 0; i < size; i++) {
+        fprintf(file, "%.4X\n", window[i]);
+    }
+
+    fclose(file);
+}
+
 void hamming_window_fixed_table(int32_t *frame, int frame_size) {
     // Aplica a janela Hamming usando a tabela pré-calculada
     for (int i = 0; i < frame_size; i++) {
@@ -50,6 +64,8 @@ void hamming_window(int32_t *frame, int frame_size) {
 
     // Gera os coeficientes da janela Hamming em Q15
     generate_hamming_window_q15(window_q15, frame_size);
+
+    save_window_to_file("hamming_window.hex", window_q15, frame_size);
 
     // Aplica a janela usando ponto fixo
     hamming_window_fixed(frame, window_q15, frame_size);

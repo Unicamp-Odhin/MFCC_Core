@@ -31,7 +31,7 @@ function run_log_test {
 function run_pre_emphasis_test {
    echo "Executando teste Pre emphasis"
    verilator tests/pre_emphasis_tb.sv rtl/pre_emphasis.sv -Wall --assert --language 1800-2017  \
-      --timing --trace-structs --binary -Wno-fatal --trace-fst --x-assign unique --x-initial unique
+      --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
    ./obj_dir/Vpre_emphasis_tb
 }
 
@@ -39,15 +39,18 @@ function run_window_buffer_test {
    echo "Executando teste Window Buffer"
    #verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module Window_Buffer tests/window_buffer_tb.cpp rtl/window_buffer.sv src/wav.c src/process.c --CFLAGS "-I../lib"
    verilator tests/window_buffer_tb.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv -Wall --assert --language 1800-2017  \
-      --timing --trace-structs --binary -Wno-fatal --trace-fst --x-assign unique --x-initial unique
+      --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
    ./obj_dir/Vwindow_buffer_tb
    #./obj_dir/Window_Buffer
 }
 
 function run_hamming_test {
    echo "Executando teste Hamming"
-   verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module Hamming_Window tests/hamming_tb.cpp rtl/hamming.sv src/wav.c src/process.c --CFLAGS "-I../lib"
-   ./obj_dir/Hamming_Window
+   #verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module Hamming_Window tests/hamming_tb.cpp rtl/hamming.sv src/wav.c src/process.c --CFLAGS "-I../lib"
+   #./obj_dir/Hamming_Window
+   verilator tests/hamming_tb.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming.sv -Wall --assert --language 1800-2017  \
+      --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
+   ./obj_dir/Vhamming_tb
 }
 
 function run_fft_test {

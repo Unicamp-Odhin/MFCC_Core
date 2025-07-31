@@ -1,5 +1,5 @@
-`ifndef OPCODES_PKG
-`define OPCODES_PKG
+`ifndef COMPLEX_PKG
+`define COMPLEX_PKG
 package complex_pkg;
     // Tipo fixo com parte real e imaginária
     localparam Q30_SHIFT = 31;
@@ -34,4 +34,4 @@ package complex_pkg;
         c_power = (z.re * z.re) + (z.im * z.im);
     endfunction
 endpackage
-`endif // OPCODES_PKG
+`endif // COMPLEX_PKG
