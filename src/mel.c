@@ -151,7 +151,6 @@ void apply_filterbank_q15(
             energies_q15[m] = 6 * q15_log2(sum);
 
         }
-        printf("%d: Energia: %d | Sum: %d\n", m, energies_q15[m], sum);
     }
 }
 
@@ -201,6 +200,5 @@ void optimization_apply_q15(
         } else {
             energies_q15[i] = 6 * q15_log2(sum);
         }
-        printf("%d: Energia: %d | Sum: %d\n", i, energies_q15[i], sum);
     }
 }
