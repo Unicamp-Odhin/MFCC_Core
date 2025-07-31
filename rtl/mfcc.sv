@@ -6,7 +6,7 @@ module MFCC_Core #(
     parameter NUM_FILTERS      = 40,       // Número de filtros Mel
     parameter FRAME_SIZE       = 400,      // Tamanho do quadro de entrada
     parameter FRAME_MOVE       = 160,      // Tamanho do movimento do quadro
-    parameter SAMPLE_RATE      = 12207,    // Taxa de amostragem
+    parameter SAMPLE_RATE      = 16000,    // Taxa de amostragem
     parameter FFT_SIZE         = 512,      // Tamanho da FFT
     parameter PCM_FIFO_DEPTH   = 256,      // Profundidade do FIFO de PCM
     parameter ALPHA            = 16'd31785 // Alpha em Q1.15 (0.97 ≈ 31785)
@@ -87,7 +87,6 @@ module MFCC_Core #(
     logic hamming_done, hamming_out_valid;
     logic [8:0] frame_ptr;
     logic signed [SAMPLE_WIDTH - 1:0] hamming_sample;
-    logic signed [SAMPLE_WIDTH - 1:0] hamming_frame [0:FFT_SIZE - 1];
 
     Hamming_Window #(
         .SAMPLE_WIDTH     (SAMPLE_WIDTH),
@@ -109,12 +108,6 @@ module MFCC_Core #(
         .out_valid_o      (hamming_out_valid),
         .done_o           (hamming_done)
     );
-
-    always_ff @( posedge clk ) begin
-        if(hamming_out_valid) begin
-            hamming_frame[frame_ptr] <= hamming_sample;
-        end
-    end
 
     logic [8:0] fft_ptr;
     logic [31:0] fft_power_sample;

@@ -65,7 +65,7 @@ void hamming_window(int32_t *frame, int frame_size) {
     // Gera os coeficientes da janela Hamming em Q15
     generate_hamming_window_q15(window_q15, frame_size);
 
-    save_window_to_file("hamming_window.hex", window_q15, frame_size);
+    save_window_to_file("tables/hamming_window.hex", window_q15, frame_size);
 
     // Aplica a janela usando ponto fixo
     hamming_window_fixed(frame, window_q15, frame_size);

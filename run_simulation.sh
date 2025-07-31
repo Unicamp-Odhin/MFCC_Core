@@ -54,29 +54,37 @@ function run_hamming_test {
 }
 
 function run_fft_test {
-    echo "Executando teste FFT"
-    verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module FFT tests/fft_tb.cpp rtl/complex.sv rtl/fft.sv src/wav.c src/process.c src/q15.c src/q15_fft.c --CFLAGS "-I../lib"
-   ./obj_dir/VFFT
+   echo "Executando teste FFT"
+   #verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module FFT tests/fft_tb.cpp rtl/complex.sv rtl/fft.sv src/wav.c src/process.c src/q15.c src/q15_fft.c --CFLAGS "-I../lib"
+   #./obj_dir/VFFT
+   verilator tests/fft_tb.sv rtl/complex.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming.sv rtl/fft.sv \
+      -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
+   ./obj_dir/Vfft_tb
 }
 
 function run_mel_test {
-    echo "Executando teste Mel"
-    verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module MEL tests/mel_tb.cpp rtl/mel.sv src/wav.c src/process.c src/q15.c src/q15_fft.c src/mel.c --CFLAGS "-I../lib"
+   echo "Executando teste Mel"
+   verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module MEL tests/mel_tb.cpp rtl/mel.sv src/wav.c src/process.c src/q15.c src/q15_fft.c src/mel.c --CFLAGS "-I../lib"
    ./obj_dir/VMEL
 }
 
 function run_dct_test {
-    echo "Executando teste DCT"
-    verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module DCT tests/dct_tb.cpp rtl/dct.sv src/wav.c src/process.c src/q15.c src/q15_fft.c src/mel.c src/dct.c --CFLAGS "-I../lib"
-   ./obj_dir/VDCT
+   echo "Executando teste DCT"
+   #verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module DCT tests/dct_tb.cpp rtl/dct.sv src/wav.c src/process.c src/q15.c src/q15_fft.c src/mel.c src/dct.c --CFLAGS "-I../lib"
+   #./obj_dir/VDCT
+   verilator tests/dct_tb.sv rtl/complex.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming.sv rtl/fft.sv rtl/mel.sv rtl/dct.sv \
+      -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
+   ./obj_dir/Vdct_tb
 }
 
 function run_mfcc_test {
-    echo "Executando teste MFCC"
-    verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module MFCC_Core tests/mfcc_tb.cpp \
-    rtl/mfcc.sv rtl/complex.sv rtl/fft.sv rtl/dct.sv rtl/mel.sv rtl/base2log.sv rtl/hamming.sv rtl/pre_emphasis.sv rtl/window_buffer.sv \
-    rtl/fifo.sv src/wav.c src/process.c src/q15.c src/q15_fft.c src/mel.c src/dct.c --CFLAGS "-I../lib"
-   ./obj_dir/VMFCC
+   echo "Executando teste MFCC"
+   #verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module MFCC_Core tests/mfcc_tb.cpp \
+   #rtl/mfcc.sv rtl/complex.sv rtl/fft.sv rtl/dct.sv rtl/mel.sv rtl/base2log.sv rtl/hamming.sv rtl/pre_emphasis.sv rtl/window_buffer.sv \
+   #rtl/fifo.sv src/wav.c src/process.c src/q15.c src/q15_fft.c src/mel.c src/dct.c --CFLAGS "-I../lib"
+   #./obj_dir/VMFCC
+   verilator tests/mfcc_tb.sv rtl/complex.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming.sv rtl/fft.sv rtl/mel.sv rtl/dct.sv rtl/mfcc.sv \
+      -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
 }
 
 # se nome do teste for fifo
