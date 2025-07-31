@@ -77,6 +77,12 @@ int main(int argc, char *argv[]) {
         hamming_window(frames[i], frame_size);
     }
 
+    printf("Primeiras 20 amostras do primeiro frame: ");
+    for (int i = 0; i < 20 && i < frame_size; i++) {
+        printf("%.4X ", frames[0][i]);
+    }
+    printf("\n");
+
     
     FILE *fp = fopen("data/preemphasis.dat", "w");
     if (!fp) {
