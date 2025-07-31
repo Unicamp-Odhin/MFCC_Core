@@ -85,6 +85,7 @@ function run_mfcc_test {
    #./obj_dir/VMFCC
    verilator tests/mfcc_tb.sv rtl/complex.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming.sv rtl/fft.sv rtl/mel.sv rtl/dct.sv rtl/mfcc.sv \
       -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
+   ./obj_dir/Vmfcc_tb
 }
 
 # se nome do teste for fifo

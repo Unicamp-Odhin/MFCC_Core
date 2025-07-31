@@ -31,26 +31,37 @@ complex x[NFFT];
 complex twiddles[NFFT / 2];
 
 logic larger_frame;
-logic equal_frame;
 logic [8:0] frame_ptr_reversal;
+
+integer counter;
 
 initial begin
     $readmemh("tables/twiddles.hex", twiddles);
 end
 
+`ifdef SIMULATION
+    initial begin
+        $display("FFT: NFFT = %0d, INPUT_WIDTH = %0d, COMPLEX_WIDTH = %0d, FRAME_SIZE = %0d", 
+            NFFT, INPUT_WIDTH, COMPLEX_WIDTH, FRAME_SIZE);
+    end
+
+    logic [COMPLEX_WIDTH - 1:0] debug_x [0: NFFT - 1];
+`endif
+
 
 always_ff @(posedge clk or negedge rst_n) begin : BUFFER_INPUT_LOGIC
     if(!rst_n) begin
+        counter <= 0;
         x <= '{default: 0};
     end else begin
         if(in_valid) begin
-            if(larger_frame) begin
-                x[frame_ptr_reversal].re <= {{16{real_in[INPUT_WIDTH - 1]}}, real_in}; // Extensão de sinal
-                x[frame_ptr_reversal].im <= 0; // Parte imaginária é zero para entrada real
-            end else begin
-                x[frame_ptr_i].re <= {{16{real_in[INPUT_WIDTH - 1]}}, real_in}; // Extensão de sinal
-                x[frame_ptr_i].im <= 0; // Parte imaginária é zero para entrada real
-            end
+            x[frame_ptr_reversal].re <= {{16{real_in[INPUT_WIDTH - 1]}}, real_in}; // Extensão de sinal
+            x[frame_ptr_reversal].im <= 0; // Parte imaginária é zero para entrada real
+
+        `ifdef SIMULATION
+            if(real_in == 0) counter <= counter + 1;
+            debug_x[frame_ptr_reversal] <= {{16{real_in[INPUT_WIDTH - 1]}}, real_in};
+        `endif
         end
     end
 end
@@ -194,6 +205,5 @@ end
 assign frame_ptr_reversal = {frame_ptr_i[0], frame_ptr_i[1], frame_ptr_i[2], frame_ptr_i[3], 
     frame_ptr_i[4], frame_ptr_i[5], frame_ptr_i[6], frame_ptr_i[7], frame_ptr_i[8]};
 assign larger_frame = (frame_ptr_reversal > frame_ptr_i);
-assign equal_frame  = (frame_ptr_reversal == frame_ptr_i);
 
 endmodule

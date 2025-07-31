@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-module pre_emphasis_tb ();
+module mfcc_tb ();
 
 localparam AUDIO_PATH       = "data/seno_440Hz.hex";
 localparam MAX_AUDIO_SIZE   = 1600;
@@ -43,10 +43,10 @@ integer i;
 
 initial begin
     $readmemh(AUDIO_PATH, samples);
-    $dumpfile("build/pre_emphasis_tb.vcd");
-    $dumpvars(0, pre_emphasis_tb);
+    $dumpfile("build/mfcc_tb.vcd");
+    $dumpvars(0, mfcc_tb);
     
-    $display("Iniciando teste de Pre Emphasis");
+    $display("Iniciando teste do MFCC Core");
 
     rst_n = 0;
     clk   = 0;

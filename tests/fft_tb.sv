@@ -1,4 +1,7 @@
 `timescale 1ns/1ps
+
+`define SIMULATION 1
+
 module fft_tb ();
 
 localparam AUDIO_PATH     = "data/seno_440Hz.hex";
@@ -196,6 +199,19 @@ task dump_fft_buffer_to_hex;
   end
 endtask
 
+
+task dump_fft_in_buffer_to_hex;
+  integer fd;
+  integer i;
+  begin
+    fd = $fopen("data/fft_in_dump.hex", "w");
+    for (i = 0; i < FFT_SIZE; i = i + 1) begin
+      $fwrite(fd, "%h\n", u_fft.debug_x[i]);
+    end
+    $fclose(fd);
+  end
+endtask
+
 integer i, j;
 
 initial begin
@@ -204,7 +220,7 @@ initial begin
     $dumpfile("build/fft_tb.vcd");
     $dumpvars(0, fft_tb);
 
-    $display("Iniciando teste de Hamming");
+    $display("Iniciando teste da FFT");
 
     start_move = 0;
     rst_n = 0;
@@ -217,6 +233,13 @@ initial begin
     #10
 
     wait(finished);
+
+    #20;
+
+    $display("Numero de zeros: %d", u_fft.counter);
+    dump_fft_in_buffer_to_hex;
+
+    $display("Iniciando FFT");
 
     #100;
 

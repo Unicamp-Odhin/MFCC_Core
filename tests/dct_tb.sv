@@ -210,7 +210,7 @@ initial begin
     $dumpfile("build/dct_tb.vcd");
     $dumpvars(0, dct_tb);
 
-    $display("Iniciando teste de Hamming");
+    $display("Iniciando teste da DCT");
 
     start_move = 0;
     rst_n = 0;
