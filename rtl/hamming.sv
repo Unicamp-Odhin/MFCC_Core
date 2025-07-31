@@ -40,10 +40,18 @@ module Hamming_Window #(
     int calc_pointer;
     logic [8:0] frame_ptr;
 
-    always_ff @( posedge clk or negedge rst_n) begin
+    logic [SAMPLE_WIDTH - 1:0] hamming_coefficient;
+    logic [2 * SAMPLE_WIDTH - 1:0] hamming_sample_temp;
+    logic [8:0] temp_ptr;
+    logic temp_valid;
+    logic done;
+
+    always_ff @( posedge clk or negedge rst_n ) begin
         rd_en_o     <= 0;
-        done_o      <= 0;
+        done        <= 0;
         out_valid_o <= 0;
+
+        done_o      <= done;
 
         if(!rst_n) begin
             hamming_state <= IDLE;
@@ -61,13 +69,13 @@ module Hamming_Window #(
                 end
                 CALC: begin
                     if(valid_to_read_i) begin
-                        out_valid_o      <= 1;
-                        rd_en_o          <= 1;
-                        hamming_sample_o <= (frame_sample_i * 
-                            hamming_window_lut[calc_pointer]) >>> 15;
-                        calc_pointer     <= calc_pointer + 1;
-                        frame_ptr        <= frame_ptr    + 1;
-                        frame_ptr_o      <= frame_ptr;
+                        temp_valid          <= 1;
+                        rd_en_o             <= 1;
+                        hamming_sample_temp <= frame_sample_i * 
+                            hamming_coefficient;
+                        calc_pointer        <= calc_pointer + 1;
+                        frame_ptr           <= frame_ptr    + 1;
+                        temp_ptr            <= frame_ptr;
                     end
 
                     if(calc_pointer == NUM_COEFFICIENTS - 1) begin
@@ -77,22 +85,35 @@ module Hamming_Window #(
                     end
                 end
                 PADDING: begin
-                    if(frame_ptr < NFFT_SIZE) begin
-                        hamming_sample_o <= 0;
-                        out_valid_o      <= 1;
-                        rd_en_o          <= 1;
-                        frame_ptr        <= frame_ptr + 1;
+                    if(frame_ptr < NFFT_SIZE - 1) begin
+                        hamming_sample_temp <= 0;
+                        temp_valid          <= 1;
+                        frame_ptr           <= frame_ptr + 1;
+                        temp_ptr            <= frame_ptr;
+                        rd_en_o             <= 0;
                     end else begin
                         hamming_state <= FINISH;
                     end
                 end
                 FINISH: begin
-                    done_o <= 1;
+                    done          <= 1;
                     hamming_state <= IDLE;
                 end
                 default: hamming_state <= IDLE;
             endcase
         end
     end
+
+    always_ff @( posedge clk ) begin
+        if(!rst_n) begin
+            out_valid_o      <= 0;
+        end else begin
+            frame_ptr_o      <= temp_ptr;
+            out_valid_o      <= temp_valid;
+            hamming_sample_o <= hamming_sample_temp[2 * SAMPLE_WIDTH - 2 : SAMPLE_WIDTH - 1];
+        end
+    end
+
+    assign hamming_coefficient = hamming_window_lut[calc_pointer];
 
 endmodule

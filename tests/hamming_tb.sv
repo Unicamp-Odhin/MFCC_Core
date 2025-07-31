@@ -136,13 +136,15 @@ initial begin
 
     wait(idle);
 
-    #20 // Espera 10 ciclos de clock
+    #20; // Espera 10 ciclos de clock
 
     //wait(!idle);
 
-    #20
+    #20;
 
     //wait(idle);
+
+    #2000;
 
     $finish;
 end

@@ -76,6 +76,8 @@ module window_buffer #(
     always_ff @(posedge clk or negedge rst_n) begin
         start_next_state_o <= 0;
         fifo_rd_en_o       <= 0;
+        valid_to_read_o    <= read_ptr < (FRAME_SIZE - move_counter) && (current_state != MOVE) && 
+                                (current_state != START) && (read_ptr != write_ptr);
 
         if (!rst_n) begin
             move_counter      <= 0;
@@ -124,8 +126,8 @@ module window_buffer #(
         end
     end
 
-    assign valid_to_read_o = read_ptr < (FRAME_SIZE - move_counter) && (current_state != MOVE) && 
-        (current_state != START) && (read_ptr != write_ptr);
+    //assign valid_to_read_o = read_ptr < (FRAME_SIZE - move_counter) && (current_state != MOVE) && 
+    //    (current_state != START) && (read_ptr != write_ptr);
     assign read_data_o = buffer[(read_ptr + internal_read_ptr) % FRAME_SIZE];
 
 endmodule
