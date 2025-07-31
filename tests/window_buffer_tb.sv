@@ -82,6 +82,19 @@ window_buffer #(
     .idle                 (idle)                         // 1 bit
 );
 
+task dump_buffer_to_hex;
+  integer fd;
+  integer i;
+  begin
+    fd = $fopen("buffer_dump.hex", "w");
+    for (i = 0; i < FRAME_SIZE; i = i + 1) begin
+      $fwrite(fd, "%H\n", u_window_buffer.buffer[i]);
+    end
+    $fclose(fd);
+  end
+endtask
+
+
 integer i;
 
 initial begin
@@ -112,6 +125,9 @@ initial begin
         $error("Erro: write_ptr não está zerado após o encher o buffer pela primeira vez. %d", u_window_buffer.write_ptr);
         $finish;
     end
+
+    $display("Segunda sample: %X", u_window_buffer.buffer[2]);
+    dump_buffer_to_hex;
 
     #(20); // Espera 10 ciclos de clock
 
@@ -199,6 +215,8 @@ end
 always #1 clk = ~clk;
 
 always_ff @(posedge clk or negedge rst_n) begin
+    pcm_ready_i <= 0;
+    
     if (!rst_n) begin
         pcm_ready_i <= 0;
         pcm_in      <= 0;

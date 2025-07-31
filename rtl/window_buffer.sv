@@ -73,10 +73,14 @@ module window_buffer #(
         endcase
     end
 
+    //logic temp;
+
+    //assign temp = (read_ptr < (FRAME_SIZE - move_counter));
+
     always_ff @(posedge clk or negedge rst_n) begin
         start_next_state_o <= 0;
         fifo_rd_en_o       <= 0;
-        valid_to_read_o    <= read_ptr < (FRAME_SIZE - move_counter) && (current_state != MOVE) && 
+        valid_to_read_o    <= (current_state != MOVE) && 
                                 (current_state != START) && (read_ptr != write_ptr);
 
         if (!rst_n) begin
@@ -96,7 +100,7 @@ module window_buffer #(
                     start_next_state_o <= 1;
                 end
                 REQUEST_DATA: begin
-                    fifo_rd_en_o <= 1 & ~fifo_empty_i;
+                    fifo_rd_en_o <= 1;
                 end
                 FILL: begin
                     buffer[write_ptr] <= fifo_data_i;
@@ -107,7 +111,7 @@ module window_buffer #(
                 IDLE: begin
                     if (start_move) begin
                         move_counter <= 0;
-                    end
+                    end 
                 end
                 default: begin
                     // No operation

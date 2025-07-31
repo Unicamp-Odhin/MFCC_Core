@@ -220,3 +220,6 @@ fpga/opensourceSDRLabKintex7/openFPGALoader
 data/
 obj_dir
 x.c
+buffer_dump.hex
+dumps/
+samples_dump.hex

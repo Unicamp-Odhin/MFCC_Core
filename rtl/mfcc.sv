@@ -87,7 +87,7 @@ module MFCC_Core #(
     logic hamming_done, hamming_out_valid;
     logic [8:0] frame_ptr;
     logic signed [SAMPLE_WIDTH - 1:0] hamming_sample;
-    logic signed [SAMPLE_WIDTH - 1:0] hamming_frame [0:FRAME_SIZE - 1];
+    logic signed [SAMPLE_WIDTH - 1:0] hamming_frame [0:FFT_SIZE - 1];
 
     Hamming_Window #(
         .SAMPLE_WIDTH     (SAMPLE_WIDTH),

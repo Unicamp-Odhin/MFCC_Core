@@ -57,6 +57,7 @@ module Hamming_Window #(
             hamming_state <= IDLE;
             frame_ptr_o   <= 0;
             frame_ptr     <= 0;
+            temp_ptr      <= 0;
         end else begin
             case (hamming_state)
                 IDLE: begin
@@ -65,6 +66,7 @@ module Hamming_Window #(
                         calc_pointer  <= 0;
                         frame_ptr_o   <= 0;
                         frame_ptr     <= 0;
+                        temp_ptr      <= 0;
                     end
                 end
                 CALC: begin
@@ -92,6 +94,7 @@ module Hamming_Window #(
                         temp_ptr            <= frame_ptr;
                         rd_en_o             <= 0;
                     end else begin
+                        temp_ptr      <= frame_ptr;
                         hamming_state <= FINISH;
                     end
                 end
