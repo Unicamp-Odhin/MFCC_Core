@@ -76,7 +76,20 @@ logic [NFFT_LOG2:0] m, twiddle_step;
 
 complex twiddle_term, even_term; // t, u
 
+logic [COMPLEX_WIDTH - 1:0] twiddle_term_re, twiddle_term_im;
+logic [COMPLEX_WIDTH - 1:0] even_term_re, even_term_im;
+
+assign twiddle_term_re = twiddle_term.re;
+assign twiddle_term_im = twiddle_term.im;
+
+assign even_term_re = even_term.re;
+assign even_term_im = even_term.im;
+
 logic [8:0] power_ptr_internal;
+
+logic [63:0] power_tmp;
+
+assign power_tmp = c_power(x[power_ptr_internal]);
 
 always_ff @(posedge clk or negedge rst_n) begin : FFT_CALCULATION_LOGIC
     fft_done_o    <= 0;
@@ -163,7 +176,9 @@ always_ff @(posedge clk or negedge rst_n) begin : FFT_CALCULATION_LOGIC
                     power_ptr_o <= power_ptr_internal;
                     power_ptr_internal <= power_ptr_internal + 1;
                     power_valid_o <= 1;
-                    power_sample_o <= {9'h0, c_power(x[power_ptr_internal])[63:41]};
+                    //power_sample_o <= {9'h0, c_power(x[power_ptr_internal])[63:41]};
+                    power_sample_o <= {c_power(x[power_ptr_internal])[40:9]};
+                    //power_sample_o <= power_tmp >> 9;
                 end
             end
 
