@@ -86,7 +86,7 @@ window_buffer #(
     logic hamming_done, hamming_out_valid;
     logic [8:0] frame_ptr;
     logic signed [SAMPLE_WIDTH - 1:0] hamming_sample;
-    logic signed [SAMPLE_WIDTH - 1:0] hamming_frame [0:FRAME_SIZE - 1];
+    logic signed [SAMPLE_WIDTH - 1:0] hamming_frame [0:FFT_SIZE - 1];
 
     Hamming_Window #(
         .SAMPLE_WIDTH     (SAMPLE_WIDTH),
@@ -114,6 +114,30 @@ window_buffer #(
             hamming_frame[frame_ptr] <= hamming_sample;
         end
     end
+
+task dump_buffer_to_hex;
+  integer fd;
+  integer i;
+  begin
+    fd = $fopen("buffer_dump.hex", "w");
+    for (i = 0; i < FRAME_SIZE; i = i + 1) begin
+      $fwrite(fd, "%h\n", hamming_frame[i]);
+    end
+    $fclose(fd);
+  end
+endtask
+
+task dump_hamming_to_hex;
+  integer fd;
+  integer i;
+  begin
+    fd = $fopen("hamming_dump.hex", "w");
+    for (i = 0; i < FRAME_SIZE; i = i + 1) begin
+      $fwrite(fd, "%h\n", u_window_buffer.buffer[i]);
+    end
+    $fclose(fd);
+  end
+endtask
 
 integer i;
 

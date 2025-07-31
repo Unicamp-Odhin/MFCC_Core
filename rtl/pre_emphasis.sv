@@ -10,11 +10,11 @@ module pre_emphasis #(
     input  logic in_valid,
     output logic out_valid,
 
-    input  logic signed [SAMPLE_WIDTH - 1:0] x_in,   // Sinal de entrada (x[n])
-    output logic signed [SAMPLE_WIDTH - 1:0] y_out   // Sinal de saída (y[n])
+    input  logic [SAMPLE_WIDTH - 1:0] x_in,   // Sinal de entrada (x[n])
+    output logic [SAMPLE_WIDTH - 1:0] y_out   // Sinal de saída (y[n])
 );
 
-    logic signed [2 * SAMPLE_WIDTH - 1:0] x_prev;  // Resultado da multiplicação temporária (32 bits para evitar overflow)
+    logic [2 * SAMPLE_WIDTH - 1:0] x_prev;  // Resultado da multiplicação temporária (32 bits para evitar overflow)
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin

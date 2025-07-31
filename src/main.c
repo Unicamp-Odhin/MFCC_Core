@@ -20,6 +20,19 @@ void print_samples(int32_t *samples, int num_samples) {
     }
 }
 
+void dump_buffer_to_hex(const char *file_name, int32_t *buffer, int size) {
+    FILE *fp = fopen(file_name, "w");
+    if (!fp) {
+        perror("fopen");
+        return;
+    }
+    for (int i = 0; i < size; i++) {
+        uint16_t sample = buffer[i] & 0xFFFF; // Convert to 16-bit signed integer
+        fprintf(fp, "%04x\n", sample);
+    }
+    fclose(fp);
+}
+
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <filename>.wav\n", argv[0]);
@@ -53,16 +66,19 @@ int main(int argc, char *argv[]) {
         printf("%X ", samples[i]);
     }
     printf("\n");
+
+    dump_buffer_to_hex("samples_dump.hex", (int32_t *)samples, num_samples);
     
     pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), ALPHA);
 
-    printf("Samples after pre-emphasis: ");
-    for (int i = 0; i < 20; i++) {
-        printf("%X ", samples[i]);
-    }
-    printf("\n");
 
     int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step, &num_frames);
+
+    for(int i = 0; i < num_frames; i++) {
+        char file_name[50];
+        snprintf(file_name, sizeof(file_name), "dumps/frame_%d.hex", i);
+        dump_buffer_to_hex(file_name, frames[i], frame_size);
+    }
 
 
     if (!frames) {
@@ -72,17 +88,9 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-
     for(int i = 0; i < num_frames; i++) {
         hamming_window(frames[i], frame_size);
     }
-
-    printf("Primeiras 20 amostras do primeiro frame: ");
-    for (int i = 0; i < 20 && i < frame_size; i++) {
-        printf("%.4X ", frames[0][i]);
-    }
-    printf("\n");
-
     
     FILE *fp = fopen("data/preemphasis.dat", "w");
     if (!fp) {
