@@ -35,11 +35,11 @@ module Hamming_Window #(
 
     hamming_state_t hamming_state;
 
-    int calc_pointer;
+    int calc_pointer, temp_calc_pointer;
     logic [8:0] frame_ptr;
 
-    logic [SAMPLE_WIDTH - 1:0] hamming_coefficient;
-    logic [2 * SAMPLE_WIDTH - 1:0] hamming_sample_temp;
+    logic signed [SAMPLE_WIDTH - 1:0] hamming_coefficient;
+    logic signed [2 * SAMPLE_WIDTH - 1:0] hamming_sample_temp;
     logic [8:0] temp_ptr;
     logic temp_valid;
     logic done;
@@ -57,10 +57,11 @@ module Hamming_Window #(
             case (hamming_state)
                 IDLE: begin
                     if(start_i) begin
-                        hamming_state <= CALC;
-                        calc_pointer  <= 0;
-                        frame_ptr     <= 0;
-                        temp_ptr      <= 0;
+                        hamming_state     <= CALC;
+                        calc_pointer      <= 0;
+                        temp_calc_pointer <=0;
+                        frame_ptr         <= 0;
+                        temp_ptr          <= 0;
                     end
                 end
                 CALC: begin
@@ -70,6 +71,7 @@ module Hamming_Window #(
                         hamming_sample_temp <= frame_sample_i * 
                             hamming_coefficient;
                         calc_pointer        <= calc_pointer + 1;
+                        temp_calc_pointer   <= calc_pointer;
                         frame_ptr           <= frame_ptr    + 1;
                         temp_ptr            <= frame_ptr;
                     end
@@ -111,6 +113,6 @@ module Hamming_Window #(
         end
     end
 
-    assign hamming_coefficient = hamming_window_lut[calc_pointer];
+    assign hamming_coefficient = hamming_window_lut[temp_calc_pointer];
 
 endmodule
