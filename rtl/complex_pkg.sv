@@ -34,7 +34,11 @@ package complex_pkg;
         c_mul.im = mul_fixed(a.re, b.im) + mul_fixed(a.im, b.re);
     endfunction
 
-    function logic [63:0] c_power(complex z);
+    function automatic logic [63:0] pow2 (logic signed [31:0] num);
+        pow2 = num * num;
+    endfunction
+
+    function automatic logic [63:0] c_power(complex z);
         c_power = (z.re * z.re) + (z.im * z.im);
     endfunction
 endpackage
