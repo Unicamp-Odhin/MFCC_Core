@@ -99,7 +99,7 @@ module window_buffer #(
                     buffer[write_ptr] <= fifo_data_i;
                     write_ptr         <= (write_ptr + 1) % FRAME_SIZE;
                     move_counter      <= move_counter - 1;
-                    fifo_rd_en_o      <= 1 & ~fifo_empty_i;
+                    fifo_rd_en_o      <= 1 & ~fifo_empty_i && move_counter != 1;
                 end
                 IDLE: begin
                     if (start_move) begin
@@ -123,8 +123,6 @@ module window_buffer #(
         end
     end
 
-    //assign valid_to_read_o = read_ptr < (FRAME_SIZE - move_counter) && (current_state != MOVE) && 
-    //    (current_state != START) && (read_ptr != write_ptr);
     assign read_data_o = buffer[(read_ptr + internal_read_ptr) % FRAME_SIZE];
 
 endmodule

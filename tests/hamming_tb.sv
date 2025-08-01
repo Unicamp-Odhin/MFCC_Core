@@ -163,6 +163,8 @@ initial begin
     
     #(1000); // Espera 1ms para garantir que o reset foi aplicado
 
+    $display("amostra 0 e 1 window: %h %h", u_window_buffer.buffer[0], u_window_buffer.buffer[1]);
+
     //wait(u_window_buffer.current_state == 0);
     wait(hamming_done);
     dump_hamming_to_hex(0);
@@ -209,6 +211,11 @@ initial begin
 
     #20;
 
+    wait(window_valid_to_read == 0);
+    dump_hamming_to_hex(8);
+
+    #20;
+
     //wait(idle);
 
     #2000;
@@ -229,6 +236,10 @@ always_ff @(posedge clk or negedge rst_n) begin
             i           <= i + 1;
         end else begin
             pcm_ready_i <= 0;
+        end
+
+        if(fifo_full && pcm_ready_i) begin
+            i <= i - 2;
         end
     end
 end

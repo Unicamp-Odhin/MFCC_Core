@@ -251,9 +251,12 @@ always_ff @(posedge clk or negedge rst_n) begin
         end else begin
             pcm_ready_i <= 0;
         end
+
+        if(fifo_full && pcm_ready_i) begin
+            i <= i - 2;
+        end
     end
 end
-
 assign start_move = hamming_done && idle;
 
 endmodule
