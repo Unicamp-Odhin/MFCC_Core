@@ -177,6 +177,7 @@ task dump_fft_buffer_to_hex;
 endtask
 
 integer i, j;
+integer clock_cycles;
 
 initial begin
     $readmemh(AUDIO_PATH, samples);
@@ -219,6 +220,8 @@ initial begin
     #20; // Espera 20 ciclos de clock
 
     wait(fft_done);
+    $display("FFT concluída");
+    $display("Numero de ciclos de clock: %d", clock_cycles);
 
     #20; // Espera 10 ciclos de clock
 
@@ -261,9 +264,11 @@ logic finished;
 always_ff @(posedge clk or negedge rst_n) begin
     finished <= 0;
     if (!rst_n) begin
+        clock_cycles <= 0;
         j <= 0;
         fft_test_valid <= 0;
     end else begin
+        clock_cycles <= clock_cycles + 1;
         if (j < FFT_SIZE) begin
             fft_test_sample <= fft_test_buffer[j];
             fft_test_valid <= 1;
