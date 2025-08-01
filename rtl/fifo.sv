@@ -56,4 +56,5 @@ module FIFO #(
 
     // FIFO vazia: ocorre quando os ponteiros são iguais
     assign empty_o = (write_ptr == read_ptr);
+
 endmodule
