@@ -62,7 +62,6 @@ logic window_valid_to_read;
 logic window_rd_en;
 logic start_move;
 logic start_hamming;
-logic idle;
 
 window_buffer #(
     .WIDTH                (SAMPLE_WIDTH),
@@ -77,20 +76,17 @@ window_buffer #(
     .fifo_rd_en_o         (fifo_rd_en),                  // 1 bit
     .fifo_data_i          (fifo_read_data),              // 16 bits
     .fifo_empty_i         (fifo_empty),                  // 1 bit
-    .fifo_full_i          (fifo_full),                   // 1 bit
 
     .rd_en_i              (window_rd_en),                // 10 bits
     .read_data_o          (window_buffer_data),          // 16 bits
     .valid_to_read_o      (window_valid_to_read),        // 1 bit
 
-    .start_next_state_o   (start_hamming),
-    .idle                 (idle)                         // 1 bit
+    .start_next_state_o   (start_hamming)
 );
 
     logic hamming_done, hamming_out_valid;
     logic [8:0] frame_ptr;
     logic signed [SAMPLE_WIDTH - 1:0] hamming_sample;
-    logic signed [SAMPLE_WIDTH - 1:0] hamming_frame [0:FFT_SIZE - 1];
 
     Hamming_Window #(
         .SAMPLE_WIDTH     (SAMPLE_WIDTH),
@@ -113,12 +109,6 @@ window_buffer #(
         .done_o           (hamming_done)
     );
 
-    always_ff @( posedge clk ) begin
-        if(hamming_out_valid) begin
-            hamming_frame[frame_ptr] <= hamming_sample;
-        end
-    end
-
     logic [8:0] fft_ptr;
     logic [31:0] fft_power_sample;
     logic fft_power_valid, fft_done;
@@ -131,8 +121,7 @@ window_buffer #(
     FFT #(
         .NFFT           (FFT_SIZE),
         .INPUT_WIDTH    (SAMPLE_WIDTH),
-        .COMPLEX_WIDTH  (32),
-        .FRAME_SIZE     (FRAME_SIZE)
+        .COMPLEX_WIDTH  (32)
     ) u_fft (
         .clk            (clk),
         .rst_n          (rst_n),
@@ -175,38 +164,13 @@ task dump_buffer_to_hex;
   end
 endtask
 
-task dump_hamming_to_hex;
-  integer fd;
-  integer i;
-  begin
-    fd = $fopen("hamming_dump.hex", "w");
-    for (i = 0; i < FFT_SIZE; i = i + 1) begin
-      $fwrite(fd, "%h\n", hamming_frame[i]);
-    end
-    $fclose(fd);
-  end
-endtask
-
 task dump_fft_buffer_to_hex;
   integer fd;
   integer i;
   begin
     fd = $fopen("data/fft_dump.hex", "w");
-    for (i = 0; i < RFFT_SIZE; i = i + 1) begin
+    for (i = 0; i <= RFFT_SIZE; i = i + 1) begin
       $fwrite(fd, "%h\n", rfft_power_buffer[i]);
-    end
-    $fclose(fd);
-  end
-endtask
-
-
-task dump_fft_in_buffer_to_hex;
-  integer fd;
-  integer i;
-  begin
-    fd = $fopen("data/fft_in_dump.hex", "w");
-    for (i = 0; i < FFT_SIZE; i = i + 1) begin
-      $fwrite(fd, "%h\n", u_fft.debug_x[i]);
     end
     $fclose(fd);
   end
@@ -235,9 +199,6 @@ initial begin
     wait(finished);
 
     #20;
-
-    $display("Numero de zeros: %d", u_fft.counter);
-    dump_fft_in_buffer_to_hex;
 
     $display("Iniciando FFT");
 

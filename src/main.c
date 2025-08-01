@@ -119,13 +119,15 @@ int main(int argc, char *argv[]) {
         power_spectrum[i][0] = 0; // DC é zero
         fft_q15_real_power(frames[i], frame_size, power_spectrum[i]);
     }
+
+    dump_buffer_to_hex("data/power_spectrum.hex", power_spectrum[0], NFFT/2 + 1);
     
     // Salvar o primeiro frame em arquivo para plot
     FILE *fp1 = fopen("data/frame1.dat", "w");
     if (!fp1) {
         perror("Erro ao criar arquivo de dados");
     } else {
-        for (int i = 0; i < num_freqs; i++) {
+        for (int i = 0; i < NFFT/2 + 1; i++) {
             fprintf(fp1, "%d %d\n", i, power_spectrum[1][i]);
         }
         fclose(fp1);

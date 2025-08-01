@@ -22,8 +22,6 @@ module Hamming_Window #(
 );
     logic signed [SAMPLE_WIDTH - 1:0] hamming_window_lut [0:NUM_COEFFICIENTS - 1];
 
-    localparam PADDING_SIZE = NFFT_SIZE - NUM_COEFFICIENTS;
-
     initial begin
         $readmemh("tables/hamming_window.hex", hamming_window_lut);
     end
@@ -49,13 +47,10 @@ module Hamming_Window #(
     always_ff @( posedge clk or negedge rst_n ) begin
         rd_en_o     <= 0;
         done        <= 0;
-        out_valid_o <= 0;
-
         done_o      <= done;
 
         if(!rst_n) begin
             hamming_state <= IDLE;
-            frame_ptr_o   <= 0;
             frame_ptr     <= 0;
             temp_ptr      <= 0;
         end else begin
@@ -64,7 +59,6 @@ module Hamming_Window #(
                     if(start_i) begin
                         hamming_state <= CALC;
                         calc_pointer  <= 0;
-                        frame_ptr_o   <= 0;
                         frame_ptr     <= 0;
                         temp_ptr      <= 0;
                     end

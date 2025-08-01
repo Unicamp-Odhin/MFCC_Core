@@ -57,7 +57,6 @@ logic window_valid_to_read;
 logic window_rd_en;
 logic start_move;
 logic start_hamming;
-logic idle;
 
 window_buffer #(
     .WIDTH                (SAMPLE_WIDTH),
@@ -72,14 +71,12 @@ window_buffer #(
     .fifo_rd_en_o         (fifo_rd_en),                  // 1 bit
     .fifo_data_i          (fifo_read_data),              // 16 bits
     .fifo_empty_i         (fifo_empty),                  // 1 bit
-    .fifo_full_i          (fifo_full),                   // 1 bit
 
     .rd_en_i              (window_rd_en),                // 10 bits
     .read_data_o          (window_buffer_data),          // 16 bits
     .valid_to_read_o      (window_valid_to_read),        // 1 bit
 
-    .start_next_state_o   (start_hamming),
-    .idle                 (idle)                         // 1 bit
+    .start_next_state_o   (start_hamming)
 );
 
 task dump_buffer_to_hex;
@@ -114,7 +111,7 @@ initial begin
     
     #(1000); // Espera 1ms para garantir que o reset foi aplicado
 
-    wait(idle);
+    wait(u_window_buffer.current_state == 0);
 
     assert(u_window_buffer.internal_read_ptr == 0) else begin
         $error("Erro: internal_read_ptr está na posição errada. %d, esperada: %d", u_window_buffer.internal_read_ptr, 0);
@@ -148,7 +145,7 @@ initial begin
 
     #(20);
 
-    wait(idle);
+    wait(u_window_buffer.current_state == 0);
 
     assert(u_window_buffer.write_ptr == 160) else begin
         $error("Erro: write_ptr não está correto após o segundo movimento. %d, esperada: %d", u_window_buffer.write_ptr, 160);
@@ -174,7 +171,7 @@ initial begin
 
     #(20);
 
-    wait(idle);
+    wait(u_window_buffer.current_state == 0);
 
     assert(u_window_buffer.write_ptr == 320) else begin
         $error("Erro: write_ptr não está correto após o terceiro movimento. %d, esperada: %d", u_window_buffer.write_ptr, 320);
@@ -200,7 +197,7 @@ initial begin
 
     #(20);
 
-    wait(idle);
+    wait(u_window_buffer.current_state == 0);
 
     assert(u_window_buffer.write_ptr == 80) else begin
         $error("Erro: write_ptr não está correto após o terceiro movimento. %d, esperada: %d", u_window_buffer.write_ptr, 80);

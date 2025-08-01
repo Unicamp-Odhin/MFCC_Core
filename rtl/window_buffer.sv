@@ -15,15 +15,13 @@ module window_buffer #(
     output logic                       fifo_rd_en_o,
     input  logic [WIDTH-1:0]           fifo_data_i,
     input  logic                       fifo_empty_i,
-    input  logic                       fifo_full_i,
 
     // Read Interface
     input  logic                       rd_en_i,
     output logic [WIDTH-1:0]           read_data_o,
     output logic                       valid_to_read_o,
     
-    output logic                       start_next_state_o,
-    output logic                       idle
+    output logic                       start_next_state_o
 );
     logic [WIDTH - 1:0] buffer [0:FRAME_SIZE - 1];
     int write_ptr;
@@ -52,7 +50,6 @@ module window_buffer #(
 
     always_comb begin
         next_state = current_state;
-        idle = (current_state == IDLE);
 
         unique case (current_state)
             IDLE: begin

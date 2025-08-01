@@ -58,7 +58,6 @@ logic window_valid_to_read;
 logic window_rd_en;
 logic start_move;
 logic start_hamming;
-logic idle;
 
 window_buffer #(
     .WIDTH                (SAMPLE_WIDTH),
@@ -73,14 +72,12 @@ window_buffer #(
     .fifo_rd_en_o         (fifo_rd_en),                  // 1 bit
     .fifo_data_i          (fifo_read_data),              // 16 bits
     .fifo_empty_i         (fifo_empty),                  // 1 bit
-    .fifo_full_i          (fifo_full),                   // 1 bit
 
     .rd_en_i              (window_rd_en),                // 10 bits
     .read_data_o          (window_buffer_data),          // 16 bits
     .valid_to_read_o      (window_valid_to_read),        // 1 bit
 
-    .start_next_state_o   (start_hamming),
-    .idle                 (idle)                         // 1 bit
+    .start_next_state_o   (start_hamming)
 );
 
     logic hamming_done, hamming_out_valid;
@@ -158,7 +155,7 @@ initial begin
     
     #(1000); // Espera 1ms para garantir que o reset foi aplicado
 
-    wait(idle);
+    wait(u_window_buffer.current_state == 0);
 
     #20; // Espera 10 ciclos de clock
 
