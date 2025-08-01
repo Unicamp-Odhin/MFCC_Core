@@ -212,8 +212,6 @@ end
 always #1 clk = ~clk;
 
 always_ff @(posedge clk or negedge rst_n) begin
-    pcm_ready_i <= 0;
-    
     if (!rst_n) begin
         pcm_ready_i <= 0;
         pcm_in      <= 0;
@@ -224,6 +222,10 @@ always_ff @(posedge clk or negedge rst_n) begin
             i           <= i + 1;
         end else begin
             pcm_ready_i <= 0;
+        end
+
+        if(fifo_full && pcm_ready_i) begin
+            i <= i - 2;
         end
     end
 end
