@@ -3,8 +3,7 @@
 module FFT #(
     parameter NFFT          = 512,
     parameter INPUT_WIDTH   = 16,
-    parameter COMPLEX_WIDTH = 32,
-    parameter FRAME_SIZE    = 306
+    parameter COMPLEX_WIDTH = 32
 ) (
     input  logic clk,
     input  logic rst_n,
@@ -30,180 +29,194 @@ localparam RFFT_SIZE = NFFT/2;
 complex x[NFFT];
 complex twiddles[NFFT / 2];
 
-logic larger_frame;
 logic [8:0] frame_ptr_reversal;
-
-integer counter;
 
 initial begin
     $readmemh("tables/twiddles.hex", twiddles);
 end
 
-`ifdef SIMULATION
-    initial begin
-        $display("FFT: NFFT = %0d, INPUT_WIDTH = %0d, COMPLEX_WIDTH = %0d, FRAME_SIZE = %0d", 
-            NFFT, INPUT_WIDTH, COMPLEX_WIDTH, FRAME_SIZE);
-    end
-
-    logic [COMPLEX_WIDTH - 1:0] debug_x [0: NFFT - 1];
-`endif
-
-
-always_ff @(posedge clk or negedge rst_n) begin : BUFFER_INPUT_LOGIC
-    if(!rst_n) begin
-        counter <= 0;
-        x <= '{default: 0};
-    end else begin
-        if(in_valid) begin
-            x[frame_ptr_reversal].re <= {{16{real_in[INPUT_WIDTH - 1]}}, real_in}; // Extensão de sinal
-            x[frame_ptr_reversal].im <= 0; // Parte imaginária é zero para entrada real
-
-        `ifdef SIMULATION
-            if(real_in == 0) counter <= counter + 1;
-            debug_x[frame_ptr_reversal] <= {{16{real_in[INPUT_WIDTH - 1]}}, real_in};
-        `endif
-        end
+always_ff @(posedge clk) begin : BUFFER_INPUT_LOGIC
+    if(in_valid) begin
+        x[frame_ptr_reversal].re <= {{16{real_in[INPUT_WIDTH - 1]}}, real_in}; // Extensão de sinal
+        x[frame_ptr_reversal].im <= 0; // Parte imaginária é zero para entrada real
     end
 end
 
-typedef enum logic [3:0] { 
+typedef enum logic [3:0] {
     IDLE,
-    STAGE_INIT,
-    BUTTERFLY_CALC,
-    UPDATE_VALUES,
-    NEXT_J,
-    NEXT_K,
-    NEXT_STAGE,
+    PROCESSING,
     CALC_REAL_POWER,
     DONE
 } fft_state_t;
 
+typedef struct packed {
+    logic [9:0] k;
+    logic [9:0] j;
+    logic [4:0] stage;
+    logic [9:0] m;
+    logic [9:0] half_m;
+    logic [9:0] twiddle_index;
+    logic [9:0] twiddle_step;
+} butterfly_task_t;
+
+typedef struct packed {
+    complex even;
+    complex odd;
+    complex twiddle;
+    butterfly_task_t meta;
+} pipeline_stage_1_t;
+
+typedef struct packed {
+    complex sum;
+    complex diff;
+    logic [9:0] addr_even;
+    logic [9:0] addr_odd;
+} pipeline_stage_2_t;
+
+// Registers
 fft_state_t fft_state;
+butterfly_task_t sched;
 
-logic [NFFT_LOG2: 0] stage;
-logic [NFFT_LOG2: 0] k_cnt, j_cnt, half_m;
-logic [$clog2(NFFT/2)-1:0] twiddle_index;
-logic [NFFT_LOG2:0] m, twiddle_step;
+pipeline_stage_1_t stage1;
+pipeline_stage_2_t stage2;
 
-complex twiddle_term, even_term; // t, u
+// Power calculation pipeline
+complex          power_stage1;
+logic   [63:0]   power_stage2;
+logic   [31:0]   power_stage3;
+logic            power_valid_stage1;
+logic            power_valid_stage2;
+logic            power_valid_stage3;
+logic   [9:0]    power_ptr_stage1;
+logic   [9:0]    power_ptr_stage2;
+logic   [9:0]    power_ptr_stage3;
 
-logic [COMPLEX_WIDTH - 1:0] twiddle_term_re, twiddle_term_im;
-logic [COMPLEX_WIDTH - 1:0] even_term_re, even_term_im;
+// Outputs
+assign power_valid_o  = power_valid_stage3;
+assign power_ptr_o    = power_ptr_stage3;
+assign power_sample_o = power_stage3;
 
-assign twiddle_term_re = twiddle_term.re;
-assign twiddle_term_im = twiddle_term.im;
-
-assign even_term_re = even_term.re;
-assign even_term_im = even_term.im;
-
-logic [8:0] power_ptr_internal;
-
-logic [63:0] power_tmp;
-
-assign power_tmp = c_power(x[power_ptr_internal]);
-
-always_ff @(posedge clk or negedge rst_n) begin : FFT_CALCULATION_LOGIC
-    fft_done_o    <= 0;
-    power_valid_o <= 0;
-
+// Main sequential block
+always_ff @(posedge clk or negedge rst_n) begin : FFT_CALCULATION_PIPELINED
     if (!rst_n) begin
-        fft_state     <= IDLE;
-        stage         <= 0;
-        k_cnt         <= 0;
-        j_cnt         <= 0;
-        twiddle_index <= 0;
+        fft_state           <= IDLE;
+        sched.stage         <= 1;
+        sched.k             <= 0;
+        sched.j             <= 0;
+        sched.m             <= 2;
+        sched.half_m        <= 1;
+        sched.twiddle_index <= 0;
+        sched.twiddle_step  <= NFFT >> 1;
+        fft_done_o          <= 0;
+
+        power_ptr_stage1    <= 0;
+        power_ptr_stage2    <= 0;
+        power_ptr_stage3    <= 0;
+        power_valid_stage1  <= 0;
+        power_valid_stage2  <= 0;
+        power_valid_stage3  <= 0;
+        power_stage3        <= 0;
     end else begin
-        unique case (fft_state)
+        fft_done_o <= 0;
+
+        case (fft_state)
             IDLE: begin
-                stage         <= 1;
-                twiddle_index <= 0;
+                if (start_i) begin
+                    fft_state           <= PROCESSING;
+                    sched.stage         <= 1;
+                    sched.k             <= 0;
+                    sched.j             <= 0;
+                    sched.m             <= 2;
+                    sched.half_m        <= 1;
+                    sched.twiddle_index <= 0;
+                    sched.twiddle_step  <= NFFT >> 1;
 
-                if(start_i) begin
-                    fft_state <= STAGE_INIT;
-                end else begin
-                    fft_state <= IDLE;
+                    power_ptr_stage1    <= 0;
                 end
             end
 
-            STAGE_INIT: begin
-                m             <= 1 << stage;
-                half_m        <= 1 << (stage - 1);
-                k_cnt         <= 0;
-                j_cnt         <= 1;
-                twiddle_step  <= NFFT >> stage;
-                fft_state     <= BUTTERFLY_CALC;
-                twiddle_index <= 0;
-            end
+            PROCESSING: begin
+                // Stage 0 - Scheduler
+                stage1.even      <= x[sched.k + sched.j];
+                stage1.odd       <= x[sched.k + sched.j + sched.half_m];
+                stage1.twiddle   <= twiddles[sched.twiddle_index];
+                stage1.meta      <= sched;
 
-            BUTTERFLY_CALC: begin
-                twiddle_term <= c_mul(twiddles[twiddle_index], x[k_cnt + j_cnt + half_m]);
-                even_term <= x[k_cnt + j_cnt];
-
-                fft_state <= UPDATE_VALUES;
-            end
-
-            UPDATE_VALUES: begin
-                x[k_cnt + j_cnt]          <= c_add(even_term, twiddle_term);
-                x[k_cnt + j_cnt + half_m] <= c_sub(even_term, twiddle_term);
-                fft_state                 <= NEXT_J;
-            end
-
-            NEXT_J: begin
-                if (j_cnt < half_m) begin
-                    j_cnt         <= j_cnt + 1;
-                    twiddle_index <= twiddle_index + twiddle_step;
-                    fft_state     <= BUTTERFLY_CALC;
+                // Update scheduler
+                if (sched.j < sched.half_m - 1) begin
+                    sched.j             <= sched.j + 1;
+                    sched.twiddle_index <= sched.twiddle_index + sched.twiddle_step;
                 end else begin
-                    twiddle_index <= 0;
-                    j_cnt         <= 1;
-                    k_cnt         <= k_cnt + m;
-                    fft_state     <= NEXT_K;
-                end
-            end
-
-            NEXT_K: begin
-                if (k_cnt < NFFT) begin // k_cnt + m; k_cnt <= k_cnt + m;
-                    fft_state <= BUTTERFLY_CALC;
-                end else begin
-                    k_cnt     <= 0;
-                    stage     <= stage + 1;
-                    fft_state <= NEXT_STAGE;
-                end
-            end
-
-            NEXT_STAGE: begin
-                if (stage <= NFFT_LOG2) begin
-                    fft_state <= STAGE_INIT;
-                end else begin
-                    power_ptr_internal <= 0;
-                    fft_state          <= CALC_REAL_POWER;
+                    sched.j             <= 0;
+                    sched.twiddle_index <= 0;
+                    if (sched.k < NFFT - sched.m) begin
+                        sched.k <= sched.k + sched.m;
+                    end else begin
+                        sched.k <= 0;
+                        if (sched.stage < NFFT_LOG2) begin
+                            sched.stage        <= sched.stage + 1;
+                            sched.m            <= 1 << (sched.stage + 1);
+                            sched.half_m       <= 1 << sched.stage;
+                            sched.twiddle_step <= NFFT >> (sched.stage + 1);
+                        end else begin
+                            fft_state          <= CALC_REAL_POWER;
+                            power_ptr_stage1   <= 0;
+                        end
+                    end
                 end
             end
 
             CALC_REAL_POWER: begin
-                if(power_ptr_o == RFFT_SIZE) begin
-                    fft_state <= DONE;
+                if (power_ptr_stage3 == RFFT_SIZE) begin
+                    fft_state          <= DONE;
                 end else begin
-                    power_ptr_o <= power_ptr_internal;
-                    power_ptr_internal <= power_ptr_internal + 1;
-                    power_valid_o <= 1;
-                    //power_sample_o <= {9'h0, c_power(x[power_ptr_internal])[63:41]};
-                    power_sample_o <= {c_power(x[power_ptr_internal])[40:9]};
-                    //power_sample_o <= power_tmp >> 9;
+                    // Stage 1
+                    power_stage1       <= x[power_ptr_stage1];
+                    power_ptr_stage1   <= power_ptr_stage1 + 1;
+                    power_valid_stage1 <= 1;
+
+                    // Stage 2
+                    power_stage2       <= c_power(power_stage1);
+                    power_ptr_stage2   <= power_ptr_stage1;
+                    power_valid_stage2 <= power_valid_stage1;
+
+                    // Stage 3
+                    power_stage3       <= power_stage2[40:9];
+                    power_ptr_stage3   <= power_ptr_stage2;
+                    power_valid_stage3 <= power_valid_stage2;
                 end
             end
 
             DONE: begin
-                fft_done_o <= 1;
-                fft_state <= IDLE;
+                fft_done_o         <= 1;
+                power_valid_stage1 <= 0;
+                power_valid_stage2 <= 0;
+                power_valid_stage3 <= 0;
+                fft_state          <= IDLE;
             end
+
             default: fft_state <= IDLE;
         endcase
     end
 end
 
+// FFT butterfly execution stage
+always_ff @(posedge clk) begin
+    complex twiddle_term;
+    twiddle_term        = c_mul(stage1.twiddle, stage1.odd);
+    stage2.sum          <= c_add(stage1.even, twiddle_term);
+    stage2.diff         <= c_sub(stage1.even, twiddle_term);
+    stage2.addr_even    <= stage1.meta.k + stage1.meta.j;
+    stage2.addr_odd     <= stage1.meta.k + stage1.meta.j + stage1.meta.half_m;
+end
+
+// FFT butterfly writeback stage
+always_ff @(posedge clk) begin
+    x[stage2.addr_even] <= stage2.sum;
+    x[stage2.addr_odd]  <= stage2.diff;
+end
+
 assign frame_ptr_reversal = {frame_ptr_i[0], frame_ptr_i[1], frame_ptr_i[2], frame_ptr_i[3], 
     frame_ptr_i[4], frame_ptr_i[5], frame_ptr_i[6], frame_ptr_i[7], frame_ptr_i[8]};
-assign larger_frame = (frame_ptr_reversal > frame_ptr_i);
 
 endmodule

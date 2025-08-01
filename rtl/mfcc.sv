@@ -75,7 +75,6 @@ module MFCC_Core #(
         .fifo_rd_en_o         (fifo_rd_en),                  // 1 bit
         .fifo_data_i          (fifo_read_data),              // 16 bits
         .fifo_empty_i         (fifo_empty),                  // 1 bit
-        .fifo_full_i          (fifo_full),                   // 1 bit
 
         .rd_en_i              (window_rd_en),                // 10 bits
         .read_data_o          (window_buffer_data_o),        // 16 bits
@@ -116,8 +115,7 @@ module MFCC_Core #(
     FFT #(
         .NFFT           (FFT_SIZE),
         .INPUT_WIDTH    (SAMPLE_WIDTH),
-        .COMPLEX_WIDTH  (32),
-        .FRAME_SIZE     (FRAME_SIZE)
+        .COMPLEX_WIDTH  (32)
     ) u_fft (
         .clk            (clk),
         .rst_n          (rst_n),
