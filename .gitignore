@@ -219,3 +219,9 @@ fpga/opensourceSDRLabKintex7/openFPGALoader
 *.dat
 data/
 obj_dir
+x.c
+buffer_dump.hex
+dumps/
+samples_dump.hex
+pre_emphasis.hex
+x.py
