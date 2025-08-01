@@ -118,21 +118,29 @@ task dump_buffer_to_hex;
   begin
     fd = $fopen("buffer_dump.hex", "w");
     for (i = 0; i < FRAME_SIZE; i = i + 1) begin
-      $fwrite(fd, "%h\n", hamming_frame[i]);
+        $fwrite(fd, "%h\n", u_window_buffer.buffer[i]);
     end
     $fclose(fd);
   end
 endtask
 
-task dump_hamming_to_hex;
+task dump_hamming_to_hex(input int frame_id);
   integer fd;
   integer i;
+  string filename;
   begin
-    fd = $fopen("hamming_dump.hex", "w");
-    for (i = 0; i < FRAME_SIZE; i = i + 1) begin
-      $fwrite(fd, "%h\n", u_window_buffer.buffer[i]);
+    // Monta o nome do arquivo com número
+    filename = $sformatf("data/hamming_dump_%0d.hex", frame_id);
+
+    fd = $fopen(filename, "w");
+    if (fd) begin
+      for (i = 0; i < FRAME_SIZE; i = i + 1) begin
+        $fwrite(fd, "%h\n", hamming_frame[i]);
+      end
+      $fclose(fd);
+    end else begin
+      $display("Erro: não foi possível abrir o arquivo %s", filename);
     end
-    $fclose(fd);
   end
 endtask
 
@@ -155,11 +163,49 @@ initial begin
     
     #(1000); // Espera 1ms para garantir que o reset foi aplicado
 
-    wait(u_window_buffer.current_state == 0);
+    //wait(u_window_buffer.current_state == 0);
+    wait(hamming_done);
+    dump_hamming_to_hex(0);
 
     #20; // Espera 10 ciclos de clock
 
-    //wait(!idle);
+    wait(hamming_done);
+    dump_hamming_to_hex(1);
+
+    #20; // Espera 10 ciclos de clock
+
+    wait(hamming_done);
+    dump_hamming_to_hex(2);
+
+    #20; // Espera 10 ciclos de clock
+
+    wait(hamming_done);
+    dump_hamming_to_hex(3);
+
+    #20; // Espera 10 ciclos de clock
+
+    wait(hamming_done);
+    dump_hamming_to_hex(4);
+
+    #20; // Espera 10 ciclos de clock
+
+    wait(hamming_done);
+    dump_hamming_to_hex(5);
+
+    #20; // Espera 10 ciclos de clock
+
+    wait(hamming_done);
+    dump_hamming_to_hex(6);
+
+    #20; // Espera 10 ciclos de clock
+
+    wait(hamming_done);
+    dump_hamming_to_hex(7);
+
+    #20; // Espera 10 ciclos de clock
+
+    wait(hamming_done);
+    dump_hamming_to_hex(8);
 
     #20;
 
@@ -187,6 +233,6 @@ always_ff @(posedge clk or negedge rst_n) begin
     end
 end
 
-assign start_move = hamming_done && idle;
+assign start_move = hamming_done && u_window_buffer.current_state == 0;
 
 endmodule

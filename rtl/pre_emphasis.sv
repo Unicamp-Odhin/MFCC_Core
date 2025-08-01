@@ -14,7 +14,7 @@ module pre_emphasis #(
     output logic [SAMPLE_WIDTH - 1:0] y_out   // Sinal de saída (y[n])
 );
 
-    logic [2 * SAMPLE_WIDTH - 1:0] x_prev;  // Resultado da multiplicação temporária (32 bits para evitar overflow)
+    logic signed [2 * SAMPLE_WIDTH - 1:0] x_prev;  // Resultado da multiplicação temporária (32 bits para evitar overflow)
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -22,7 +22,7 @@ module pre_emphasis #(
             y_out  <= 'd0;
         end else begin
             if(in_valid) begin
-                x_prev    <= x_in * ALPHA; // Multiplica x[n] por ALPHA
+                x_prev    <= {{SAMPLE_WIDTH{x_in[15]}},x_in} * ALPHA; // Multiplica x[n] por ALPHA
                 y_out     <= x_in - x_prev[2 * SAMPLE_WIDTH - 2: SAMPLE_WIDTH - 1]; // Desloca para a direita para manter Q1.15
                 out_valid <= 1;
             end else begin

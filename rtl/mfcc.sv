@@ -115,7 +115,7 @@ module MFCC_Core #(
     FFT #(
         .NFFT           (FFT_SIZE),
         .INPUT_WIDTH    (SAMPLE_WIDTH),
-        .COMPLEX_WIDTH  (32)
+        .COMPLEX_WIDTH  (SAMPLE_WIDTH * 2)
     ) u_fft (
         .clk            (clk),
         .rst_n          (rst_n),

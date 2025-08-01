@@ -125,17 +125,17 @@ window_buffer #(
     ) u_fft (
         .clk            (clk),
         .rst_n          (rst_n),
-/*
+
         .in_valid       (hamming_out_valid),
         .frame_ptr_i    (frame_ptr),
         .real_in        (hamming_sample),
-*/
+/*
         .in_valid       (fft_test_valid),
         .frame_ptr_i    (fft_test_ptr),
         .real_in        (fft_test_sample),
-
-        //.start_i        (hamming_done),
-        .start_i        (start_fft),
+*/
+        .start_i        (hamming_done),
+        //.start_i        (start_fft),
 
         .power_ptr_o    (fft_ptr),
         .power_valid_o  (fft_power_valid),

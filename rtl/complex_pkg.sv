@@ -25,7 +25,7 @@ package complex_pkg;
         logic signed [63:0] tmp = a * b;
         tmp = tmp + (1 << (Q30_SHIFT - 1)); // Arredondamento
         tmp = tmp >> Q30_SHIFT; // Desloca para obter o resultado em Q
-        return tmp; // Retorna os 32 bits mais significativos
+        mul_fixed = tmp; // Retorna os 32 bits mais significativos
     endfunction
 
     // Multiplicação complexa com escala para Q1.15
