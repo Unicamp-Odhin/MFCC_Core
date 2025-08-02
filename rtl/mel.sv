@@ -21,7 +21,8 @@ module MEL #(
     logic [31:0] temp_mul;
     logic [31:0] temp_add;
     logic [8:0] temp_energy;
-    logic [5:0] i, k, k_init;
+    logic [5:0] i;
+    logic [8:0] k, k_init;
     logic [10:0] i_total, i_total_next;
 
     //Ajuste q30
@@ -53,24 +54,33 @@ module MEL #(
 
     state_t state, next_state;
     logic [31:0] sum_next;
-    logic [5:0] i_next, k_next;
+    logic [5:0] i_next;
+    logic [8:0] k_next;
     logic [31:0] temp_mul_next, temp_energy_next;
     logic [4:0] temp_log2;
 
-// Sinais sequenciais
 always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-        state   <= IDLE;
-        sum     <= 0;
-        i       <= 0;
-        k       <= 0;
+        state <= IDLE;
+        sum <= 0;
+        i <= 0;
+        k <= 0;
         i_total <= 0;
+        mel_done_o <= 0; // reset
     end else begin
-        state   <= next_state;
-        sum     <= sum_next;
-        i       <= i_next;
-        k       <= k_next;
+        state <= next_state;
+        sum <= sum_next;
+        i <= i_next;
+        k <= k_next;
         i_total <= i_total_next;
+
+        // Lógica do sinal done
+        if (i == 40) begin
+            state <= IDLE;
+            mel_done_o <= 1;
+        end else begin
+            mel_done_o <= 0;
+        end
     end
 end
 
@@ -81,7 +91,7 @@ assign k_init                   = mel_memory[i_total]; // início do filtro atua
 // Lógica combinacional
 always_comb begin
     // Inicialização padrão
-    mel_done_o        = 1'b0;
+    // mel_done_o        = 1'b0;
     mel_value_energies = '0;
     mel_prt_energies  = i;
     mel_valid         = 1'b0;
@@ -114,7 +124,7 @@ always_comb begin
                 k_next      = mel_memory[i_total];
                 next_state  = CALC_SUM;
             end else begin
-                mel_done_o  = 1'b1;
+                // mel_done_o  = 1'b1;
                 next_state  = IDLE;
             end
         end
@@ -157,7 +167,7 @@ always_comb begin
             i_next             = 0;
             i_total_next       = 0;
             k_next             = 0;
-            mel_done_o         = 1'b0;
+            // mel_done_o         = 1'b0;
             mel_valid          = 1'b0;
             mel_value_energies = 9'h0;
             mel_prt_energies   = 6'h0;

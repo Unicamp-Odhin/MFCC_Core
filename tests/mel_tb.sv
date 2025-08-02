@@ -1,4 +1,4 @@
-`timescale 1ns/1ps
+`timescale 1ps/1ps
 
 module mel_tb;
 
@@ -33,7 +33,7 @@ module mel_tb;
 
   // Memória para simular a entrada
 //   logic [31:0] power_spectrum_mem [0:NFFT-1];
-  logic [31:0] power_spectrum_mem [0:NUM_FILTERS-1];
+  logic [31:0] power_spectrum_mem [0:NFFT-1];
   logic [8:0]  energie_expected [0:NUM_FILTERS-1];
 
   // Para armazenar resultados
