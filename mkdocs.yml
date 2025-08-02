@@ -85,3 +85,6 @@ plugins:
 
 nav:
   - Home : index.md
+  - Getting Started: get_started.md
+  - About: about.md
+  - Contributing: contributing.md
