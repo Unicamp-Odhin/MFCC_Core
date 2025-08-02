@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-module FIFO #(
+module fifo #(
     parameter DEPTH = 8,
     parameter WIDTH = 8
 ) (
@@ -27,7 +27,7 @@ module FIFO #(
     logic [PTR_WIDTH - 1:0] write_ptr;
 
     // Leitura
-    always_ff @(posedge clk) begin
+    always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             read_ptr    <= '0;
             read_data_o <= '0;
@@ -40,7 +40,7 @@ module FIFO #(
     end
 
     // Escrita
-    always_ff @(posedge clk) begin
+    always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             write_ptr <= '0;
         end else if (wr_en_i && !full_o) begin
@@ -56,4 +56,5 @@ module FIFO #(
 
     // FIFO vazia: ocorre quando os ponteiros são iguais
     assign empty_o = (write_ptr == read_ptr);
+
 endmodule

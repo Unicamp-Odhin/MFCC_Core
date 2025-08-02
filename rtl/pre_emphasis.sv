@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-module Pre_Emphasis #(
+module pre_emphasis #(
     parameter SAMPLE_WIDTH = 16,        // Largura do sample de áudio
     parameter ALPHA        = 16'd31785  // Alpha em Q1.15 (0.97 ≈ 31785)
 ) (
@@ -10,32 +10,24 @@ module Pre_Emphasis #(
     input  logic in_valid,
     output logic out_valid,
 
-    input  logic signed [SAMPLE_WIDTH - 1:0] x_in,   // Sinal de entrada (x[n])
-    output logic signed [SAMPLE_WIDTH - 1:0] y_out   // Sinal de saída (y[n])
+    input  logic [SAMPLE_WIDTH - 1:0] x_in,   // Sinal de entrada (x[n])
+    output logic [SAMPLE_WIDTH - 1:0] y_out   // Sinal de saída (y[n])
 );
 
-    logic signed [SAMPLE_WIDTH - 1:0] x_prev, x_mul;  // Armazena x[n-1]
-    logic signed [2 * SAMPLE_WIDTH - 1:0] mult_result;  // Resultado da multiplicação temporária (32 bits para evitar overflow)
-    logic mul_valid;
+    logic signed [2 * SAMPLE_WIDTH - 1:0] x_prev;  // Resultado da multiplicação temporária (32 bits para evitar overflow)
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            mul_valid <= 0;
-            x_prev    <= 'd0;
-            y_out     <= 'd0;
+            x_prev <= 'd0;
+            y_out  <= 'd0;
         end else begin
-            // Multiplicação: alpha * x[n-1]
-            mult_result <= x_prev * ALPHA;
-            mul_valid   <= in_valid;
-            x_mul       <= x_in;
-
-            // Ajuste de escala: Desloca (SAMPLE_WIDTH - 1) bits para a direita (divisão por 2^(SAMPLE_WIDTH - 1) para manter Q1.15)
-            // y_out <= x_mul - (mult_result >>> (SAMPLE_WIDTH - 1));
-            y_out <= x_mul - mult_result[2 * SAMPLE_WIDTH - 2: SAMPLE_WIDTH - 1];
-
-            // Atualiza x[n-1] para a próxima amostra
-            x_prev    <= (in_valid) ? x_in : x_prev;
-            out_valid <= mul_valid;
+            if(in_valid) begin
+                x_prev    <= {{SAMPLE_WIDTH{x_in[SAMPLE_WIDTH - 1]}},x_in} * ALPHA; // Multiplica x[n] por ALPHA
+                y_out     <= x_in - x_prev[2 * SAMPLE_WIDTH - 2: SAMPLE_WIDTH - 1]; // Desloca para a direita para manter Q1.15
+                out_valid <= 1;
+            end else begin
+                out_valid <= 0;
+            end
         end
     end
 

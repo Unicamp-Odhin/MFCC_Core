@@ -21,7 +21,7 @@ void create_filterbank_q15(int16_t filterbank[NUM_FILTERS][NFFT/2 + 1], int samp
 void apply_filterbank_q15(
     int32_t power_spectrum_frame[NFFT/2 + 1],
     int32_t filterbank[NUM_FILTERS][NFFT/2 + 1],
-    int32_t energies_q15[NUM_FILTERS]  // Saída em Q1.15 (log)
+    int8_t energies_q15[NUM_FILTERS]  // Saída em Q1.15 (log)
 );
 
 #endif // !__MEL_H__
