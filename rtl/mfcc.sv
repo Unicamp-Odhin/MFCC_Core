@@ -148,11 +148,37 @@ module MFCC_Core #(
         .rst_n (rst_n)
     );
 
+    logic [$clog2(NUM_COEFFICIENTS) - 1:0] ceps_ptr;
+    logic [16:0] ceps_sample;
+    logic dct_valid, dct_done;
+    logic [16:0] coeficientes [0: NUM_COEFFICIENTS - 1];
+
     DCT #(
-        .NUM_CEPS (NUM_COEFFICIENTS)
+        .NUM_CEPS    (NUM_COEFFICIENTS),
+        .NUM_FILTERS (NUM_FILTERS),
+        .INPUT_WIDTH (8),
+        .CEPS_WIDTH  (16)
     ) u_dct (
-        .clk   (clk),
-        .rst_n (rst_n)
+        .clk         (clk),
+        .rst_n       (rst_n),
+
+        .in_valid    (),
+        .frame_ptr_i (),
+        .power_in    (),
+        
+        .start_i     (),
+
+        .dct_done_o  (dct_done),
+
+        .dct_valid_o (dct_valid),
+        .ceps_out    (ceps_sample),
+        .ceps_ptr_o  (ceps_ptr)
     );
+
+    always_ff @( posedge clk ) begin
+        if (dct_valid) begin
+            coeficientes[ceps_ptr] <= ceps_sample;
+        end
+    end
 
 endmodule

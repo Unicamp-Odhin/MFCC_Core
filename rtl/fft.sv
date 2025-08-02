@@ -10,7 +10,7 @@ module FFT #(
     input  logic rst_n,
 
     input  logic in_valid,
-    input  logic [NFFT_LOG2 -1:0]    frame_ptr_i,
+    input  logic [NFFT_LOG2 - 1:0]    frame_ptr_i,
     input  logic [INPUT_WIDTH - 1:0] real_in,
 
     input  logic start_i,

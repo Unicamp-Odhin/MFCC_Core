@@ -22,7 +22,7 @@ module pre_emphasis #(
             y_out  <= 'd0;
         end else begin
             if(in_valid) begin
-                x_prev    <= {{SAMPLE_WIDTH{x_in[15]}},x_in} * ALPHA; // Multiplica x[n] por ALPHA
+                x_prev    <= {{SAMPLE_WIDTH{x_in[SAMPLE_WIDTH - 1]}},x_in} * ALPHA; // Multiplica x[n] por ALPHA
                 y_out     <= x_in - x_prev[2 * SAMPLE_WIDTH - 2: SAMPLE_WIDTH - 1]; // Desloca para a direita para manter Q1.15
                 out_valid <= 1;
             end else begin
