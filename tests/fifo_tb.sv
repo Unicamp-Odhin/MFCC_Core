@@ -14,7 +14,7 @@ module fifo_tb;
     logic [WIDTH-1:0] read_data_o;
 
     // Instância do DUT (Device Under Test)
-    FIFO #(
+    fifo #(
         .DEPTH        (DEPTH),
         .WIDTH        (WIDTH)
     ) uut (

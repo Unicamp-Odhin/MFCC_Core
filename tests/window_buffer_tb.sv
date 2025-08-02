@@ -36,7 +36,7 @@ pre_emphasis #(
 logic fifo_empty, fifo_full, fifo_rd_en;
 logic [SAMPLE_WIDTH - 1:0] fifo_read_data;
 
-FIFO #(
+fifo #(
     .DEPTH        (PCM_FIFO_DEPTH),
     .WIDTH        (SAMPLE_WIDTH)
 ) tx_fifo (

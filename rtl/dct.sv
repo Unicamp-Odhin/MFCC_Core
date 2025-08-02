@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-module DCT #(
+module dct #(
     parameter NUM_CEPS    = 12,
     parameter NUM_FILTERS = 40,
     parameter INPUT_WIDTH = 8,
@@ -40,22 +40,19 @@ end
 typedef enum logic [1:0] {
     IDLE,
     PROCESSING,
+    UPDATE_K,
     DONE
 } dct_state_t;
 
-logic dct_done;
-logic [NC_LOG2 - 1:0] ceps_ptr;
-logic [63:0] dct_temp;
 
 logic [NC_LOG2 - 1:0] k_ptr;
 logic [NF_LOG2 - 1:0] n_ptr;
-
 
 logic signed [63:0] mul_result;
 logic signed [31:0] acc;
 dct_state_t dct_state;
 
-always_ff @(posedge clk) begin : DCT_FSM
+always_ff @(posedge clk or negedge rst_n ) begin : DCT_FSM
     dct_done_o   <= 0;
     dct_valid_o  <= 0;
 
@@ -65,6 +62,7 @@ always_ff @(posedge clk) begin : DCT_FSM
         acc        <= 0;
         k_ptr      <= 0;
         n_ptr      <= 0;
+        mul_result <= 0;
     end else begin
         unique case (dct_state)
             IDLE: begin
@@ -77,23 +75,28 @@ always_ff @(posedge clk) begin : DCT_FSM
             end
 
             PROCESSING: begin
-                mul_result <= $signed(mel_filters[n_ptr]) * $signed(cos_lut[k_ptr][n_ptr]);
-                acc <= acc + $signed(mul_result >>> 31);
+                mul_result <= $signed(mel_filters[n_ptr]) * $signed(cos_lut[k_ptr][n_ptr]) + (1 << 30);
+                acc <= acc + mul_result[62:31];
+                n_ptr <= n_ptr + 1;
 
-                if (n_ptr == NUM_FILTERS - 1) begin
-                    ceps_ptr_o <= k_ptr;
-                    dct_valid_o <= 1;
-                    ceps_out <= acc[CEPS_WIDTH-1:0]; // Trunca o resultado para o tamanho adequado
+                if(n_ptr == NUM_FILTERS - 1) begin
+                    dct_state <= UPDATE_K;
+                end
+            end
 
-                    if (k_ptr == NUM_CEPS - 1) begin
-                        dct_state <= DONE;
-                    end else begin
-                        k_ptr <= k_ptr + 1;
-                        n_ptr <= 0;
-                        acc   <= 0;
-                    end
+            UPDATE_K: begin
+                ceps_ptr_o  <= k_ptr;
+                ceps_out    <= acc[CEPS_WIDTH - 1:0];
+                dct_valid_o <= 1;
+                k_ptr       <= k_ptr + 1;
+                n_ptr       <= 0;
+                acc         <= 0;
+                mul_result  <= 0;
+
+                if(k_ptr == NUM_CEPS - 1) begin
+                    dct_state <= DONE;
                 end else begin
-                    n_ptr <= n_ptr + 1;
+                    dct_state <= PROCESSING;
                 end
             end
 

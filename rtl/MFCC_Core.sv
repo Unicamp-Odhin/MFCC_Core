@@ -6,7 +6,6 @@ module MFCC_Core #(
     parameter NUM_FILTERS      = 40,       // Número de filtros Mel
     parameter FRAME_SIZE       = 400,      // Tamanho do quadro de entrada
     parameter FRAME_MOVE       = 160,      // Tamanho do movimento do quadro
-    parameter SAMPLE_RATE      = 16000,    // Taxa de amostragem
     parameter FFT_SIZE         = 512,      // Tamanho da FFT
     parameter PCM_FIFO_DEPTH   = 256,      // Profundidade do FIFO de PCM
     parameter ALPHA            = 16'd31785 // Alpha em Q1.15 (0.97 ≈ 31785)
@@ -23,7 +22,7 @@ module MFCC_Core #(
     logic pre_emphasis_valid;
     logic [SAMPLE_WIDTH - 1:0] pre_emphasized_signal;
 
-    logic fifo_empty, fifo_full, fifo_rd_en;
+    logic fifo_empty, fifo_rd_en;
     logic [SAMPLE_WIDTH - 1:0] fifo_read_data;
 
     pre_emphasis #(
@@ -40,7 +39,7 @@ module MFCC_Core #(
         .y_out        (pre_emphasized_signal) // Sinal de saída
     );
 
-    FIFO #(
+    fifo #(
         .DEPTH        (PCM_FIFO_DEPTH),
         .WIDTH        (SAMPLE_WIDTH)
     ) tx_fifo (
@@ -51,7 +50,6 @@ module MFCC_Core #(
         .rd_en_i      (fifo_rd_en),
 
         .write_data_i (pre_emphasized_signal),
-        .full_o       (fifo_full),
         .empty_o      (fifo_empty),
         .read_data_o  (fifo_read_data)
     );
@@ -87,7 +85,7 @@ module MFCC_Core #(
     logic [8:0] frame_ptr;
     logic signed [SAMPLE_WIDTH - 1:0] hamming_sample;
 
-    Hamming_Window #(
+    hamming_window #(
         .SAMPLE_WIDTH     (SAMPLE_WIDTH),
         .NUM_COEFFICIENTS (FRAME_SIZE),
         .NFFT_SIZE        (FFT_SIZE)
@@ -112,7 +110,7 @@ module MFCC_Core #(
     logic [31:0] fft_power_sample;
     logic fft_power_valid, fft_done;
 
-    FFT #(
+    fft_radix2 #(
         .NFFT           (FFT_SIZE),
         .INPUT_WIDTH    (SAMPLE_WIDTH),
         .COMPLEX_WIDTH  (SAMPLE_WIDTH * 2)
@@ -149,11 +147,11 @@ module MFCC_Core #(
     );
 
     logic [$clog2(NUM_COEFFICIENTS) - 1:0] ceps_ptr;
-    logic [16:0] ceps_sample;
+    logic [15:0] ceps_sample;
     logic dct_valid, dct_done;
-    logic [16:0] coeficientes [0: NUM_COEFFICIENTS - 1];
+    logic [15:0] coeficientes [0: NUM_COEFFICIENTS - 1];
 
-    DCT #(
+    dct #(
         .NUM_CEPS    (NUM_COEFFICIENTS),
         .NUM_FILTERS (NUM_FILTERS),
         .INPUT_WIDTH (8),
@@ -180,5 +178,7 @@ module MFCC_Core #(
             coeficientes[ceps_ptr] <= ceps_sample;
         end
     end
+
+    assign start_move = 0;
 
 endmodule

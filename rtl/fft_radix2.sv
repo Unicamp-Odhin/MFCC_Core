@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-module FFT #(
+module fft_radix2 #(
     parameter NFFT          = 512,
     parameter INPUT_WIDTH   = 16,
     parameter NFFT_LOG2     = $clog2(NFFT),
@@ -117,8 +117,13 @@ logic [NFFT_LOG2:0]             power_ptr;
 
 // Outputs
 assign power_valid_o  = power_valid_stage4;
-assign power_ptr_o    = power_ptr_stage4;
+assign power_ptr_o    = power_ptr_stage4[NFFT_LOG2 - 1:0];
 assign power_sample_o = power_stage4;
+
+logic [NFFT_LOG2 - 1:0] even_ptr_sum, odd_ptr_sum;
+
+assign even_ptr_sum = sched.k + sched.j;
+assign odd_ptr_sum  = sched.k + sched.j + sched.half_m;
 
 // Main control
 always_ff @(posedge clk or negedge rst_n) begin : FFT_CALCULATION_PIPELINED
@@ -163,9 +168,9 @@ always_ff @(posedge clk or negedge rst_n) begin : FFT_CALCULATION_PIPELINED
 
             PROCESSING: begin
                 // Pipeline Stage 1: Read and schedule
-                stage1.even      <= x[sched.k + sched.j];
-                stage1.odd       <= x[sched.k + sched.j + sched.half_m];
-                stage1.twiddle   <= twiddles[sched.twiddle_index];
+                stage1.even      <= x[even_ptr_sum[NFFT_LOG2 - 1:0]];
+                stage1.odd       <= x[odd_ptr_sum[NFFT_LOG2 - 1:0]];
+                stage1.twiddle   <= twiddles[sched.twiddle_index[NFFT_LOG2 - 1:0]];
                 stage1.meta      <= sched;
 
                 // Scheduler update
@@ -179,7 +184,7 @@ always_ff @(posedge clk or negedge rst_n) begin : FFT_CALCULATION_PIPELINED
                         sched.k <= sched.k + sched.m;
                     end else begin
                         sched.k <= 0;
-                        if (sched.stage < NFFT_LOG2) begin
+                        if (sched.stage < NFFT_LOG2[NFFT_LOG22:0]) begin
                             sched.stage        <= sched.stage + 1;
                             sched.m            <= 1 << (sched.stage + 1);
                             sched.half_m       <= 1 << sched.stage;
@@ -198,7 +203,7 @@ always_ff @(posedge clk or negedge rst_n) begin : FFT_CALCULATION_PIPELINED
                 end else begin
                     // Power pipeline Stage 1
                     power_ptr          <= power_ptr + 1;
-                    power_stage1       <= x[power_ptr];
+                    power_stage1       <= x[power_ptr[NFFT_LOG2 - 1:0]];
                     power_ptr_stage1   <= power_ptr;
                     power_valid_stage1 <= 1;
 
@@ -258,8 +263,8 @@ end
 
 // FFT Pipeline Stage 4: Writeback
 always_ff @(posedge clk) begin
-    x[stage3_addsub.addr_even] <= stage3_addsub.sum;
-    x[stage3_addsub.addr_odd]  <= stage3_addsub.diff;
+    x[stage3_addsub.addr_even[NFFT_LOG2 - 1:0]] <= stage3_addsub.sum;
+    x[stage3_addsub.addr_odd[NFFT_LOG2 - 1:0]]  <= stage3_addsub.diff;
 end
 
 genvar k;
