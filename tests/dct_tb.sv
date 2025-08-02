@@ -77,14 +77,12 @@ module dct_tb ();
         .fifo_rd_en_o         (fifo_rd_en),                  // 1 bit
         .fifo_data_i          (fifo_read_data),              // 16 bits
         .fifo_empty_i         (fifo_empty),                  // 1 bit
-        .fifo_full_i          (fifo_full),                   // 1 bit
 
         .rd_en_i              (window_rd_en),                // 10 bits
         .read_data_o          (window_buffer_data),          // 16 bits
         .valid_to_read_o      (window_valid_to_read),        // 1 bit
 
-        .start_next_state_o   (start_hamming),
-        .idle                 (idle)                         // 1 bit
+        .start_next_state_o   (start_hamming)
     );
 
     logic hamming_done, hamming_out_valid;
@@ -126,8 +124,7 @@ module dct_tb ();
     fft_radix2 #(
         .NFFT           (FFT_SIZE),
         .INPUT_WIDTH    (SAMPLE_WIDTH),
-        .COMPLEX_WIDTH  (32),
-        .FRAME_SIZE     (FRAME_SIZE)
+        .COMPLEX_WIDTH  (32)
     ) u_fft (
         .clk            (clk),
         .rst_n          (rst_n),
@@ -149,9 +146,9 @@ module dct_tb ();
     logic [5:0] mel_ptr;
     logic [7:0] mel_sample;
 
-    MEL #(
+    mel #(
         .NUM_FILTERS                (NUM_FILTERS), 
-        .NFFT                       (NFFT),
+        .NFFT                       (FFT_SIZE),
         .INPUT_WIDTH                (32),
         .OUTPUT_WIDTH               (8)
     ) dut (
@@ -160,7 +157,7 @@ module dct_tb ();
 
         .mel_start_i                (fft_done),
 
-        .in_valid                   (fft_power_valid)
+        .in_valid                   (fft_power_valid),
         .power_spectrum_frame_ptr   (fft_ptr),
         .power_spectrum_frame_in    (fft_power_sample),
 
@@ -210,7 +207,7 @@ module dct_tb ();
         begin
             fd = $fopen("buffer_dump.hex", "w");
             for (i = 0; i < FRAME_SIZE; i = i + 1) begin
-            $fwrite(fd, "%h\n", hamming_frame[i]);
+                $fwrite(fd, "%h\n", u_window_buffer.buffer[i]);
             end
             $fclose(fd);
         end
@@ -222,19 +219,7 @@ module dct_tb ();
         begin
             fd = $fopen("hamming_dump.hex", "w");
             for (i = 0; i < FRAME_SIZE; i = i + 1) begin
-            $fwrite(fd, "%h\n", u_window_buffer.buffer[i]);
-            end
-            $fclose(fd);
-        end
-    endtask
-
-    task dump_fft_buffer_to_hex;
-        integer fd;
-        integer i;
-        begin
-            fd = $fopen("fft_dump.hex", "w");
-            for (i = 0; i < RFFT_SIZE; i = i + 1) begin
-            $fwrite(fd, "%h\n", rfft_power_buffer[i]);
+                $fwrite(fd, "%h\n", hamming_frame[i]);
             end
             $fclose(fd);
         end

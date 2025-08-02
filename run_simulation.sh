@@ -73,7 +73,7 @@ function run_dct_test {
    echo "Executando teste DCT"
    #verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module DCT tests/dct_tb.cpp rtl/dct.sv src/wav.c src/process.c src/q15.c src/q15_fft.c src/mel.c src/dct.c --CFLAGS "-I../lib"
    #./obj_dir/VDCT
-   verilator tests/dct_tb.sv rtl/complex_pkg.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/fft_radix2.sv rtl/mel.sv rtl/dct.sv \
+   verilator tests/dct_tb.sv rtl/complex_pkg.sv rtl/pre_emphasis.sv rtl/base2log.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/fft_radix2.sv rtl/mel.sv rtl/dct.sv \
       -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
    ./obj_dir/Vdct_tb
 }
@@ -84,7 +84,7 @@ function run_mfcc_test {
    #rtl/MFCC_Core.sv rtl/complex_pkg.sv rtl/fft_radix2.sv rtl/dct.sv rtl/mel.sv rtl/base2log.sv rtl/hamming_window.sv rtl/pre_emphasis.sv rtl/window_buffer.sv \
    #rtl/fifo.sv src/wav.c src/process.c src/q15.c src/q15_fft.c src/mel.c src/dct.c --CFLAGS "-I../lib"
    #./obj_dir/VMFCC
-   verilator tests/mfcc_tb.sv rtl/complex_pkg.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/fft_radix2.sv rtl/mel.sv rtl/dct.sv rtl/MFCC_Core.sv \
+   verilator tests/mfcc_tb.sv rtl/complex_pkg.sv rtl/base2log.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/fft_radix2.sv rtl/mel.sv rtl/dct.sv rtl/MFCC_Core.sv \
       -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
    ./obj_dir/Vmfcc_tb
 }

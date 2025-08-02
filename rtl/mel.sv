@@ -1,4 +1,6 @@
-module MEL #(
+`timescale 1ns/1ps
+
+module mel #(
     parameter NUM_FILTERS  = 40,
     parameter NFFT         = 512,
     parameter NRFFT        = NFFT/2 + 1,
@@ -41,7 +43,7 @@ module MEL #(
     logic [63:0] temp_mul_next;
     logic [7:0] temp_log2;
 
-    logic [32:0] power_spectrum;
+    logic [31:0] power_spectrum;
     assign power_spectrum = power_spectrum_mem[k];
 
     logic [31:0] mel_memory [0:1319];
@@ -76,6 +78,7 @@ module MEL #(
             i_total    <= 0;
             mel_done_o <= 0;
         end else begin
+            //$display("i: %d, state: %d", i, state);
             state   <= next_state;
             sum     <= sum_next;
             i       <= i_next;
@@ -91,19 +94,19 @@ module MEL #(
         end
     end
            
-    assign k_init = mel_memory[i_total];
+    assign k_init = mel_memory[i_total][8:0];
 
     always_comb begin
         mel_value_energies = '0;
         mel_prt_energies  = i;
         mel_valid         = 1'b0;
 
-        next_state   = state;
-        sum_next     = sum;
-        i_next       = i;
-        k_next       = k;
+        next_state    = state;
+        sum_next      = sum;
+        i_next        = i;
+        k_next        = k;
         temp_mul_next = 0;
-        i_total_next = i_total;
+        i_total_next  = i_total;
 
         case (state)
             IDLE: begin
@@ -122,7 +125,7 @@ module MEL #(
                 mel_prt_energies  = i;
 
                 if (i < NUM_FILTERS) begin
-                    k_next      = mel_memory[i_total];
+                    k_next      = mel_memory[i_total][8:0];
                     next_state  = CALC_SUM;
                 end else begin
                     next_state  = IDLE;
@@ -134,7 +137,7 @@ module MEL #(
                 mel_value_energies = '0;
                 mel_prt_energies  = i;
 
-                if (k <= mel_memory[i_total + 1]) begin
+                if (k <= mel_memory[i_total + 1][8:0]) begin
                     temp_mul_next = ((power_spectrum * filter) + (1 << 30));
                     sum_next      = sum + temp_mul_next[62:31];
                     k_next        = k + 1;
@@ -168,15 +171,15 @@ module MEL #(
                 i_total_next       = 0;
                 k_next             = 0;
                 mel_valid          = 1'b0;
-                mel_value_energies = 9'h0;
+                mel_value_energies = 8'h0;
                 mel_prt_energies   = 6'h0;
             end
         endcase
     end
 
     base2log u_base2log (
-        .number_i(sum),
-        .log_o(temp_log2)
+        .number_i (sum),
+        .log_o    (temp_log2)
     );
 
 endmodule

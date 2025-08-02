@@ -135,9 +135,9 @@ module MFCC_Core #(
     logic [5:0] mel_ptr;
     logic [7:0] mel_sample;
 
-    MEL #(
+    mel #(
         .NUM_FILTERS                (NUM_FILTERS), 
-        .NFFT                       (NFFT),
+        .NFFT                       (FFT_SIZE),
         .INPUT_WIDTH                (32),
         .OUTPUT_WIDTH               (8)
     ) dut (
@@ -146,7 +146,7 @@ module MFCC_Core #(
 
         .mel_start_i                (fft_done),
 
-        .in_valid                   (fft_power_valid)
+        .in_valid                   (fft_power_valid),
         .power_spectrum_frame_ptr   (fft_ptr),
         .power_spectrum_frame_in    (fft_power_sample),
 
