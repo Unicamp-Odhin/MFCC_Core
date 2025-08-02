@@ -131,19 +131,30 @@ module MFCC_Core #(
         .fft_done_o     (fft_done)
     );
 
-    logic [31:0] rfft_power_buffer [0: RFFT_SIZE];
-
-    always_ff @( posedge clk ) begin
-        if(fft_power_valid) begin
-            rfft_power_buffer[fft_ptr] <= fft_power_sample;
-        end
-    end   
+    logic mel_done, mel_valid;
+    logic [5:0] mel_ptr;
+    logic [7:0] mel_sample;
 
     MEL #(
-        .NUM_FILTERS (NUM_FILTERS)
-    ) u_mel (
-        .clk   (clk),
-        .rst_n (rst_n)
+        .NUM_FILTERS                (NUM_FILTERS), 
+        .NFFT                       (NFFT),
+        .INPUT_WIDTH                (32),
+        .OUTPUT_WIDTH               (8)
+    ) dut (
+        .clk                        (clk),
+        .rst_n                      (rst_n),
+
+        .mel_start_i                (fft_done),
+
+        .in_valid                   (fft_power_valid)
+        .power_spectrum_frame_ptr   (fft_ptr),
+        .power_spectrum_frame_in    (fft_power_sample),
+
+        .mel_done_o                 (mel_done),
+
+        .mel_value_energies         (mel_sample),
+        .mel_prt_energies           (mel_ptr),
+        .mel_valid                  (mel_valid)
     );
 
     logic [$clog2(NUM_COEFFICIENTS) - 1:0] ceps_ptr;
@@ -160,11 +171,11 @@ module MFCC_Core #(
         .clk         (clk),
         .rst_n       (rst_n),
 
-        .in_valid    (),
-        .frame_ptr_i (),
-        .power_in    (),
+        .in_valid    (mel_valid),
+        .frame_ptr_i (mel_ptr),
+        .power_in    (mel_sample),
         
-        .start_i     (),
+        .start_i     (mel_done),
 
         .dct_done_o  (dct_done),
 
