@@ -7,7 +7,7 @@ module MEL #(
      
     input  logic mel_start_i,
 
-    output  logic [$clog2(NFFT):0] prt_power_spectrum_frame
+    output  logic [$clog2(NFFT):0] prt_power_spectrum_frame,
     input  logic [31:0] value_power_spectrum_frame,
 
     output logic mel_done_o,
