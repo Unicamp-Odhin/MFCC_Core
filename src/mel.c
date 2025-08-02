@@ -83,12 +83,9 @@ void apply_filterbank(
         for (int k = 0; k < NFFT/2 + 1; k++) {
             sum += power_spectrum_frame[k] * filterbank[m][k];
         }
-
-        // Garante estabilidade numérica (evita log de zero ou negativo)
         if (sum <= 0.0f) {
             sum = FLT_EPSILON;
         }
-        
         energies[m] = 20.0f * log10f(sum);
     }
 }
@@ -133,23 +130,6 @@ void create_filterbank_q15(int16_t filterbank[NUM_FILTERS][NFFT/2 + 1], int samp
     }
 }
 
-// Function to plot the filterbank in q30 format in .dat file
-void plot_filterbank_q30(int32_t filterbank[NUM_FILTERS][NFFT/2 + 1]) {
-    FILE *fp = fopen("data/filterbank_q30.dat", "w");
-    if (!fp) {
-        perror("Erro ao abrir o arquivo de filterbank Q15");
-        exit(EXIT_FAILURE);
-    }
-
-    for (int m = 0; m < NUM_FILTERS; m++) {
-        for (int k = 0; k < NFFT/2 + 1; k++) {
-            fprintf(fp, "%X ",filterbank[m][k]);
-        }
-        fprintf(fp, "\n");
-    }
-
-    fclose(fp);
-}
 
 // Aplica o banco de filtros Q1.15 ao espectro de potência Q1.15
 void apply_filterbank_q15(
@@ -164,20 +144,61 @@ void apply_filterbank_q15(
             sum = q15_add(sum, q15_mul(power_spectrum_frame[k], filterbank[m][k]));  // acumulando em Q30
         }
 
-        // Normaliza soma de Q30 para Q15
-        // int16_t sum_q15 = (int16_t)(sum >> Q15_SHIFT);
-        
-        
-        // Proteção contra log(0)
         if (sum <= 0) {
             //energies_q15[m] = MIN_LOG_ENERGY_Q15;
             energies_q15[m] = 0x80;
         } else {
-            energies_q15[m] = (int8_t)6 * q15_log2(sum);
-            // energies_q15[m] = q15_log2(sum);
+            energies_q15[m] = 6 * q15_log2(sum);
 
-            // energies_q15[m] = q15_mul(float_to_q15(20.0f), q15_log10(sum));
         }
-        printf("%d: Energia: %d | Sum: %d\n", m, energies_q15[m], sum);
+    }
+}
+
+void optimization_filterbank_q15(int32_t filterbank[NUM_FILTERS][NFFT/2 + 1]) {
+    int16_t init_index;
+    int16_t end_index;
+
+    for (int i = 0; i < NUM_FILTERS; i++) {
+        for (init_index = 0; init_index < NFFT / 2 + 1 && !filterbank[i][init_index]; init_index++);
+
+        for (end_index = NFFT / 2; end_index >= 0 && !filterbank[i][end_index]; end_index--);
+
+        int32_t temp[2 + (NFFT/2 + 1)];
+        temp[0] = init_index;
+        temp[1] = end_index;
+
+        int k = 2;
+        for (int j = init_index; j <= end_index; j++) {
+            temp[k++] = filterbank[i][j];
+        }
+        for (int j = 0; j < NFFT / 2 + 1; j++) {
+            filterbank[i][j] = 0;
+        }
+        for (int j = 0; j < k; j++) {
+            filterbank[i][j] = temp[j];
+        }
+    }
+}
+
+void optimization_apply_q15(
+    int32_t power_spectrum_frame[NFFT/2 + 1],
+    int32_t filterbank[NUM_FILTERS][NFFT/2 + 1],
+    int32_t energies_q15[NUM_FILTERS] 
+) {
+    for (int i = 0; i < NUM_FILTERS; i++) {
+        int32_t sum = 0;
+
+        int init_index = filterbank[i][0];
+        int end_index = filterbank[i][1] + 1;
+
+        for (int k = init_index; k < end_index ; k++) {
+            sum = q15_add(sum, q15_mul(power_spectrum_frame[k], filterbank[i][2 + k - init_index]));
+        }
+
+        if (sum <= 0) {
+            energies_q15[i] = MIN_LOG_ENERGY_Q15;
+        } else {
+            energies_q15[i] = 6 * q15_log2(sum);
+        }
     }
 }
