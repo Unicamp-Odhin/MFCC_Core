@@ -8,10 +8,52 @@
         <xhtml:link rel="alternate" hreflang="en" href="https://unicamp-odhin.github.io/MFCC_Core/en/index.html"/>
     </url>
     <url>
+        <loc>https://unicamp-odhin.github.io/MFCC_Core/about.html</loc>
+        <lastmod>2025-08-02</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="pt" href="https://unicamp-odhin.github.io/MFCC_Core/about.html"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://unicamp-odhin.github.io/MFCC_Core/en/about.html"/>
+    </url>
+    <url>
+        <loc>https://unicamp-odhin.github.io/MFCC_Core/contributing.html</loc>
+        <lastmod>2025-08-02</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="pt" href="https://unicamp-odhin.github.io/MFCC_Core/contributing.html"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://unicamp-odhin.github.io/MFCC_Core/en/contributing.html"/>
+    </url>
+    <url>
+        <loc>https://unicamp-odhin.github.io/MFCC_Core/get_started.html</loc>
+        <lastmod>2025-08-02</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="pt" href="https://unicamp-odhin.github.io/MFCC_Core/get_started.html"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://unicamp-odhin.github.io/MFCC_Core/en/get_started.html"/>
+    </url>
+    <url>
         <loc>https://unicamp-odhin.github.io/MFCC_Core/en/index.html</loc>
         <lastmod>2025-08-02</lastmod>
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="en" href="https://unicamp-odhin.github.io/MFCC_Core/en/index.html"/>
         <xhtml:link rel="alternate" hreflang="pt" href="https://unicamp-odhin.github.io/MFCC_Core/index.html"/>
+    </url>
+    <url>
+        <loc>https://unicamp-odhin.github.io/MFCC_Core/en/about.html</loc>
+        <lastmod>2025-08-02</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://unicamp-odhin.github.io/MFCC_Core/en/about.html"/>
+        <xhtml:link rel="alternate" hreflang="pt" href="https://unicamp-odhin.github.io/MFCC_Core/about.html"/>
+    </url>
+    <url>
+        <loc>https://unicamp-odhin.github.io/MFCC_Core/en/contributing.html</loc>
+        <lastmod>2025-08-02</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://unicamp-odhin.github.io/MFCC_Core/en/contributing.html"/>
+        <xhtml:link rel="alternate" hreflang="pt" href="https://unicamp-odhin.github.io/MFCC_Core/contributing.html"/>
+    </url>
+    <url>
+        <loc>https://unicamp-odhin.github.io/MFCC_Core/en/get_started.html</loc>
+        <lastmod>2025-08-02</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://unicamp-odhin.github.io/MFCC_Core/en/get_started.html"/>
+        <xhtml:link rel="alternate" hreflang="pt" href="https://unicamp-odhin.github.io/MFCC_Core/get_started.html"/>
     </url>
 </urlset>
