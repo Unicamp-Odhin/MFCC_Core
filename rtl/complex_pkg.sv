@@ -4,7 +4,7 @@
 `define COMPLEX_PKG
 package complex_pkg;
     // Tipo fixo com parte real e imaginária
-    localparam Q30_SHIFT = 31;
+    localparam FIXED_SHIFT = 31;
 
     typedef struct packed {
         logic signed [31:0] re;
@@ -25,8 +25,8 @@ package complex_pkg;
 
     function automatic logic signed [31:0] mul_fixed(logic signed [31:0] a, logic signed [31:0] b);
         logic signed [63:0] tmp = a * b;
-        tmp = tmp + (1 << (Q30_SHIFT - 1)); // Arredondamento
-        tmp = tmp >> Q30_SHIFT; // Desloca para obter o resultado em Q
+        tmp = tmp + (1 << (FIXED_SHIFT - 1)); // Arredondamento
+        tmp = tmp >> FIXED_SHIFT; // Desloca para obter o resultado em Q
         mul_fixed = tmp[31:0]; // Retorna os 32 bits mais significativos
     endfunction
 
