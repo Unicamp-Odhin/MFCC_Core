@@ -162,7 +162,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    #if defined(CONFIG_USE_FLOAT_MEL)       
+    #ifdef CONFIG_USE_FLOAT_MEL
         float energies[NUM_FILTERS];
         for (int i = 0; i < num_frames; i++) {
             apply_filterbank(power_spectrum[i], filterbank, energies);
@@ -180,7 +180,9 @@ int main(int argc, char *argv[]) {
         }
 
     #else
+        printf("Usando Q15 para o banco de filtros...\n");
         int8_t energies[NUM_FILTERS];
+        init_cos_lut();
         for (int i = 0; i < num_frames; i++) {
             apply_filterbank_q15(power_spectrum[i], filterbank_15, energies);
 
@@ -188,7 +190,7 @@ int main(int argc, char *argv[]) {
                 fprintf(fp3, "%d%c", energies[j], (j == NUM_FILTERS - 1) ? '\n' : ' ');
             }
             int16_t ceps[NUM_CEPS];
-            dct_q15((int16_t *)energies, NUM_FILTERS, ceps);
+            dct_fixed(energies, NUM_FILTERS, ceps);
 
             for (int j = 0; j < NUM_CEPS; j++) {
                 fprintf(fp4, "%d%c", ceps[j], (j == NUM_CEPS - 1) ? '\n' : ' ');
