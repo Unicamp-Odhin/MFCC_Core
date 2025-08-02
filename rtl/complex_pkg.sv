@@ -1,3 +1,5 @@
+`timescale 1ns/1ps
+
 `ifndef COMPLEX_PKG
 `define COMPLEX_PKG
 package complex_pkg;
@@ -25,7 +27,7 @@ package complex_pkg;
         logic signed [63:0] tmp = a * b;
         tmp = tmp + (1 << (Q30_SHIFT - 1)); // Arredondamento
         tmp = tmp >> Q30_SHIFT; // Desloca para obter o resultado em Q
-        mul_fixed = tmp; // Retorna os 32 bits mais significativos
+        mul_fixed = tmp[31:0]; // Retorna os 32 bits mais significativos
     endfunction
 
     // Multiplicação complexa com escala para Q1.15

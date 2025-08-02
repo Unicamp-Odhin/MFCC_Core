@@ -1,9 +1,10 @@
 `timescale 1ns/1ps
 
-module Hamming_Window #(
+module hamming_window #(
     parameter SAMPLE_WIDTH     = 16,  // Largura do sample de áudio
     parameter NUM_COEFFICIENTS = 306, // Número de coeficientes da janela de Hamming
-    parameter NFFT_SIZE        = 512  // Tamanho do FFT
+    parameter NFFT_SIZE        = 512,  // Tamanho do FFT
+    parameter NFFT_LOG2        = $clog2(NFFT_SIZE)
 ) (
     input  logic clk,
     input  logic rst_n,
@@ -13,13 +14,15 @@ module Hamming_Window #(
     input  logic valid_to_read_i,
     output logic rd_en_o,
 
-    output logic [8:0] frame_ptr_o,
+    output logic [NFFT_LOG2 - 1:0] frame_ptr_o,
 
     input  logic signed [SAMPLE_WIDTH - 1:0] frame_sample_i,
     output logic signed [SAMPLE_WIDTH - 1:0] hamming_sample_o,
     output logic out_valid_o,
     output logic done_o
 );
+    localparam NFFT_SIZE_COMPAIR = NFFT_SIZE - 1;
+
     logic signed [SAMPLE_WIDTH - 1:0] hamming_window_lut [0:NUM_COEFFICIENTS - 1];
 
     initial begin
@@ -36,11 +39,11 @@ module Hamming_Window #(
     hamming_state_t hamming_state;
 
     int calc_pointer;
-    logic [8:0] frame_ptr;
+    logic [NFFT_LOG2 - 1:0] frame_ptr;
 
     logic signed [SAMPLE_WIDTH - 1:0] hamming_coefficient;
     logic signed [2 * SAMPLE_WIDTH - 1:0] hamming_sample_temp;
-    logic [8:0] temp_ptr;
+    logic [NFFT_LOG2 - 1:0] temp_ptr;
     logic temp_valid;
     logic done;
 
@@ -85,7 +88,7 @@ module Hamming_Window #(
                 end
                 PADDING: begin
                     rd_en_o <= 0;
-                    if(frame_ptr < NFFT_SIZE - 1) begin
+                    if(frame_ptr < NFFT_SIZE_COMPAIR[NFFT_LOG2 - 1:0]) begin
                         hamming_sample_temp <= 0;
                         temp_valid          <= 1;
                         frame_ptr           <= frame_ptr + 1;
@@ -106,7 +109,7 @@ module Hamming_Window #(
         end
     end
 
-    always_ff @( posedge clk ) begin
+    always_ff @( posedge clk or negedge rst_n ) begin
         if(!rst_n) begin
             out_valid_o      <= 0;
         end else begin

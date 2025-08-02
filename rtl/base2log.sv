@@ -36,7 +36,7 @@ module base2log ( // calculo da energia 20 * log10(x) = 6 * log2(x)
             32'b000000000000000000000000000001??: log_o = 5'd2  * 6;
             32'b0000000000000000000000000000001?: log_o = 5'd1  * 6;
             32'b00000000000000000000000000000001: log_o = 5'd0  * 6;
-            default: log_o = 5'd0; // zero input
+            default: log_o = 5'd0 * 6; // zero input
         endcase
     end
 

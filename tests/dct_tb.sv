@@ -41,7 +41,7 @@ pre_emphasis #(
 logic fifo_empty, fifo_full, fifo_rd_en;
 logic [SAMPLE_WIDTH - 1:0] fifo_read_data;
 
-FIFO #(
+fifo #(
     .DEPTH        (PCM_FIFO_DEPTH),
     .WIDTH        (SAMPLE_WIDTH)
 ) tx_fifo (
@@ -92,7 +92,7 @@ window_buffer #(
     logic signed [SAMPLE_WIDTH - 1:0] hamming_sample;
     logic signed [SAMPLE_WIDTH - 1:0] hamming_frame [0:FFT_SIZE - 1];
 
-    Hamming_Window #(
+    hamming_window #(
         .SAMPLE_WIDTH     (SAMPLE_WIDTH),
         .NUM_COEFFICIENTS (FRAME_SIZE),
         .NFFT_SIZE        (FFT_SIZE)
@@ -123,7 +123,7 @@ window_buffer #(
     logic [31:0] fft_power_sample;
     logic fft_power_valid, fft_done;
 
-    FFT #(
+    fft_radix2 #(
         .NFFT           (FFT_SIZE),
         .INPUT_WIDTH    (SAMPLE_WIDTH),
         .COMPLEX_WIDTH  (32),
@@ -160,7 +160,7 @@ window_buffer #(
         .rst_n (rst_n)
     );
 
-    DCT #(
+    dct #(
         .NUM_CEPS (NUM_COEFFICIENTS)
     ) u_dct (
         .clk   (clk),
