@@ -183,7 +183,7 @@ void optimization_filterbank_q15(int32_t filterbank[NUM_FILTERS][NFFT/2 + 1]) {
 void optimization_apply_q15(
     int32_t power_spectrum_frame[NFFT/2 + 1],
     int32_t filterbank[NUM_FILTERS][NFFT/2 + 1],
-    int32_t energies_q15[NUM_FILTERS] 
+    int8_t energies_q15[NUM_FILTERS]
 ) {
     for (int i = 0; i < NUM_FILTERS; i++) {
         int32_t sum = 0;

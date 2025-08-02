@@ -38,7 +38,6 @@ module mel_tb;
 
   // Para armazenar resultados
   logic [8:0] energie_out [0:NUM_FILTERS-1];
-  integer i;
 
   initial begin
     $display("---- Iniciando Teste MEL ----");
@@ -99,7 +98,7 @@ module mel_tb;
 
 
 always @(posedge clk) begin
-    value_power_spectrum_frame <= power_spectrum_mem[prt_power_spectrum_frame];
+    value_power_spectrum_frame <= power_spectrum_mem[prt_power_spectrum_frame[8:0]];
 end
 
 always @(posedge clk) begin
