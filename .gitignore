@@ -217,7 +217,6 @@ env/
 fpga/opensourceSDRLabKintex7/openFPGALoader
 *.elf
 *.dat
-data/
 obj_dir
 x.c
 buffer_dump.hex

@@ -39,7 +39,7 @@ module MEL #(
     assign filter = (prt_memory < 1320) ? {32'h0, mel_memory[prt_memory]} : 64'h0;
     
     initial begin
-        $readmemh("rtl/tables/mel_data.hex", mel_memory);
+        $readmemh("tables/mel_data.hex", mel_memory);
     end
 
     typedef enum logic [1:0] {

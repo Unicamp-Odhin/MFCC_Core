@@ -56,10 +56,10 @@ module mel_tb;
     #10;
 
     // Teste 1
-    test_with_data("tests/data/power_spectrum_1.hex", "tests/data/energie_1.hex");
+    test_with_data("data/power_spectrum_1.hex", "data/energie_1.hex");
 
     // Teste 2
-    test_with_data("tests/data/power_spectrum_2.hex", "tests/data/energie_2.hex");
+    test_with_data("data/power_spectrum_2.hex", "data/energie_2.hex");
 
     $display("---- Teste Finalizado ----");
     $finish;
