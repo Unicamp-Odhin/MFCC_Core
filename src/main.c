@@ -152,9 +152,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // Plotar o banco de filtros
-    plot_filterbank_q30(filterbank_15);
-
     FILE *fp3 = fopen("data/spectrogram_matrix.dat", "w");
     FILE *fp4 = fopen("data/ceps_matrix.dat", "w");
     if (!fp3 || !fp4) {
@@ -181,10 +178,9 @@ int main(int argc, char *argv[]) {
 
 
     #else
-        int32_t energies[NUM_FILTERS];
         optimization_filterbank_q15(filterbank_15);
 
-        //int8_t energies[NUM_FILTERS];
+        int8_t energies[NUM_FILTERS];
         init_cos_lut();
         // }
         for (int i = 0; i < num_frames; i++) {            
@@ -194,7 +190,7 @@ int main(int argc, char *argv[]) {
                 fprintf(fp3, "%d%c", energies[j], (j == NUM_FILTERS - 1) ? '\n' : ' ');
             }
             int16_t ceps[NUM_CEPS];
-            dct_fixed((int8_t *)energies, NUM_FILTERS, ceps);
+            dct_fixed(energies, NUM_FILTERS, ceps);
 
             for (int j = 0; j < NUM_CEPS; j++) {
                 fprintf(fp4, "%d%c", ceps[j], (j == NUM_CEPS - 1) ? '\n' : ' ');

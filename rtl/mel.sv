@@ -1,32 +1,30 @@
 module MEL #(
     parameter NUM_FILTERS = 40,
-    parameter NFFT = 512/2 + 1
+    parameter NFFT        = 512,
+    parameter RNFFT       = NFFT/2 + 1
 ) (
     input  logic clk,
     input  logic rst_n,
      
     input  logic mel_start_i,
 
-    output  logic [$clog2(NFFT):0] prt_power_spectrum_frame,
+    output  logic [$clog2(RNFFT):0] prt_power_spectrum_frame,
     input  logic [31:0] value_power_spectrum_frame,
 
     output logic mel_done_o,
-    output logic [8:0] mel_value_energies,
+    output logic [7:0] mel_value_energies,
     output logic [5:0] mel_prt_energies,
     output logic       mel_valid
 
 );
 
     logic [31:0] sum, sum_next;
-    logic [31:0] temp_mul;
-    logic [31:0] temp_add;
-    logic [8:0] temp_energy;
     logic [5:0] i, i_next;
     logic [8:0] k, k_next, k_init;
     logic [10:0] i_total, i_total_next;
 
-    logic [31:0] temp_mul_next, temp_energy_next;
-    logic [4:0] temp_log2;
+    logic [63:0] temp_mul_next;
+    logic [7:0] temp_log2;
 
     logic [63:0] power_spectrum;
     assign power_spectrum = {32'h0, value_power_spectrum_frame};
@@ -123,8 +121,8 @@ module MEL #(
                 mel_prt_energies  = i;
 
                 if (k <= mel_memory[i_total + 1]) begin
-                    temp_mul_next = ((power_spectrum * filter) + (1 << 30)) >> 31;
-                    sum_next      = sum + temp_mul_next;
+                    temp_mul_next = ((power_spectrum * filter) + (1 << 30));
+                    sum_next      = sum + temp_mul_next[62:31];
                     k_next        = k + 1;
                     next_state    = CALC_SUM;
                 end else begin
@@ -143,7 +141,7 @@ module MEL #(
                 if (sum <= 0) begin
                     mel_value_energies = 8'h00; // Pode ajustar para saturar em 0
                 end else begin
-                    mel_value_energies = 6 * temp_log2;
+                    mel_value_energies = temp_log2;
                 end
 
                 next_state = LOAD;

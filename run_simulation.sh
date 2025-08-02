@@ -64,8 +64,9 @@ function run_fft_test {
 
 function run_mel_test {
    echo "Executando teste Mel"
-   verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module MEL tests/mel_tb.cpp rtl/mel.sv src/wav.c src/process.c src/q15.c src/q15_fft.c src/mel.c --CFLAGS "-I../lib"
-   ./obj_dir/VMEL
+   verilator tests/mel_tb.sv rtl/mel.sv rtl/base2log.sv \
+      -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
+   ./obj_dir/Vmel_tb
 }
 
 function run_dct_test {
