@@ -122,41 +122,41 @@ module fft_tb ();
         logic start_fft;
     `endif
 
-        fft_radix2 #(
-            .NFFT           (FFT_SIZE),
-            .INPUT_WIDTH    (SAMPLE_WIDTH),
-            .COMPLEX_WIDTH  (32)
-        ) u_fft (
-            .clk            (clk),
-            .rst_n          (rst_n),
+    fft_radix2 #(
+        .NFFT           (FFT_SIZE),
+        .INPUT_WIDTH    (SAMPLE_WIDTH),
+        .COMPLEX_WIDTH  (32)
+    ) u_fft (
+        .clk            (clk),
+        .rst_n          (rst_n),
 
-            .in_valid       (hamming_out_valid),
-            .frame_ptr_i    (frame_ptr),
-            .real_in        (hamming_sample),
+        .in_valid       (hamming_out_valid),
+        .frame_ptr_i    (frame_ptr),
+        .real_in        (hamming_sample),
 
     `ifdef DIRECT_FRAME
-            .in_valid       (fft_test_valid),
-            .frame_ptr_i    (fft_test_ptr),
-            .real_in        (fft_test_sample),
-            .start_i        (start_fft),
+        .in_valid       (fft_test_valid),
+        .frame_ptr_i    (fft_test_ptr),
+        .real_in        (fft_test_sample),
+        .start_i        (start_fft),
     `endif
-            .start_i        (hamming_done),
+        .start_i        (hamming_done),
 
 
-            .power_ptr_o    (fft_ptr),
-            .power_valid_o  (fft_power_valid),
-            .power_sample_o (fft_power_sample),
+        .power_ptr_o    (fft_ptr),
+        .power_valid_o  (fft_power_valid),
+        .power_sample_o (fft_power_sample),
 
-            .fft_done_o     (fft_done)
-        );
+        .fft_done_o     (fft_done)
+    );
 
-        logic [31:0] rfft_power_buffer [0: RFFT_SIZE];
+    logic [31:0] rfft_power_buffer [0: RFFT_SIZE];
 
-        always_ff @( posedge clk ) begin
-            if(fft_power_valid) begin
-                rfft_power_buffer[fft_ptr] <= fft_power_sample;
-            end
+    always_ff @( posedge clk ) begin
+        if(fft_power_valid) begin
+            rfft_power_buffer[fft_ptr] <= fft_power_sample;
         end
+    end
 
     task dump_buffer_to_hex;
         integer fd;
@@ -176,7 +176,7 @@ module fft_tb ();
         begin
             fd = $fopen("data/fft_dump.hex", "w");
             for (i = 0; i <= RFFT_SIZE; i = i + 1) begin
-            $fwrite(fd, "%h\n", rfft_power_buffer[i]);
+                $fwrite(fd, "%h\n", rfft_power_buffer[i]);
             end
             $fclose(fd);
         end
@@ -288,12 +288,12 @@ module fft_tb ();
         end else begin
             if (j < FFT_SIZE) begin
                 fft_test_sample <= fft_test_buffer[j];
-                fft_test_valid <= 1;
-                fft_test_ptr <= j[9:0];
-                j           <= j + 1;
+                fft_test_valid  <= 1;
+                fft_test_ptr    <= j[9:0];
+                j               <= j + 1;
             end else begin
                 fft_test_valid <= 0;
-                finished <= 1;
+                finished       <= 1;
             end
         end
     end

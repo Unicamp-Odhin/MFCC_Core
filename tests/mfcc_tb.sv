@@ -1,4 +1,5 @@
 `timescale 1ns/1ps
+
 module mfcc_tb ();
 
     localparam AUDIO_PATH       = "data/seno_440Hz.hex";
@@ -11,7 +12,6 @@ module mfcc_tb ();
     localparam FFT_SIZE         = 512;
     localparam NUM_FILTERS      = 40;
     localparam NUM_COEFFICIENTS = 12;
-    localparam SAMPLE_RATE      = 16000;
 
     logic clk;
     logic rst_n;
@@ -27,7 +27,6 @@ module mfcc_tb ();
         .NUM_FILTERS      (NUM_FILTERS),
         .FRAME_SIZE       (FRAME_SIZE),
         .FRAME_MOVE       (FRAME_MOVE),
-        .SAMPLE_RATE      (SAMPLE_RATE),
         .FFT_SIZE         (FFT_SIZE),
         .PCM_FIFO_DEPTH   (PCM_FIFO_DEPTH),
         .ALPHA            (ALPHA) // Alpha em Q1.15 (0.97 ≈ 31785)

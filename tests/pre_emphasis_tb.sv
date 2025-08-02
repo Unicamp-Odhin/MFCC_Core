@@ -1,4 +1,5 @@
 `timescale 1ns/1ps
+
 module pre_emphasis_tb ();
 
     localparam AUDIO_PATH     = "data/seno_440Hz.hex";
