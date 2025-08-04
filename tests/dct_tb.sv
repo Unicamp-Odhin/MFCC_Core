@@ -11,8 +11,6 @@ module dct_tb ();
     localparam FFT_SIZE         = 512;
     localparam NUM_FILTERS      = 40;
     localparam NUM_COEFFICIENTS = 12;
-    localparam SAMPLE_RATE      = 16000;
-    localparam RFFT_SIZE        = FFT_SIZE / 2;
 
     logic clk;
     logic rst_n;
@@ -62,7 +60,6 @@ module dct_tb ();
     logic window_rd_en;
     logic start_move;
     logic start_hamming;
-    logic idle;
 
     window_buffer #(
         .WIDTH                (SAMPLE_WIDTH),
@@ -314,6 +311,6 @@ module dct_tb ();
         end
     end
 
-    assign start_move = hamming_done && idle;
+    assign start_move = 0;
 
 endmodule

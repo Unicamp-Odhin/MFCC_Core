@@ -61,9 +61,7 @@ module window_buffer #(
             START: next_state = REQUEST_DATA;
             MOVE: next_state = REQUEST_DATA;
             REQUEST_DATA: begin
-                if(move_counter_is_zero) begin
-                    next_state = IDLE;
-                end else if (!fifo_empty_i) begin
+                if (!fifo_empty_i) begin
                     next_state = FILL;
                 end else begin
                     next_state = REQUEST_DATA;

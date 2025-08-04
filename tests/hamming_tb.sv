@@ -4,7 +4,7 @@ module hamming_tb ();
     localparam AUDIO_PATH     = "data/seno_440Hz.hex";
     localparam MAX_AUDIO_SIZE = 1600;
     localparam SAMPLE_WIDTH   = 16;
-    localparam PCM_FIFO_DEPTH = 256;
+    localparam PCM_FIFO_DEPTH = 2048;
     localparam FRAME_SIZE     = 400;
     localparam FRAME_MOVE     = 160;
     localparam ALPHA          = 16'd31785;
@@ -144,7 +144,7 @@ module hamming_tb ();
         end
     endtask
 
-    integer i;
+    integer i, j;
 
     initial begin
         $readmemh(AUDIO_PATH, samples);
@@ -153,66 +153,24 @@ module hamming_tb ();
 
         $display("Iniciando teste de Hamming");
 
-        start_move = 0;
         rst_n = 0;
         clk   = 0;
         #4;
         rst_n = 1;
 
         $display("Iniciando processamento de áudio");
-        
-        #(1000); // Espera 1ms para garantir que o reset foi aplicado
 
         $display("amostra 0 e 1 window: %h %h", u_window_buffer.buffer[0], u_window_buffer.buffer[1]);
 
-        //wait(u_window_buffer.current_state == 0);
-        wait(hamming_done);
-        dump_hamming_to_hex(0);
+        for(j = 0; j < 8; j++) begin
+            $display("Processando quadro %0d", j + 1);
 
-        #20; // Espera 10 ciclos de clock
+            wait(hamming_done);
 
-        wait(hamming_done);
-        dump_hamming_to_hex(1);
+            dump_hamming_to_hex(j);
 
-        #20; // Espera 10 ciclos de clock
-
-        wait(hamming_done);
-        dump_hamming_to_hex(2);
-
-        #20; // Espera 10 ciclos de clock
-
-        wait(hamming_done);
-        dump_hamming_to_hex(3);
-
-        #20; // Espera 10 ciclos de clock
-
-        wait(hamming_done);
-        dump_hamming_to_hex(4);
-
-        #20; // Espera 10 ciclos de clock
-
-        wait(hamming_done);
-        dump_hamming_to_hex(5);
-
-        #20; // Espera 10 ciclos de clock
-
-        wait(hamming_done);
-        dump_hamming_to_hex(6);
-
-        #20; // Espera 10 ciclos de clock
-
-        wait(hamming_done);
-        dump_hamming_to_hex(7);
-
-        #20; // Espera 10 ciclos de clock
-
-        wait(hamming_done);
-        dump_hamming_to_hex(8);
-
-        #20;
-
-        wait(window_valid_to_read == 0);
-        dump_hamming_to_hex(8);
+            #20;
+        end
 
         #20;
 

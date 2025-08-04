@@ -47,10 +47,51 @@ module mfcc_tb ();
         .mfcc_data_o  (coeficientes)
     );
 
-    task dump_mfcc_data();
+    task dump_mel_in_data(input int frame_id);
+        integer fd;
         integer i;
-        for (i = 0; i < NUM_COEFFICIENTS; i++) begin
-            $display("Coeficiente[%0d]: %4X", i, coeficientes[i].mfcc_sample);
+        string filename;
+        begin
+            // Monta o nome do arquivo com número
+            filename = $sformatf("data/mel_in_data_%0d.hex", frame_id);
+
+            fd = $fopen(filename, "w");
+            if (fd) begin
+                for (i = 0; i < 257; i = i + 1) begin
+                    $fwrite(fd, "%h\n", uut.u_mel.power_spectrum_mem[i]);
+                end
+                $fclose(fd);
+            end else begin
+                $display("Erro: não foi possível abrir o arquivo %s", filename);
+            end
+        end
+        
+    endtask
+
+    task dump_mfcc_data();
+        integer k;
+        for (k = 0; k < NUM_COEFFICIENTS; k++) begin
+            $display("Coeficiente[%0d]: %4X", k, coeficientes[k].mfcc_sample);
+        end
+    endtask
+
+    task dump_hamming_to_hex(input int frame_id);
+        integer fd;
+        integer i;
+        string filename;
+        begin
+            // Monta o nome do arquivo com número
+            filename = $sformatf("data/hamming_dump_mfcc_%0d.hex", frame_id);
+
+            fd = $fopen(filename, "w");
+            if (fd) begin
+            for (i = 0; i < FRAME_SIZE; i = i + 1) begin
+                //$fwrite(fd, "%h\n", uut.hamming_buffer[i]);
+            end
+            $fclose(fd);
+            end else begin
+            $display("Erro: não foi possível abrir o arquivo %s", filename);
+            end
         end
     endtask
 
@@ -77,19 +118,28 @@ module mfcc_tb ();
         for(j = 0; j < 2; j++) begin
             $display("Processando quadro %0d", j + 1);
 
-            wait(mfcc_done);
+            wait(uut.hamming_done);
+            //dump_hamming_to_hex(j);
+            wait(uut.fft_done);
+            //$display("FFT concluída para o quadro %0d", j + 1);
+            dump_mel_in_data(j);
 
-            #20;
+            wait(mfcc_done);
 
             dump_mfcc_data();
 
+            #10
+
             start_mfcc = 1;
-            #10; // Espera um pouco para garantir que o processamento comece
+            #20; // Espera um pouco para garantir que o processamento comece
             start_mfcc = 0;
 
             #20;
         end
-
+/*
+        wait(mfcc_done);
+        dump_mfcc_data();
+*/
         $display("Processamento concluído. Coeficientes MFCC:");
 
         #20;
