@@ -48,6 +48,9 @@ module window_buffer #(
         end
     end
 
+    logic move_counter_is_zero;
+    assign move_counter_is_zero = ~|move_counter;
+
     always_comb begin
         next_state = current_state;
 
@@ -57,9 +60,17 @@ module window_buffer #(
             end
             START: next_state = REQUEST_DATA;
             MOVE: next_state = REQUEST_DATA;
-            REQUEST_DATA: if(!fifo_empty_i) next_state = FILL;
-            FILL: begin 
-                if (~|move_counter) 
+            REQUEST_DATA: begin
+                if(move_counter_is_zero) begin
+                    next_state = IDLE;
+                end else if (!fifo_empty_i) begin
+                    next_state = FILL;
+                end else begin
+                    next_state = REQUEST_DATA;
+                end
+            end
+            FILL: begin
+                if (move_counter_is_zero)
                     next_state = IDLE;
                 else if (fifo_empty_i) 
                     next_state = REQUEST_DATA;
@@ -70,11 +81,14 @@ module window_buffer #(
         endcase
     end
 
+    logic diff_pointers, next_state_is_valid_to_read;
+    assign diff_pointers = (((read_ptr + internal_read_ptr) % FRAME_SIZE) != write_ptr);
+    assign valid_to_read_o = next_state_is_valid_to_read && diff_pointers;
+
     always_ff @(posedge clk or negedge rst_n) begin
         start_next_state_o <= 0;
         fifo_rd_en_o       <= 0;
-        valid_to_read_o    <= (current_state != MOVE) && 
-                                (current_state != START) && (read_ptr != write_ptr);
+        next_state_is_valid_to_read <= (next_state != MOVE) && (next_state != START) && diff_pointers;
 
         if (!rst_n) begin
             move_counter      <= 0;

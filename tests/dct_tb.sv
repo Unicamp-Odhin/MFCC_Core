@@ -145,13 +145,14 @@ module dct_tb ();
     logic mel_done, mel_valid;
     logic [5:0] mel_ptr;
     logic [7:0] mel_sample;
+    logic [7:0] mel_energies [0:NUM_FILTERS - 1];
 
     mel #(
         .NUM_FILTERS                (NUM_FILTERS), 
         .NFFT                       (FFT_SIZE),
         .INPUT_WIDTH                (32),
         .OUTPUT_WIDTH               (8)
-    ) dut (
+    ) u_mel (
         .clk                        (clk),
         .rst_n                      (rst_n),
 
@@ -167,6 +168,12 @@ module dct_tb ();
         .mel_prt_energies           (mel_ptr),
         .mel_valid                  (mel_valid)
     );
+
+    always_ff @( posedge clk ) begin
+        if(mel_valid) begin
+            mel_energies[mel_ptr] <= mel_sample;
+        end
+    end
 
     logic [$clog2(NUM_COEFFICIENTS) - 1:0] ceps_ptr;
     logic [15:0] ceps_sample;
@@ -225,6 +232,30 @@ module dct_tb ();
         end
     endtask
 
+    task dump_mel_energies_to_hex;
+        integer fd;
+        integer i;
+        begin
+            fd = $fopen("mel_energies_dump.hex", "w");
+            for (i = 0; i < NUM_FILTERS; i = i + 1) begin
+                $fwrite(fd, "%h\n", mel_energies[i]);
+            end
+            $fclose(fd);
+        end
+    endtask
+
+    task dump_coeficients_to_hex;
+        integer fd;
+        integer i;
+        begin
+            fd = $fopen("coeficients_dump.hex", "w");
+            for (i = 0; i < NUM_COEFFICIENTS; i = i + 1) begin
+                $fwrite(fd, "%h\n", coeficientes[i]);
+            end
+            $fclose(fd);
+        end
+    endtask
+
     integer i;
 
     initial begin
@@ -244,9 +275,12 @@ module dct_tb ();
         
         #(1000); // Espera 1ms para garantir que o reset foi aplicado
 
-        wait(idle);
+        wait(dct_done);
 
         #20; // Espera 10 ciclos de clock
+
+        dump_coeficients_to_hex();
+        dump_mel_energies_to_hex();
 
         //wait(!idle);
 

@@ -224,3 +224,6 @@ dumps/
 samples_dump.hex
 pre_emphasis.hex
 x.py
+slpp_all
+coeficients_dump.hex
+mel_energies_dump.hex

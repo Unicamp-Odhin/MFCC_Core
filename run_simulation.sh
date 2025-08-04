@@ -84,8 +84,8 @@ function run_mfcc_test {
    #rtl/MFCC_Core.sv rtl/complex_pkg.sv rtl/fft_radix2.sv rtl/dct.sv rtl/mel.sv rtl/base2log.sv rtl/hamming_window.sv rtl/pre_emphasis.sv rtl/window_buffer.sv \
    #rtl/fifo.sv src/wav.c src/process.c src/q15.c src/q15_fft.c src/mel.c src/dct.c --CFLAGS "-I../lib"
    #./obj_dir/VMFCC
-   verilator tests/mfcc_tb.sv rtl/complex_pkg.sv rtl/base2log.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/fft_radix2.sv rtl/mel.sv rtl/dct.sv rtl/MFCC_Core.sv \
-      -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
+   verilator rtl/mfcc_pkg.sv tests/mfcc_tb.sv rtl/complex_pkg.sv rtl/base2log.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/fft_radix2.sv rtl/mel.sv rtl/dct.sv rtl/MFCC_Core.sv \
+      -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique --top-module mfcc_tb
    ./obj_dir/Vmfcc_tb
 }
 
