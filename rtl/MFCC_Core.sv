@@ -197,7 +197,30 @@ module MFCC_Core #(
         end
     end
 
+    logic hamming_finished;
+    logic idle;
+
+    assign idle = (u_window_buffer.current_state == 0); // IDLE state
+/*
+    always_ff @( posedge clk or negedge rst_n ) begin : RESTARTIG_LOGIC
+        if (!rst_n) begin
+            start_move       <= 0;
+            hamming_finished <= 0;
+        end else begin
+            if(hamming_done) begin
+                hamming_finished <= 1;
+            end
+            start_move <= hamming_finished && idle;
+            if(hamming_finished && idle) begin
+                hamming_finished <= 0;
+            end
+        end
+    end
+*/
+
+    //assign start_move = hamming_done && idle;
     assign start_move  = start_i;
+    //assign start_move  = hamming_done && u_window_buffer.current_state == u_window_buffer.IDLE;
     assign mfcc_done_o = dct_done;
     assign mfcc_data_o = coeficientes;
 

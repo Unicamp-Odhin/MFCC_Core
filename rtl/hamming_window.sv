@@ -38,7 +38,7 @@ module hamming_window #(
 
     hamming_state_t hamming_state;
 
-    int calc_pointer;
+    integer calc_pointer;
     logic [NFFT_LOG2 - 1:0] frame_ptr;
 
     logic signed [SAMPLE_WIDTH - 1:0] hamming_coefficient;
@@ -70,19 +70,20 @@ module hamming_window #(
                 end
                 CALC: begin
                     rd_en_o <= 1;
-                    if(valid_to_read_i) begin
-                        temp_valid          <= 1;
-                        hamming_sample_temp <= frame_sample_i * 
-                            hamming_coefficient;
-                        calc_pointer        <= calc_pointer + 1;
-                        frame_ptr           <= frame_ptr    + 1;
-                        temp_ptr            <= frame_ptr;
-                    end
+                    
 
-                    if(calc_pointer == NUM_COEFFICIENTS - 1) begin
+                    if(calc_pointer == NUM_COEFFICIENTS) begin
                         rd_en_o       <= 0;
                         hamming_state <= PADDING;
                     end else begin
+                        if(valid_to_read_i) begin
+                            temp_valid          <= 1;
+                            hamming_sample_temp <= frame_sample_i * 
+                                hamming_coefficient;
+                            calc_pointer        <= calc_pointer + 1;
+                            frame_ptr           <= frame_ptr    + 1;
+                            temp_ptr            <= frame_ptr;
+                        end
                         hamming_state <= CALC;
                     end
                 end
