@@ -1,5 +1,7 @@
 `timescale 1ns/1ps
 
+import mfcc_pkg::mfcc_data_t;
+
 module mfcc_tb ();
 
     localparam AUDIO_PATH       = "data/seno_440Hz.hex";
@@ -21,6 +23,9 @@ module mfcc_tb ();
     logic [15:0] pcm_in;
     logic pcm_ready;
 
+    logic mfcc_done, start_mfcc;
+    mfcc_data_t coeficientes [0:NUM_COEFFICIENTS - 1];
+
     MFCC_Core #(
         .SAMPLE_WIDTH     (SAMPLE_WIDTH),
         .NUM_COEFFICIENTS (NUM_COEFFICIENTS),
@@ -35,45 +40,91 @@ module mfcc_tb ();
         .rst_n        (rst_n),
 
         .pcm_in       (pcm_in),
-        .pcm_ready_i  (pcm_ready)
+        .pcm_ready_i  (pcm_ready),
+
+        .start_i      (start_mfcc), // Inicia o processamento imediatamente
+        .mfcc_done_o  (mfcc_done),
+        .mfcc_data_o  (coeficientes)
     );
 
-    integer i;
+    task dump_mfcc_data();
+        integer i;
+        for (i = 0; i < NUM_COEFFICIENTS; i++) begin
+            $display("Coeficiente[%0d]: %4X", i, coeficientes[i].mfcc_sample);
+        end
+    endtask
+
+    integer i, j;
 
     initial begin
         $readmemh(AUDIO_PATH, samples);
         $dumpfile("build/mfcc_tb.vcd");
         $dumpvars(0, mfcc_tb);
+        //$monitor("i: %0d, pcm_in: %0d, pcm_ready: %b, mfcc_done: %b", i, pcm_in, pcm_ready, mfcc_done);
         
         $display("Iniciando teste do MFCC Core");
 
         rst_n = 0;
         clk   = 0;
-        #4;
+        #20;
         rst_n = 1;
+        start_mfcc = 0;
 
         $display("Iniciando processamento de áudio");
-        
-        #(1000); // Espera 1ms para garantir que o reset foi aplicado
+ 
+        #20
+
+        for(j = 0; j < 2; j++) begin
+            $display("Processando quadro %0d", j + 1);
+
+            wait(mfcc_done);
+
+            #20;
+
+            dump_mfcc_data();
+
+            start_mfcc = 1;
+            #10; // Espera um pouco para garantir que o processamento comece
+            start_mfcc = 0;
+
+            #20;
+        end
+
+        $display("Processamento concluído. Coeficientes MFCC:");
+
+        #20;
 
         $finish;
     end
 
-    always #1 clk = ~clk;
+    always #5 clk = ~clk; // Clock de 100MHz
+
+    localparam SAMPLE_INTERVAL = 6250; // ciclos de clock (100MHz / 16kHz)
+
+    integer sample_timer;
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            pcm_ready <= 0;
-            pcm_in    <= 0;
+            i          <= 0;
+            pcm_ready  <= 0;
+            pcm_in     <= 0;
+            sample_timer <= 0;
         end else begin
             if (i < MAX_AUDIO_SIZE) begin
-                pcm_in    <= samples[i];
-                pcm_ready <= 1;
-                i         <= i + 1;
+                if (sample_timer == 0) begin
+                    pcm_in     <= samples[i];
+                    pcm_ready  <= 1;
+                    i          <= i + 1;
+                    sample_timer <= SAMPLE_INTERVAL - 1;
+                end else begin
+                    pcm_ready  <= 0;
+                    sample_timer <= sample_timer - 1;
+                end
             end else begin
                 pcm_ready <= 0;
             end
         end
     end
+
 
 endmodule

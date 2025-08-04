@@ -1,5 +1,7 @@
 `timescale 1ns/1ps
 
+import mfcc_pkg::mfcc_data_t;
+
 module MFCC_Core #(
     parameter SAMPLE_WIDTH     = 16,       // Largura do sample de áudio
     parameter NUM_COEFFICIENTS = 12,       // Número de coeficientes MFCC
@@ -15,9 +17,14 @@ module MFCC_Core #(
 
     // audio input
     input  logic [SAMPLE_WIDTH - 1:0] pcm_in,
-    input  logic pcm_ready_i
+    input  logic pcm_ready_i,
+    
+    // control input
+    input  logic start_i,
+
+    output logic mfcc_done_o,
+    output mfcc_data_t mfcc_data_o [0:NUM_COEFFICIENTS - 1]
 );
-    localparam RFFT_SIZE = FFT_SIZE/2;
 
     logic pre_emphasis_valid;
     logic [SAMPLE_WIDTH - 1:0] pre_emphasized_signal;
@@ -140,7 +147,7 @@ module MFCC_Core #(
         .NFFT                       (FFT_SIZE),
         .INPUT_WIDTH                (32),
         .OUTPUT_WIDTH               (8)
-    ) dut (
+    ) u_mel (
         .clk                        (clk),
         .rst_n                      (rst_n),
 
@@ -190,6 +197,8 @@ module MFCC_Core #(
         end
     end
 
-    assign start_move = 0;
+    assign start_move  = start_i;
+    assign mfcc_done_o = dct_done;
+    assign mfcc_data_o = coeficientes;
 
 endmodule

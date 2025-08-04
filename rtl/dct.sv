@@ -51,6 +51,10 @@ module dct #(
     logic signed [63:0] mul_result;
     logic signed [31:0] acc;
     dct_state_t dct_state;
+    logic [63:0] signed_filter, cos;
+
+    assign signed_filter = {{56{mel_filters[n_ptr][INPUT_WIDTH - 1]}},mel_filters[n_ptr]};
+    assign cos           = {{32{cos_lut[k_ptr][n_ptr][31]}},cos_lut[k_ptr][n_ptr]};
 
     always_ff @(posedge clk or negedge rst_n ) begin : DCT_FSM
         dct_done_o   <= 0;
@@ -75,11 +79,11 @@ module dct #(
                 end
 
                 PROCESSING: begin
-                    mul_result <= $signed(mel_filters[n_ptr]) * $signed(cos_lut[k_ptr][n_ptr]) + (1 << 30);
+                    mul_result <= (signed_filter * cos) + (1 << 30); // Arredondamento
                     acc <= acc + mul_result[62:31];
                     n_ptr <= n_ptr + 1;
 
-                    if(n_ptr == NUM_FILTERS - 1) begin
+                    if(n_ptr == NUM_FILTERS) begin
                         dct_state <= UPDATE_K;
                     end
                 end

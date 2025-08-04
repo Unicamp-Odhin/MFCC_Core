@@ -110,7 +110,7 @@ module mel #(
 
         case (state)
             IDLE: begin
-                mel_valid     = 1'b1;
+                mel_valid     = 1'b0;
                 sum_next      = 0;
                 i_next        = 0;
                 i_total_next  = 0;
@@ -120,9 +120,9 @@ module mel #(
             end
 
             LOAD: begin
-                mel_valid         = 1'b1;
+                mel_valid          = 1'b0;
                 mel_value_energies = '0;
-                mel_prt_energies  = i;
+                mel_prt_energies   = i;
 
                 if (i < NUM_FILTERS) begin
                     k_next      = mel_memory[i_total][8:0];
@@ -133,7 +133,7 @@ module mel #(
             end
 
             CALC_SUM: begin
-                mel_valid         = 1'b1;
+                mel_valid         = 1'b0;
                 mel_value_energies = '0;
                 mel_prt_energies  = i;
 

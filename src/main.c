@@ -33,6 +33,18 @@ void dump_buffer_to_hex(const char *file_name, int32_t *buffer, int size) {
     fclose(fp);
 }
 
+void dump_short_int_buffer_to_hex(const char *file_name, int16_t *buffer, int size) {
+    FILE *fp = fopen(file_name, "w");
+    if (!fp) {
+        perror("fopen");
+        return;
+    }
+    for (int i = 0; i < size; i++) {
+        fprintf(fp, "%04x\n", buffer[i] & 0xFFFF);
+    }
+    fclose(fp);
+}
+
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <filename>.wav\n", argv[0]);
@@ -59,6 +71,13 @@ int main(int argc, char *argv[]) {
     printf("Frame size: %d samples\n", frame_size);
     printf("Frame step: %d samples\n", frame_step);
     printf("Number of samples: %d\n", num_samples);
+
+    dump_buffer_to_hex("data/samples_dump.hex", (int32_t *)samples, num_samples);
+    
+    pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), ALPHA);
+
+    int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step, &num_frames);
+
     printf("Number of frames: %d\n", num_frames);
     int num_to_print = (num_samples < 20) ? num_samples : 20;
     printf("First 20 samples in sequence: ");
@@ -66,13 +85,6 @@ int main(int argc, char *argv[]) {
         printf("%X ", samples[i]);
     }
     printf("\n");
-
-    dump_buffer_to_hex("data/samples_dump.hex", (int32_t *)samples, num_samples);
-    
-    pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), ALPHA);
-
-
-    int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step, &num_frames);
 
     for(int i = 0; i < num_frames; i++) {
         char file_name[50];
@@ -183,7 +195,8 @@ int main(int argc, char *argv[]) {
         int8_t energies[NUM_FILTERS];
         init_cos_lut();
         // }
-        for (int i = 0; i < num_frames; i++) {            
+        for (int i = 0; i < num_frames; i++) {
+            char file_name[50];
             optimization_apply_q15(power_spectrum[i], filterbank_15, energies);
 
             for (int j = 0; j < NUM_FILTERS; j++) {
@@ -191,6 +204,8 @@ int main(int argc, char *argv[]) {
             }
             int16_t ceps[NUM_CEPS];
             dct_fixed(energies, NUM_FILTERS, ceps);
+            snprintf(file_name, sizeof(file_name), "dumps/ceps_%d.hex", i);
+            dump_short_int_buffer_to_hex(file_name, ceps, NUM_CEPS);
 
             for (int j = 0; j < NUM_CEPS; j++) {
                 fprintf(fp4, "%d%c", ceps[j], (j == NUM_CEPS - 1) ? '\n' : ' ');
