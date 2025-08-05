@@ -11,6 +11,19 @@ package complex_pkg;
         logic signed [31:0] im;
     } complex;
 
+    function automatic complex to_complex(logic signed [63:0] num);
+        complex c;
+        c.re = num[63:32];
+        c.im = num[31:0];
+        return c;
+    endfunction
+
+    function automatic logic signed [63:0] to_fixed(complex c);
+        logic signed [63:0] num;
+        num = {c.re, c.im};
+        return num;
+    endfunction
+
     // Soma de números complexos
     function automatic complex c_add(complex a, complex b);
         c_add.re = a.re + b.re;

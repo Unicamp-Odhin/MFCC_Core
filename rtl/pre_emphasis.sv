@@ -16,7 +16,7 @@ module pre_emphasis #(
 
     logic signed [2 * SAMPLE_WIDTH - 1:0] x_prev;  // Resultado da multiplicação temporária (32 bits para evitar overflow)
 
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge clk ) begin
         if (!rst_n) begin
             x_prev <= 'd0;
             y_out  <= 'd0;

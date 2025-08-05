@@ -35,8 +35,10 @@ module fft_radix2 #(
     localparam RFFT_SIZE  = NFFT/2;
     localparam NFFT_LOG22  = $clog2(NFFT_LOG2);
 
-    complex x[0 : NFFT - 1];
-    complex twiddles[0 : NFFT / 2];
+    //complex x[0 : NFFT - 1];
+    
+    logic [COMPLEX_WIDTH * 2 - 1 : 0] x[0:NFFT - 1]; // Usando 64 bits para cada número complexo (32 bits para parte real e 32 bits para parte imaginária)
+    logic [2 * COMPLEX_WIDTH - 1: 0] twiddles[0 : NFFT / 2];
 
     logic [NFFT_LOG2 - 1:0] frame_ptr_reversal;
 
@@ -44,12 +46,6 @@ module fft_radix2 #(
         $readmemh("tables/twiddles.hex", twiddles);
     end
 
-    always_ff @(posedge clk) begin : BUFFER_INPUT_LOGIC
-        if(in_valid) begin
-            x[frame_ptr_reversal].re <= {{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}, real_in}; // Extensão de sinal
-            x[frame_ptr_reversal].im <= 0; // Parte imaginária é zero para entrada real
-        end
-    end
     typedef enum logic [1:0] {
         IDLE,
         PROCESSING,
@@ -126,7 +122,7 @@ module fft_radix2 #(
     assign odd_ptr_sum  = sched.k + sched.j + sched.half_m;
 
     // Main control
-    always_ff @(posedge clk or negedge rst_n) begin : FFT_CALCULATION_PIPELINED
+    always_ff @(posedge clk) begin : FFT_CALCULATION_PIPELINED
         if (!rst_n) begin
             fft_state           <= IDLE;
             sched.stage         <= 1;
@@ -168,9 +164,9 @@ module fft_radix2 #(
 
                 PROCESSING: begin
                     // Pipeline Stage 1: Read and schedule
-                    stage1.even      <= x[even_ptr_sum[NFFT_LOG2 - 1:0]];
-                    stage1.odd       <= x[odd_ptr_sum[NFFT_LOG2 - 1:0]];
-                    stage1.twiddle   <= twiddles[sched.twiddle_index[NFFT_LOG2 - 1:0]];
+                    stage1.even      <= to_complex(x[even_ptr_sum[NFFT_LOG2 - 1:0]]);
+                    stage1.odd       <= to_complex(x[odd_ptr_sum[NFFT_LOG2 - 1:0]]);
+                    stage1.twiddle   <= to_complex(twiddles[sched.twiddle_index[NFFT_LOG2 - 1:0]]);
                     stage1.meta      <= sched;
 
                     // Scheduler update
@@ -203,7 +199,7 @@ module fft_radix2 #(
                     end else begin
                         // Power pipeline Stage 1
                         power_ptr          <= power_ptr + 1;
-                        power_stage1       <= x[power_ptr[NFFT_LOG2 - 1:0]];
+                        power_stage1       <= to_complex(x[power_ptr[NFFT_LOG2 - 1:0]]);
                         power_ptr_stage1   <= power_ptr;
                         power_valid_stage1 <= 1;
 
@@ -263,8 +259,16 @@ module fft_radix2 #(
 
     // FFT Pipeline Stage 4: Writeback
     always_ff @(posedge clk) begin
-        x[stage3_addsub.addr_even[NFFT_LOG2 - 1:0]] <= stage3_addsub.sum;
-        x[stage3_addsub.addr_odd[NFFT_LOG2 - 1:0]]  <= stage3_addsub.diff;
+        if(in_valid) begin
+            //x[frame_ptr_reversal].re <= {{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}, real_in}; // Extensão de sinal
+            //x[frame_ptr_reversal].im <= 0; // Parte imaginária é zero para entrada real
+            x[frame_ptr_reversal] <= {{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}, real_in, 32'h0};
+        end else if(fft_state == PROCESSING) begin
+            //x[stage3_addsub.addr_even[NFFT_LOG2 - 1:0]] <= stage3_addsub.sum;
+            //x[stage3_addsub.addr_odd[NFFT_LOG2 - 1:0]]  <= stage3_addsub.diff;
+            x[stage3_addsub.addr_even[NFFT_LOG2 - 1:0]] <= to_fixed(stage3_addsub.sum);
+            x[stage3_addsub.addr_odd[NFFT_LOG2 - 1:0]]  <= to_fixed(stage3_addsub.diff);
+        end
     end
 
     genvar k;

@@ -40,7 +40,7 @@ module window_buffer #(
     int move_counter;
 
     // Controle de estados
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge clk) begin
         if (!rst_n) begin
             current_state <= START;
         end else begin
@@ -83,7 +83,7 @@ module window_buffer #(
     assign diff_pointers = (((read_ptr + internal_read_ptr) % FRAME_SIZE) != write_ptr);
     assign valid_to_read_o = next_state_is_valid_to_read && diff_pointers;
 
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge clk ) begin
         start_next_state_o <= 0;
         fifo_rd_en_o       <= 0;
         next_state_is_valid_to_read <= (next_state != MOVE) && (next_state != START) && diff_pointers;
@@ -125,7 +125,7 @@ module window_buffer #(
         end
     end
 
-    always_ff @( posedge clk or negedge rst_n ) begin
+    always_ff @( posedge clk ) begin
         if(!rst_n) begin
             read_ptr <= 0;
         end else begin
