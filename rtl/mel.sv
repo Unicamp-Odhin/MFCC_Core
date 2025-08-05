@@ -69,7 +69,7 @@ module mel #(
     state_t state, next_state;
 
 
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge clk ) begin
         if (!rst_n) begin
             state      <= IDLE;
             sum        <= 0;

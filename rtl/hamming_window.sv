@@ -47,7 +47,7 @@ module hamming_window #(
     logic temp_valid;
     logic done;
 
-    always_ff @( posedge clk or negedge rst_n ) begin
+    always_ff @( posedge clk ) begin
         rd_en_o     <= 0;
         done        <= 0;
         done_o      <= done;
@@ -73,8 +73,9 @@ module hamming_window #(
                     
 
                     if(calc_pointer == NUM_COEFFICIENTS) begin
-                        rd_en_o       <= 0;
-                        hamming_state <= PADDING;
+                        hamming_sample_temp <= 0;
+                        rd_en_o             <= 0;
+                        hamming_state       <= PADDING;
                     end else begin
                         if(valid_to_read_i) begin
                             temp_valid          <= 1;

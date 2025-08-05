@@ -56,7 +56,7 @@ module dct #(
     assign signed_filter = {{56{mel_filters[n_ptr][INPUT_WIDTH - 1]}},mel_filters[n_ptr]};
     assign cos           = {{32{cos_lut[k_ptr][n_ptr][31]}},cos_lut[k_ptr][n_ptr]};
 
-    always_ff @(posedge clk or negedge rst_n ) begin : DCT_FSM
+    always_ff @(posedge clk ) begin : DCT_FSM
         dct_done_o   <= 0;
         dct_valid_o  <= 0;
 
