@@ -102,6 +102,7 @@ module mfcc_tb ();
         $dumpfile("build/mfcc_tb.vcd");
         $dumpvars(0, mfcc_tb);
         //$monitor("i: %0d, pcm_in: %0d, pcm_ready: %b, mfcc_done: %b", i, pcm_in, pcm_ready, mfcc_done);
+        //$monitor("conflito : %b", uut.u_fft.conflict);
         
         $display("Iniciando teste do MFCC Core");
 
@@ -115,7 +116,7 @@ module mfcc_tb ();
  
         #20
 
-        for(j = 0; j < 2; j++) begin
+        for(j = 0; j < 1; j++) begin
             $display("Processando quadro %0d", j + 1);
 
             wait(uut.hamming_done);
@@ -153,7 +154,7 @@ module mfcc_tb ();
 
     integer sample_timer;
 
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge clk) begin
         if (!rst_n) begin
             i          <= 0;
             pcm_ready  <= 0;
