@@ -227,3 +227,8 @@ x.py
 slpp_all
 coeficients_dump.hex
 mel_energies_dump.hex
+rtl/fft_radix.sv
+k.py
+y.py
+renaming.c
+enderecos.txt
