@@ -1,0 +1,90 @@
+site_name: MFCC Core
+site_author: Julio Avelar
+site_description: MFCC Core written in SystemVerilog
+site_url: https://unicamp-odhin.github.io/MFCC_Core/
+repo_name: MFCC_Core
+repo_url: https://github.com/Unicamp-Odhin/MFCC_Core
+copyright: CC BY-SA 4.0
+theme: 
+  name: material
+  highlightjs: true
+  #language: en
+  features:
+    - content.code.copy
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - toc.integrate
+    - navigation.top
+    - navigation.footer
+  palette:
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      linenums: true
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+      use_pygments: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format  
+  - def_list
+  - pymdownx.tasklist:
+      custom_checkbox: true
+      clickable_checkbox: true
+  - tables
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Unicamp-Odhin
+  palette: 
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7 
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+plugins:
+  - search:
+      lang:
+        - en
+        - pt
+  - i18n:
+      languages:
+        - locale: en
+          name: English
+        - locale: pt
+          name: Português
+          default: true
+
+nav:
+  - Home : index.md
+  - Getting Started: get_started.md
+  - About: about.md
+  - Contributing: contributing.md
