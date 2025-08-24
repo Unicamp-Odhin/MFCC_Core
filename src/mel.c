@@ -14,6 +14,24 @@ static inline int hz_to_bin(float freq, int sample_rate) {
     return (int)((freq / (sample_rate / 2.0f)) * (NFFT / 2));
 }
 
+void save_filterbank_to_file(float filterbank[NUM_FILTERS][NFFT/2 + 1]) {
+    const char *filepath = "src/filter_bank.dat";
+    FILE *file = fopen(filepath, "w");
+    if (!file) {
+        perror("Erro ao abrir o arquivo para salvar o filterbank");
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < NUM_FILTERS; i++) {
+        for (int j = 0; j < NFFT / 2 + 1; j++) {
+            fprintf(file, "%f ", filterbank[i][j]);
+        }
+        fprintf(file, "\n");
+    }
+
+    fclose(file);
+}
+
 // Carrega o filterbank da memória a partir de um arquivo
 void load_filterbank_from_file(float filterbank[NUM_FILTERS][NFFT/2 + 1]) {
     const char *filepath = "src/filter_bank.dat";
