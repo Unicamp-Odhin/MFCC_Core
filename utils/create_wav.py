@@ -2,8 +2,10 @@ import numpy as np
 from scipy.io import wavfile
 
 # Parâmetros
+samples = 400
+
 sample_rate = 16000       # Hz
-duration = 0.1           
+duration = samples / sample_rate         
 frequency = 440           # Hz (nota A4)
 amplitude = 0.5           # valor entre 0 e 1
 
