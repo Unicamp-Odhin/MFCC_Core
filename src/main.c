@@ -13,7 +13,7 @@
 #define FRAME_SIZE 0.025 // seconds
 #define FRAME_STEP 0.01 // seconds
 
-void dump_buffer_to_hex(const char *file_name, int16_t *buffer, int size) {
+void dump_buffer_to_hex_16(const char *file_name, int16_t *buffer, int size) {
     FILE *fp = fopen(file_name, "w");
     if (!fp) {
         perror("fopen");
@@ -21,6 +21,18 @@ void dump_buffer_to_hex(const char *file_name, int16_t *buffer, int size) {
     }
     for (int i = 0; i < size; i++) {
         fprintf(fp, "%04x\n", buffer[i]);
+    }
+    fclose(fp);
+}
+
+void dump_buffer_to_hex_32(const char *file_name, int32_t *buffer, int size) {
+    FILE *fp = fopen(file_name, "w");
+    if (!fp) {
+        perror("fopen");
+        return;
+    }
+    for (int i = 0; i < size; i++) {
+        fprintf(fp, "%04x\n", buffer[i] & 0xFFFF);
     }
     fclose(fp);
 }
@@ -64,7 +76,7 @@ int main(int argc, char *argv[]) {
     printf("Frame step: %d samples\n", frame_step);
     printf("Number of samples: %d\n", num_samples);
 
-    dump_buffer_to_hex("data/samples_dump.hex", samples, num_samples);
+    dump_buffer_to_hex_16("data/samples_dump.hex", samples, num_samples);
     
     printf("AQUI\n");
 
@@ -83,7 +95,7 @@ int main(int argc, char *argv[]) {
     for(int i = 0; i < num_frames; i++) {
         char file_name[50];
         snprintf(file_name, sizeof(file_name), "dumps/frame_%d.hex", i);
-        // dump_buffer_to_hex(file_name, frames[i], frame_size);
+        dump_buffer_to_hex_32(file_name, frames[i], frame_size);
     }
 
 
@@ -101,7 +113,7 @@ int main(int argc, char *argv[]) {
     for(int i = 0; i < num_frames; i++) {
         char file_name[50];
         snprintf(file_name, sizeof(file_name), "dumps/hamming_frame_%d.hex", i);
-        // dump_buffer_to_hex(file_name, frames[i], frame_size);
+        dump_buffer_to_hex_32(file_name, frames[i], frame_size);
     }
 
     FILE *fp = fopen("data/preemphasis.dat", "w");
@@ -126,7 +138,7 @@ int main(int argc, char *argv[]) {
         fft_q15_real_power(frames[i], frame_size, power_spectrum[i]);
     }
 
-    // dump_buffer_to_hex("data/power_spectrum.hex", power_spectrum[0], NFFT/2 + 1);
+    dump_buffer_to_hex_32("data/power_spectrum.hex", power_spectrum[0], NFFT/2 + 1);
     
     // Salvar o primeiro frame em arquivo para plot
     FILE *fp1 = fopen("data/frame1.dat", "w");
