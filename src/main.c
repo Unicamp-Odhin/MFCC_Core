@@ -54,8 +54,8 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Usage: %s <filename>.wav\n", argv[0]);
         return 1;
     }
-    
-    system("mkdir -p data");
+
+    // system("mkdir -p data");
 
     int16_t *samples = NULL;
     WavHeader *header = open_wav_file(argv[1], &samples);
@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
     int frame_size  = (int)ceil(sample_rate * FRAME_SIZE);
     int frame_step  = (int)ceil(sample_rate * FRAME_STEP);
     int num_samples = header->subchunk2Size / sizeof(uint16_t);
-    int num_frames;
+    int num_frames = (int)ceil((double)(num_samples - frame_size) / frame_step) + 1;
     
     #ifdef CONFIG_VERBOSE 
         printf("Número total de frames: %d\n", num_frames);
@@ -88,6 +88,7 @@ int main(int argc, char *argv[]) {
 
     int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step, &num_frames);
 
+
     #ifdef CONFIG_LOG 
         for(int i = 0; i < num_frames; i++) {
             char file_name[50];
@@ -97,12 +98,12 @@ int main(int argc, char *argv[]) {
     #endif
 
 
-    if (!frames) {
-        fprintf(stderr, "Failed to create frames from samples.\n");
-        free(samples);
-        free(header);
-        return 1;
-    }
+    // if (!frames) {
+    //     fprintf(stderr, "Failed to create frames from samples.\n");
+    //     free(samples);
+    //     free(header);
+    //     return 1;
+    // }
 
     for(int i = 0; i < num_frames; i++) {
         hamming_window(frames[i], frame_size);
@@ -156,23 +157,27 @@ int main(int argc, char *argv[]) {
     #endif
 
 
-    FILE *fp3 = fopen("data/spectrogram_matrix.dat", "w");
     FILE *fp4 = fopen("data/ceps_matrix.dat", "w");
-    if (!fp3 || !fp4) {
+    if (!fp4) {
         perror("Erro ao abrir arquivos de saída");
         return 1;
     }
 
     int8_t energies[NUM_FILTERS];
     init_cos_lut();
-    // }
+
     for (int i = 0; i < num_frames; i++) {
         char file_name[50];
         optimization_apply_q15(power_spectrum[i], energies);
+        
+        #ifdef CONFIG_LOG
+        FILE *fp3 = fopen("data/spectrogram_matrix.dat", "w");
+            for (int j = 0; j < NUM_FILTERS; j++) {
+                fprintf(fp3, "%d%c", energies[j], (j == NUM_FILTERS - 1) ? '\n' : ' ');
+            }
+            fclose(fp3);
+        #endif
 
-        for (int j = 0; j < NUM_FILTERS; j++) {
-            fprintf(fp3, "%d%c", energies[j], (j == NUM_FILTERS - 1) ? '\n' : ' ');
-        }
         int16_t ceps[NUM_CEPS];
         dct_fixed(energies, NUM_FILTERS, ceps);
         snprintf(file_name, sizeof(file_name), "dumps/ceps_%d.hex", i);
@@ -183,13 +188,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    fclose(fp3);
     fclose(fp4);
 
-
-    free(frames);
-    free(samples);
-    free(header);
+    // free(frames);
+    // free(samples);
+    // free(header);
 
     return 0;
 }
