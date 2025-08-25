@@ -24,7 +24,6 @@ if [ ! -f "./build/main.elf" ]; then
 fi
 
 echo "Benchmark iniciado para $N amostras usando arquivo: $WAV_FILE"
-echo "=========================================================="
 
 # Arrays para armazenar os resultados
 declare -a cycles_array
@@ -32,8 +31,6 @@ declare -a time_array
 
 # Coletar dados para N amostras
 for ((i=1; i<=$N; i++)); do
-    echo -n "Execução $i/$N..."
-    
     # Executar e capturar a saída do perf stat
     result=$(perf stat -e cycles:u,task-clock:u ./build/main.elf "$WAV_FILE" 2>&1)
     
@@ -50,20 +47,16 @@ for ((i=1; i<=$N; i++)); do
     cycles_array[$i]=$cycles
     time_array[$i]=$time_sec
     
-    echo " Ciclos: $cycles, Tempo: ${time_sec}s"
 done
 
-echo ""
 echo "=========================================================="
 echo "RESULTADOS DO BENCHMARK:"
-echo "=========================================================="
 
 # Calcular totais e médias
 total_cycles=0
 total_time=0
 
 for ((i=1; i<=$N; i++)); do
-    echo "Amostra $i: ${cycles_array[$i]} ciclos, ${time_array[$i]}s"
     total_cycles=$((total_cycles + cycles_array[$i]))
     total_time=$(echo "scale=6; $total_time + ${time_array[$i]}" | bc)
 done
