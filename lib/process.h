@@ -1,3 +1,7 @@
+#pragma once
+#include <stdint.h>
+#include <stddef.h>
+
 #ifndef __PROCESS_H__
 #define __PROCESS_H__
 
@@ -44,9 +48,24 @@ static const int16_t hamming_window_lut[306] = {
 };
 
 int ceil_div(int a, int b);
+
 void hamming_window(int32_t *frame, int frame_size);
+
 int32_t** frame_signal_int(const int16_t *samples, int num_samples, int frame_size, int frame_step, int *out_num_frames);
+
+
+#pragma once
+#include <stdint.h>
+#include <stddef.h>
+
+#ifdef CONFIG_ROCm
+// Kernel HIP
+__global__ void pre_emphasis(int16_t *samples, size_t sample_count, int16_t alpha);
+#else
+// Função CPU
 void pre_emphasis(int16_t *samples, size_t sample_count, int16_t alpha);
+#endif
+
 
 #ifdef __cplusplus
 }

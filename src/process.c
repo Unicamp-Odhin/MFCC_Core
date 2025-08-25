@@ -5,6 +5,7 @@
 #include <math.h>
 #include "process.h"
 
+#include <hip/hip_runtime.h>
 
 #define Q15_SCALE 32768
 
@@ -108,6 +109,7 @@ int32_t** frame_signal_int(const int16_t *samples, int num_samples, int frame_si
     return frames;
 }
 
+#ifndef CONFIG_ROCm
 void pre_emphasis(int16_t *samples, size_t sample_count, int16_t alpha) {
     int32_t temp;
     for (size_t i = sample_count - 1; i > 0; i--) {
@@ -118,3 +120,4 @@ void pre_emphasis(int16_t *samples, size_t sample_count, int16_t alpha) {
         samples[i] = samples[i] - temp; // Ajusta para Q15
     }
 }
+#endif

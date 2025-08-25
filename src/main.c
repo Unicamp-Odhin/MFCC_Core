@@ -9,6 +9,11 @@
 #include "mel.h"
 #include "dct.h"
 
+#ifdef CONFIG_ROCm
+#include <hip/hip_runtime.h>
+#endif
+
+
 #define ALPHA 31785
 #define FRAME_SIZE 0.025 // seconds
 #define FRAME_STEP 0.01 // seconds
@@ -84,7 +89,23 @@ int main(int argc, char *argv[]) {
         dump_buffer_to_hex_16("data/samples_dump.hex", samples, num_samples);
     #endif
 
-    pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), ALPHA);
+    #ifdef CONFIG_ROCm
+        int16_t *d_samples;
+        hipMalloc(&d_samples, sample_count * sizeof(int16_t));
+
+        hipMemcpy(d_samples, samples, sample_count * sizeof(int16_t), hipMemcpyHostToDevice);
+
+        hipLaunchKernelGGL(pre_emphasis,
+                        dim3(1), dim3(1), 0, 0,
+                        d_samples, sample_count, ALPHA);
+
+        hipMemcpy(samples, d_samples, sample_count * sizeof(int16_t), hipMemcpyDeviceToHost);
+
+        hipFree(d_samples);
+    #else
+        pre_emphasis(samples, sample_count, ALPHA);
+    #endif
+
 
     int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step, &num_frames);
 
