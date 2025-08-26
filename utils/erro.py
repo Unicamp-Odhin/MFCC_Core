@@ -72,5 +72,52 @@ try:
     plt.tight_layout()
     plt.savefig("logs/histograma_mae_completo.png", dpi=300)
     plt.show()
+
+    # Gráfico de pontos para os 5 primeiros arquivos
+    plt.figure(figsize=(10, 10))
+
+    colors = ['blue', 'orange', 'green', 'red', 'purple']  # Cores específicas para cada conjunto
+    offset = 0  # Contador para deslocar os pontos de cada arquivo
+    for i, fname in enumerate(sorted(os.listdir(dir_c))[0:3]):
+        path_c = os.path.join(dir_c, fname)
+        path_py = os.path.join(dir_py, fname)
+
+        if not os.path.exists(path_py):
+            continue
+
+        try:
+            # Lê os valores
+            data_c = np.loadtxt(path_c)
+            data_py = np.loadtxt(path_py)
+
+            # Garante que tenham o mesmo tamanho
+            min_len = min(len(data_c), len(data_py))
+            data_c = data_c[1:min_len]
+            data_py = data_py[1:min_len]
+
+            # Cria um eixo x com deslocamento
+            x = np.arange(len(data_c)) + offset
+
+            # Plota os pontos sequencialmente com deslocamento
+            label_c = fname.replace("_", " ").replace("00", "").replace(".hex", "").strip()
+            label_py = fname.replace("_", " ").replace("00", "").replace(".hex", "").strip()
+            plt.scatter(x, data_c, label=f"{label_c} (Ponto Fixo)", color=colors[i % len(colors)], alpha=0.7, marker='o')
+            plt.plot(x, data_py, label=f"{label_py} (Float)", color=colors[i % len(colors)], alpha=0.7)
+
+            # Incrementa o deslocamento para o próximo arquivo
+            offset += len(data_c)
+        except Exception as e:
+            print(f"Erro ao processar o arquivo {fname}: {e}")
+
+    plt.xlabel("Amostras")
+    plt.ylabel("Coeficientes")
+    plt.legend()
+    plt.tick_params(axis='both', which='major', labelsize=12)  # Aumenta o tamanho dos números da escala
+    plt.grid(alpha=0.5)
+
+    plt.tight_layout()
+    plt.savefig("logs/comparacao_pontos.svg", format="svg", dpi=300)
+    plt.show()
+
 except Exception as e:
     print(f"Erro ao ler o arquivo CSV ou gerar os histogramas: {e}")
