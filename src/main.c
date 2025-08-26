@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
 
         int32_t ceps[NUM_CEPS];
         dct_fixed(energies, NUM_FILTERS, ceps);
-        snprintf(file_name, sizeof(file_name), "dumps/c/ceps_%d.hex", i);
+        snprintf(file_name, sizeof(file_name), "dumps/c/ceps_%03d.hex", i);
         dump_short_int_buffer_to_hex(file_name, ceps, NUM_CEPS);
 
         for (int j = 0; j < NUM_CEPS; j++) {
