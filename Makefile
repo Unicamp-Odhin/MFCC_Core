@@ -1,4 +1,5 @@
 CC = ccache gcc
+HIPCC = hipcc
 
 # Flags padrão
 CFLAGS = -O3 -march=native
@@ -48,6 +49,17 @@ ifeq ($(USE_FLOAT),1)
     CFLAGS += -DCONFIG_USE_FLOAT
 endif
 
+
+ifeq ($(ROCM),1)
+    CC = $(HIPCC)
+    CFLAGS += -DCONFIG_ROCm
+    ROC_SOURCES = roc/process.hip
+    ROC_OBJECTS = $(ROC_SOURCES:roc/%.hip=$(BUILD_DIR)/%.o)
+else
+    ROC_OBJECTS =
+endif
+
+
 # Mostrar flags finais
 $(info [INFO] CFLAGS: $(CFLAGS))
 
@@ -55,20 +67,25 @@ $(info [INFO] CFLAGS: $(CFLAGS))
 C_SOURCES = $(wildcard $(SRC_DIR)/*.c)
 C_OBJECTS = $(C_SOURCES:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
+.PHONY: all clean buildFolder
+
 # Alvo principal
 all: buildFolder $(BUILD_DIR)/main.elf
 
-.PHONY: all clean buildFolder
-
 # Linkagem
-$(BUILD_DIR)/main.elf: $(C_OBJECTS)
+$(BUILD_DIR)/main.elf: $(C_OBJECTS) $(ROC_OBJECTS)
 	@printf "$(GREEN)[LINK]$(NC) Vinculando objetos para criar o executável\n"
 	$(CC) $(CFLAGS) $(INCLUDES) $^ -o $@ $(LDFLAGS)
 
-# Compilação
+# Compilação de C
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@printf "$(BLUE)[CC]$(NC) Compilando $<\n"
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+# Compilação de HIP
+$(BUILD_DIR)/%.o: roc/%.hip
+	@printf "$(YELLOW)[HIPCC]$(NC) Compilando $<\n"
+	$(HIPCC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 # Criar diretório
 buildFolder:
