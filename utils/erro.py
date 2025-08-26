@@ -92,8 +92,8 @@ try:
 
             # Garante que tenham o mesmo tamanho
             min_len = min(len(data_c), len(data_py))
-            data_c = data_c[1:min_len]
-            data_py = data_py[1:min_len]
+            data_c = data_c[:min_len]
+            data_py = data_py[:min_len]
 
             # Cria um eixo x com deslocamento
             x = np.arange(len(data_c)) + offset
