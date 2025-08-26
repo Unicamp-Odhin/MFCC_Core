@@ -31,22 +31,21 @@ declare -a time_array
 
 # Coletar dados para N amostras
 for ((i=1; i<=$N; i++)); do
-    # Executar e capturar a saída do perf stat
-    result=$(perf stat -e cycles:u,task-clock:u ./build/main.elf "$WAV_FILE" 2>&1)
+    # Executar e capturar a saída do executável
+    result=$(./build/main.elf "$WAV_FILE")
     
-    # Extrair ciclos
-    cycles=$(echo "$result" | grep -oP '[0-9,]+(?=\s+cycles:u)' | tr -d ',')
+    # Extrair tempo de execução (em microsegundos)
+    exec_time_us=$(echo "$result" | grep -oP '(?<=Execution Time \(us\): )\d+')
     
-    # Extrair tempo de CPU (em milliseconds)
-    time_ms=$(echo "$result" | grep -oP '[0-9,]+(?=\s+msec task-clock:u)' | tr -d ',')
+    # Extrair ciclos de CPU
+    cpu_cycles=$(echo "$result" | grep -oP '(?<=CPU Cycles: )\d+')
     
     # Converter tempo para segundos
-    time_sec=$(echo "scale=6; $time_ms / 1000" | bc)
+    exec_time_sec=$(echo "scale=6; $exec_time_us / 1000000" | bc)
     
     # Armazenar nos arrays
-    cycles_array[$i]=$cycles
-    time_array[$i]=$time_sec
-    
+    cycles_array[$i]=$cpu_cycles
+    time_array[$i]=$exec_time_sec
 done
 
 echo "=========================================================="
@@ -65,19 +64,45 @@ done
 avg_cycles=$((total_cycles / N))
 avg_time=$(echo "scale=6; $total_time / $N" | bc)
 
-echo "=========================================================="
-echo "TOTAIS:"
-echo "  Total de ciclos: $total_cycles"
-echo "  Tempo total: ${total_time}s"
-echo ""
+# Calcular desvio padrão
+# Calcular desvio padrão
+sum_squared_diff_cycles=0
+sum_squared_diff_time=0.0
+
+for ((i=1; i<=N; i++)); do
+    diff_cycles=$((cycles_array[i] - avg_cycles))
+    squared_diff_cycles=$((diff_cycles * diff_cycles))
+    sum_squared_diff_cycles=$((sum_squared_diff_cycles + squared_diff_cycles))
+    
+    diff_time=$(echo "${time_array[i]} - $avg_time" | bc -l)
+    squared_diff_time=$(echo "$diff_time * $diff_time" | bc -l)
+    sum_squared_diff_time=$(echo "$sum_squared_diff_time + $squared_diff_time" | bc -l)
+done
+
+# Usar scale mais alto para melhor precisão
+stddev_cycles=$(echo "scale=2; sqrt($sum_squared_diff_cycles / $N)" | bc -l)
+stddev_time=$(echo "scale=8; sqrt($sum_squared_diff_time / $N)" | bc -l)
+
+
 echo "MÉDIAS:"
 echo "  Média de ciclos: $avg_cycles"
 echo "  Tempo médio: ${avg_time}s"
+echo "  Desvio padrão de ciclos: $stddev_cycles"
+echo "  Desvio padrão de tempo: ${stddev_time}s"
 echo "  Ciclos/segundo: $(echo "scale=2; $avg_cycles / $avg_time" | bc | numfmt --grouping)"
 echo "=========================================================="
 
 # Salvar resultados em arquivo (opcional)
 timestamp=$(date +%Y%m%d_%H%M%S)
-echo "N=$N, Ciclos_Total=$total_cycles, Tempo_Total=${total_time}s, Ciclos_Medio=$avg_cycles, Tempo_Medio=${avg_time}s" >> "benchmark_${timestamp}.log"
+log_file="benchmark_${timestamp}.log"
+{
+    echo "N=$N"
+    echo "Ciclos_Medio=$avg_cycles"
+    echo "Tempo_Medio=${avg_time}s"
+    echo "Resultados detalhados:"
+    for ((i=1; i<=$N; i++)); do
+        echo "Tempo=${time_array[$i]}s, Ciclos=${cycles_array[$i]}"
+    done
+} >> "$log_file"
 
-echo "Resultados salvos em: benchmark_${timestamp}.log"
+echo "Resultados salvos em: $log_file"

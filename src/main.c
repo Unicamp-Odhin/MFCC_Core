@@ -8,6 +8,8 @@
 #include "q15_fft.h"
 #include "mel.h"
 #include "dct.h"
+#include <time.h>
+#include <x86intrin.h>
 
 #define ALPHA 31785
 #define FRAME_SIZE 0.025 // seconds
@@ -50,6 +52,11 @@ void dump_short_int_buffer_to_hex(const char *file_name, int16_t *buffer, int si
 }
 
 int main(int argc, char *argv[]) {
+
+    clock_t start_time = clock();
+    unsigned long long start_cycles = __rdtsc();
+
+
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <filename>.wav\n", argv[0]);
         return 1;
@@ -187,12 +194,18 @@ int main(int argc, char *argv[]) {
             fprintf(fp4, "%d%c", ceps[j], (j == NUM_CEPS - 1) ? '\n' : ' ');
         }
     }
+    clock_t end_time = clock();
+    double time_spent = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+    printf("Execution Time (us): %.2f\n", time_spent * 1e6);
+    unsigned long long end_cycles = __rdtsc();
+    printf("CPU Cycles: %llu\n", end_cycles - start_cycles);
 
     fclose(fp4);
 
-    // free(frames);
-    // free(samples);
-    // free(header);
+
+    free(frames);
+    free(samples);
+    free(header);
 
     return 0;
 }
