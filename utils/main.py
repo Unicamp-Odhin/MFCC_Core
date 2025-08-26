@@ -239,5 +239,14 @@ def main():
     mfcc = compute_mfcc(filter_banks)
     plot_mfcc(mfcc, output_dir, audio_name)
 
+    # Save each MFCC frame to a separate file in hexadecimal format
+    mfcc_dir = os.path.join("dumps/python")
+    if not os.path.exists(mfcc_dir):
+        os.makedirs(mfcc_dir, exist_ok=True)
+    for i, frame in enumerate(mfcc):
+        frame_file = os.path.join(mfcc_dir, f"ceps_{i}.hex")
+        with open(frame_file, "w") as fp:
+            fp.write(" ".join(f"{value:.6f}\n" for value in frame))
+
 if __name__ == "__main__":
     main()

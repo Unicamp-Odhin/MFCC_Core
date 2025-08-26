@@ -10,7 +10,7 @@ q15_t float_to_q15(float x) {
 
 // Conversão de Q15 para float
 float q15_to_float(q15_t x) {
-    return (float)x / (1 << Q15_SHIFT);
+    return (float)x / ((1 << Q15_SHIFT) - 1);
 }
 
 // Multiplicação Q15 (com arredondamento)
@@ -55,12 +55,34 @@ complex_q15 q15_complex_mul(complex_q15 a, complex_q15 b) {
 }
 
 int32_t q15_log2(int32_t x) {
-    int32_t log = 0; 
-    while (x > 1) {
-        x >>=1;
-        log += 1;
+    if (x <= 0) return INT32_MIN; // log não definido
+
+    int32_t result = 0;
+
+    // Parte inteira = posição do bit mais significativo
+    int int_part = 0;
+    int32_t tmp = x;
+    while (tmp > 1) {
+        tmp >>= 1;
+        int_part++;
     }
-    return log;
+
+    result = int_part << 15; // guarda parte inteira em Q15
+
+    // Normalizar x para [1.0, 2.0)
+    // shift de volta
+    x <<= (15 - int_part);
+
+    // Extrair parte fracionária
+    for (int i = 1; i <= 15; i++) {
+        x = (int64_t)x * x >> 15;  // quadrado em Q15
+        if (x >= (2 << 15)) {      // >= 2.0 em Q15
+            x >>= 1;
+            result += (1 << (15 - i));
+        }
+    }
+
+    return result; // log2(x) em Q16.15
 }
 
 q15_t q15_log10(q15_t x) {
