@@ -73,12 +73,12 @@ try:
     plt.savefig("logs/histograma_mae_completo.png", dpi=300)
     plt.show()
 
-    # Gráfico de pontos para os 5 primeiros arquivos
-    plt.figure(figsize=(10, 10))
+    # Gráfico de pontos para os 16 primeiros arquivos
+    plt.figure(figsize=(18, 6))  # Larga e não tão alta
 
-    colors = ['blue', 'orange', 'green', 'red', 'purple']  # Cores específicas para cada conjunto
+    colors = ['blue', 'orange', 'green', 'red', 'purple', 'brown', 'pink', 'yellow', 'black', 'lime', 'teal', 'navy', 'maroon']  # Cores específicas para cada conjunto
     offset = 0  # Contador para deslocar os pontos de cada arquivo
-    for i, fname in enumerate(sorted(os.listdir(dir_c))[0:3]):
+    for i, fname in enumerate(sorted(os.listdir(dir_c))[0:9]):
         path_c = os.path.join(dir_c, fname)
         path_py = os.path.join(dir_py, fname)
 
