@@ -1,0 +1,38 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2024 Advanced Micro Devices, Inc. All Rights Reserved.
+---------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2024.2 (lin64) Build 5239630 Fri Nov 08 22:34:34 MST 2024
+| Date         : Mon Aug 25 21:36:13 2025
+| Host         : vader running 64-bit Arch Linux
+| Command      : report_utilization -hierarchical -file zynq_utilization_hierarchical.rpt
+| Design       : MFCC_Wrapper
+| Device       : xc7z020clg484-1
+| Speed File   : -1
+| Design State : Synthesized
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+Utilization Design Information
+
+Table of Contents
+-----------------
+1. Utilization by Hierarchy
+
+1. Utilization by Hierarchy
+---------------------------
+
++----------------------+----------------+------------+------------+---------+------+------+--------+--------+------------+
+|       Instance       |     Module     | Total LUTs | Logic LUTs | LUTRAMs | SRLs |  FFs | RAMB36 | RAMB18 | DSP Blocks |
++----------------------+----------------+------------+------------+---------+------+------+--------+--------+------------+
+| MFCC_Wrapper         |          (top) |       9116 |       5968 |    3138 |   10 | 5664 |      1 |      1 |         31 |
+|   (MFCC_Wrapper)     |          (top) |          0 |          0 |       0 |    0 |    0 |      0 |      0 |          0 |
+|   dut                |      MFCC_Core |       9116 |       5968 |    3138 |   10 | 5664 |      1 |      1 |         31 |
+|     (dut)            |      MFCC_Core |          0 |          0 |       0 |    0 |  208 |      1 |      0 |          0 |
+|     tx_fifo          |           fifo |       1452 |       1452 |       0 |    0 | 4151 |      0 |      0 |          0 |
+|     u_dct            |            dct |        410 |        398 |      12 |    0 |   67 |      0 |      0 |          2 |
+|     u_fft            |     fft_radix2 |       4655 |       1893 |    2752 |   10 |  951 |      0 |      0 |         24 |
+|     u_hamming_window | hamming_window |         55 |         55 |       0 |    0 |   82 |      0 |      1 |          1 |
+|     u_mel            |            mel |       1686 |       1466 |     220 |    0 |   63 |      0 |      0 |          4 |
+|     u_pre_emphasis   |   pre_emphasis |        118 |        118 |       0 |    0 |   81 |      0 |      0 |          0 |
+|     u_window_buffer  |  window_buffer |        740 |        586 |     154 |    0 |   61 |      0 |      0 |          0 |
++----------------------+----------------+------------+------------+---------+------+------+--------+--------+------------+
+
+

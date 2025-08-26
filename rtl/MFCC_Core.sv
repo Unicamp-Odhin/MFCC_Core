@@ -4,7 +4,7 @@ import mfcc_pkg::mfcc_data_t;
 
 module MFCC_Core #(
     parameter SAMPLE_WIDTH     = 16,       // Largura do sample de áudio
-    parameter NUM_COEFFICIENTS = 12,       // Número de coeficientes MFCC
+    parameter NUM_COEFFICIENTS = 13,       // Número de coeficientes MFCC
     parameter NUM_FILTERS      = 40,       // Número de filtros Mel
     parameter FRAME_SIZE       = 400,      // Tamanho do quadro de entrada
     parameter FRAME_MOVE       = 160,      // Tamanho do movimento do quadro
