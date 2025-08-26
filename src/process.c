@@ -5,7 +5,9 @@
 #include <math.h>
 #include "process.h"
 
+#ifdef CONFIG_ROCM
 #include <hip/hip_runtime.h>
+#endif
 
 #define Q15_SCALE 32768
 
@@ -13,13 +15,7 @@ int ceil_div(int a, int b) {
     return (a + b - 1) / b;
 }
 
-/*
-void hamming_window(int16_t *frame, int frame_size) {
-    for (int i = 0; i < frame_size; i++) {
-        frame[i] = (int16_t)(frame[i] * (0.54 - 0.46 * cos(2 * M_PI * i / (frame_size - 1))));
-    }
-}
-*/
+
 // Pré-calcula a janela de Hamming em Q15
 void generate_hamming_window_q15(int16_t *window, int frame_size) {
     for (int i = 0; i < frame_size; i++) {
@@ -109,7 +105,7 @@ int32_t** frame_signal_int(const int16_t *samples, int num_samples, int frame_si
     return frames;
 }
 
-#ifndef CONFIG_ROCm
+#ifndef CONFIG_ROCM
 void pre_emphasis(int16_t *samples, size_t sample_count, int16_t alpha) {
     int32_t temp;
     for (size_t i = sample_count - 1; i > 0; i--) {
@@ -119,5 +115,24 @@ void pre_emphasis(int16_t *samples, size_t sample_count, int16_t alpha) {
         temp = temp >> 15; // Ajusta para Q15
         samples[i] = samples[i] - temp; // Ajusta para Q15
     }
+}
+#else
+void pre_emphasis(int16_t *samples, size_t sample_count, int16_t alpha) {
+    int16_t *d_samples;
+    size_t bytes = sample_count * sizeof(int16_t);
+
+    hipMalloc((void**)&d_samples, bytes);
+    hipMemcpy(d_samples, samples, bytes, hipMemcpyHostToDevice);
+
+    // Configuração paralela do kernel
+    int threads = 256;
+    int blocks = (sample_count + threads - 1) / threads;
+    
+    hipLaunchKernel(pre_emphasis_kernel, dim3(blocks), dim3(threads), 0, 0, 
+                      d_samples, sample_count, alpha);
+    hipDeviceSynchronize();
+
+    hipMemcpy(samples, d_samples, bytes, hipMemcpyDeviceToHost);
+    hipFree(d_samples);
 }
 #endif

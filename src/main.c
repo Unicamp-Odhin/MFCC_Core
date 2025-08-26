@@ -9,8 +9,9 @@
 #include "mel.h"
 #include "dct.h"
 
-#ifdef CONFIG_ROCm
+#ifdef CONFIG_ROCM
 #include <hip/hip_runtime.h>
+#include <hip/hip_fp16.h>
 #endif
 
 
@@ -89,25 +90,63 @@ int main(int argc, char *argv[]) {
         dump_buffer_to_hex_16("data/samples_dump.hex", samples, num_samples);
     #endif
 
-    #ifdef CONFIG_ROCm
-        int16_t *d_samples;
-        hipMalloc(&d_samples, sample_count * sizeof(int16_t));
 
-        hipMemcpy(d_samples, samples, sample_count * sizeof(int16_t), hipMemcpyHostToDevice);
+    // #ifdef CONFIG_ROCM
+    //         int *d_samples;
+    //         size_t sample_count = header->subchunk2Size / sizeof(int16_t);
+            
+    //         // Alocar memória GPU
+    //         hipMalloc((void**)&d_samples, header->subchunk2Size);
+            
+    //         // Copiar dados para GPU
+    //         hipMemcpy(d_samples, samples, header->subchunk2Size, hipMemcpyHostToDevice);
+            
+    //         // Configurar grid e block
+    //         dim3 grid;
+    //         dim3 block;
+    //         grid.x = 1;
+    //         block.x = 1;
+            
+    //         float alpha_val = ALPHA;  // Crie uma variável
+    //         void* args[] = {&d_samples, &sample_count, &alpha_val};
+    //         hipLaunchKernel(pre_emphasis, grid, block, args, 0, 0); 
+            
+    //         // Copiar dados de volta
+    //         hipMemcpy(samples, d_samples, header->subchunk2Size, hipMemcpyDeviceToHost);
+    //         hipFree(d_samples);
+            
+    //         // Para frames - abordagem diferente necessária
+    //         int32_t *d_frames_data;
+    //         size_t frames_total_size = num_frames * frame_size * sizeof(int32_t);
+    //         hipMalloc((void**)&d_frames_data, frames_total_size);
+            
+    //         // Lançar kernel para frame_signal (você precisa implementar o kernel HIP)
+    //         int hop_size = 256; 
+    //         void* frame_signal_args[] = {&d_frames_data, &frame_size, &hop_size};
+    //         hipLaunchKernel(frame_signal_int, 
+    //                     grid,
+    //                     block, 
+    //                     frame_signal_args, 
+    //                     0, 0);
+            
+    //         // Alocar memória CPU para frames
+    //         int32_t **frames = (int32_t **)malloc(num_frames * sizeof(int32_t *));
+    //         for (int i = 0; i < num_frames; i++) {
+    //             frames[i] = (int32_t *)malloc(frame_size * sizeof(int32_t));
+    //         }
+            
+    //         // Copiar dados frame por frame (simplificado)
+    //         hipMemcpy(frames[0], d_frames_data, frames_total_size, hipMemcpyDeviceToHost);
+            
+    //         hipFree(d_frames_data);
+    //         printf("gpu\n");
+            
+    // #else
+            printf("cpu\n");
+            pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), ALPHA);
+            int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step, &num_frames);
+    // #endif
 
-        hipLaunchKernelGGL(pre_emphasis,
-                        dim3(1), dim3(1), 0, 0,
-                        d_samples, sample_count, ALPHA);
-
-        hipMemcpy(samples, d_samples, sample_count * sizeof(int16_t), hipMemcpyDeviceToHost);
-
-        hipFree(d_samples);
-    #else
-        pre_emphasis(samples, sample_count, ALPHA);
-    #endif
-
-
-    int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step, &num_frames);
 
 
     #ifdef CONFIG_LOG 
