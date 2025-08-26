@@ -1,3 +1,4 @@
+// #include <cmath>0
 #include <float.h>
 #include <math.h>
 #include <stdint.h>
@@ -270,7 +271,7 @@ void optimization_filterbank_q15(int32_t filterbank[NUM_FILTERS][OPTIMIZATION_SI
 
 void optimization_apply_q15(
     int32_t power_spectrum_frame[NFFT/2 + 1],
-    int8_t energies_q15[NUM_FILTERS]
+    int32_t energies_q15[NUM_FILTERS]
 ) {
     for (int i = 0; i < NUM_FILTERS; i++) {
         int32_t sum = 0;
@@ -285,7 +286,8 @@ void optimization_apply_q15(
         if (sum <= 0) {
             energies_q15[i] = MIN_LOG_ENERGY_Q15;
         } else {
-            energies_q15[i] = 6 * q15_log2(sum);
+            // energies_q15[i] = q15_log2(sum);
+            energies_q15[i] = q15_mul(float_to_q15(6.0f), q15_log2(sum));
         }
     }
 }

@@ -39,12 +39,12 @@ void dct(float energies[], int num_filters, float ceps[NUM_CEPS]) {
     }
 }
 
-void dct_fixed(int8_t energies_q15[], int num_filters, int16_t ceps_q15[NUM_CEPS]) {
+void dct_fixed(int32_t energies_q15[], int num_filters, int32_t ceps_q15[NUM_CEPS]) {
     for (int k = 0; k < NUM_CEPS; k++) {
         int32_t sum = 0;
 
         for (int n = 0; n < num_filters; n++) {
-            sum += q15_mul((int32_t)energies_q15[n], cos_lut[k][n]);
+            sum = q15_add(sum, q15_mul(energies_q15[n], cos_lut[k][n]));
         }
 
         ceps_q15[k] = sum;

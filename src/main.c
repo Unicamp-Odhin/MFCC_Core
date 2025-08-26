@@ -39,14 +39,15 @@ void dump_buffer_to_hex_32(const char *file_name, int32_t *buffer, int size) {
     fclose(fp);
 }
 
-void dump_short_int_buffer_to_hex(const char *file_name, int16_t *buffer, int size) {
+void dump_short_int_buffer_to_hex(const char *file_name, int32_t *buffer, int size) {
     FILE *fp = fopen(file_name, "w");
     if (!fp) {
         perror("fopen");
         return;
     }
     for (int i = 0; i < size; i++) {
-        fprintf(fp, "%04x\n", buffer[i] & 0xFFFF);
+        fprintf(fp, "%.6f\n", q15_to_float(buffer[i]) * (2 << 15));
+
     }
     fclose(fp);
 }
@@ -170,7 +171,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    int8_t energies[NUM_FILTERS];
+    int32_t energies[NUM_FILTERS];
     init_cos_lut();
 
     for (int i = 0; i < num_frames; i++) {
@@ -185,13 +186,14 @@ int main(int argc, char *argv[]) {
             fclose(fp3);
         #endif
 
-        int16_t ceps[NUM_CEPS];
+        int32_t ceps[NUM_CEPS];
         dct_fixed(energies, NUM_FILTERS, ceps);
-        snprintf(file_name, sizeof(file_name), "dumps/ceps_%d.hex", i);
+        snprintf(file_name, sizeof(file_name), "dumps/c/ceps_%d.hex", i);
         dump_short_int_buffer_to_hex(file_name, ceps, NUM_CEPS);
 
         for (int j = 0; j < NUM_CEPS; j++) {
-            fprintf(fp4, "%d%c", ceps[j], (j == NUM_CEPS - 1) ? '\n' : ' ');
+            fprintf(fp4, "%.6f%c", (float)ceps[j] / 32768.0f, (j == NUM_CEPS - 1) ? '\n' : ' ');
+            // fprintf(fp4, "%d%c", ceps[j], (j == NUM_CEPS - 1) ? '\n' : ' ');
         }
     }
     clock_t end_time = clock();

@@ -2,7 +2,7 @@ import numpy as np
 from scipy.io import wavfile
 
 # Parâmetros
-samples = 400
+samples = 4000
 
 sample_rate = 16000       # Hz
 duration = samples / sample_rate         
