@@ -244,7 +244,7 @@ def main():
     if not os.path.exists(mfcc_dir):
         os.makedirs(mfcc_dir, exist_ok=True)
     for i, frame in enumerate(mfcc):
-        frame_file = os.path.join(mfcc_dir, f"ceps_{i}.hex")
+        frame_file = os.path.join(mfcc_dir, f"ceps_{i:03d}.hex")
         with open(frame_file, "w") as fp:
             fp.write(" ".join(f"{value:.6f}\n" for value in frame))
 
