@@ -8,3 +8,4 @@ route_design
 report_timing_summary -file virtex_timing_post_route.rpt
 report_utilization -file virtex_utilization_post_route.rpt
 report_utilization -hierarchical -file virtex_utilization_hierarchical.rpt
+report_power -file virtex_power_post_route.rpt
