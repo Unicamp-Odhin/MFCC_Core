@@ -27,7 +27,7 @@ module fifo #(
     logic [PTR_WIDTH - 1:0] write_ptr;
 
     // Leitura
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge clk) begin
         if (!rst_n) begin
             read_ptr    <= '0;
             read_data_o <= '0;
@@ -40,7 +40,7 @@ module fifo #(
     end
 
     // Escrita
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge clk) begin
         if (!rst_n) begin
             write_ptr <= '0;
         end else if (wr_en_i && !full_o) begin

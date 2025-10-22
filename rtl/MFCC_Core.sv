@@ -21,6 +21,7 @@ module MFCC_Core #(
     
     // control input
     input  logic start_i,
+    input  logic auto_restart_i,
 
     output logic mfcc_done_o,
     output mfcc_data_t mfcc_data_o [0:NUM_COEFFICIENTS - 1]
@@ -85,7 +86,8 @@ module MFCC_Core #(
         .read_data_o          (window_buffer_data_o),        // 16 bits
         .valid_to_read_o      (window_valid_to_read),        // 1 bit
 
-        .start_next_state_o   (start_hamming)
+        .start_next_state_o   (start_hamming),
+        .idle_o               (idle)
     );
 
     logic hamming_done, hamming_out_valid;
@@ -199,28 +201,26 @@ module MFCC_Core #(
 
     logic hamming_finished;
     logic idle;
-    assign idle = 0;
-    //assign idle = (u_window_buffer.current_state == 0); // IDLE state
-/*
-    always_ff @( posedge clk or negedge rst_n ) begin : RESTARTIG_LOGIC
+    logic start_move_auto;
+
+    always_ff @( posedge clk ) begin : RESTARTIG_LOGIC
         if (!rst_n) begin
-            start_move       <= 0;
+            start_move  <= start_i || (auto_restart_i && start_move_auto);
+
+            start_move_auto  <= 0;
             hamming_finished <= 0;
         end else begin
             if(hamming_done) begin
                 hamming_finished <= 1;
             end
-            start_move <= hamming_finished && idle;
+            start_move_auto <= hamming_finished && idle;
             if(hamming_finished && idle) begin
                 hamming_finished <= 0;
             end
         end
     end
-*/
 
-    //assign start_move = hamming_done && idle;
-    assign start_move  = start_i;
-    //assign start_move  = hamming_done && u_window_buffer.current_state == u_window_buffer.IDLE;
+    //assign start_move  = start_i || (auto_restart_i && start_move_auto);
     assign mfcc_done_o = dct_done;
     assign mfcc_data_o = coeficientes;
 
