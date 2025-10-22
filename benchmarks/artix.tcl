@@ -11,3 +11,4 @@ route_design
 report_timing_summary -file artix_timing_post_route.rpt
 report_utilization -file artix_utilization_post_route.rpt
 report_utilization -hierarchical -file artix_utilization_hierarchical.rpt
+report_power -file artix_power_post_route.rpt

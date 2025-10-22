@@ -199,8 +199,8 @@ module MFCC_Core #(
 
     logic hamming_finished;
     logic idle;
-
-    assign idle = (u_window_buffer.current_state == 0); // IDLE state
+    assign idle = 0;
+    //assign idle = (u_window_buffer.current_state == 0); // IDLE state
 /*
     always_ff @( posedge clk or negedge rst_n ) begin : RESTARTIG_LOGIC
         if (!rst_n) begin

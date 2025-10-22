@@ -9,3 +9,4 @@ route_design
 report_timing_summary -file artymini_timing_post_route.rpt
 report_utilization -file artymini_utilization_post_route.rpt
 report_utilization -hierarchical -file artymini_utilization_hierarchical.rpt
+report_power -file artymini_power_post_route.rpt

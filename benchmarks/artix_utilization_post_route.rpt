@@ -1,7 +1,7 @@
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2024 Advanced Micro Devices, Inc. All Rights Reserved.
 ---------------------------------------------------------------------------------------------------------------------------------------------
 | Tool Version : Vivado v.2024.2 (lin64) Build 5239630 Fri Nov 08 22:34:34 MST 2024
-| Date         : Mon Aug 25 21:31:24 2025
+| Date         : Mon Sep 29 17:19:43 2025
 | Host         : vader running 64-bit Arch Linux
 | Command      : report_utilization -file artix_utilization_post_route.rpt
 | Design       : MFCC_Wrapper
@@ -98,9 +98,7 @@ Warning! For any ECO changes, please run place_design if there are unplaced inst
 +-----------------------------+------+-------+------------+-----------+-------+
 |          Site Type          | Used | Fixed | Prohibited | Available | Util% |
 +-----------------------------+------+-------+------------+-----------+-------+
-| Bonded IOB                  |    1 |     1 |          0 |       210 |  0.48 |
-|   IOB Master Pads           |    1 |       |            |           |       |
-|   IOB Slave Pads            |    0 |       |            |           |       |
+| Bonded IOB                  |    1 |     0 |          0 |       210 |  0.48 |
 | Bonded IPADs                |    0 |     0 |          0 |         2 |  0.00 |
 | PHY_CONTROL                 |    0 |     0 |          0 |         6 |  0.00 |
 | PHASER_REF                  |    0 |     0 |          0 |         6 |  0.00 |

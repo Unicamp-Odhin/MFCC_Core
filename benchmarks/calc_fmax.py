@@ -14,8 +14,9 @@ def calc_fmax(clock_period_ns: float, wns_ns: float) -> float:
 
 if __name__ == "__main__":
     clock_period = 20.0  # ns
-    wns = 2.113         # ns
-
+    #wns = 2.113         # ns
+    wns = -0.266
+    
     fmax = calc_fmax(clock_period, wns)
     print(f"Clock alvo: {1000/clock_period:.2f} MHz")
     print(f"WNS: {wns} ns")
