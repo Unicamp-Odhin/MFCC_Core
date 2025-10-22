@@ -21,7 +21,8 @@ module window_buffer #(
     output logic [WIDTH-1:0]           read_data_o,
     output logic                       valid_to_read_o,
     
-    output logic                       start_next_state_o
+    output logic                       start_next_state_o,
+    output logic                       idle_o
 );
     logic [WIDTH - 1:0] buffer [0:FRAME_SIZE - 1];
     int write_ptr;
@@ -53,9 +54,11 @@ module window_buffer #(
 
     always_comb begin
         next_state = current_state;
+        idle_o     = 0;
 
         unique case (current_state)
             IDLE: begin
+                idle_o = 1;
                 if (start_move) next_state = MOVE;
             end
             START: next_state = REQUEST_DATA;
