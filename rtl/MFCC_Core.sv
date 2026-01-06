@@ -204,9 +204,9 @@ module MFCC_Core #(
     logic start_move_auto;
 
     always_ff @( posedge clk ) begin : RESTARTIG_LOGIC
+        start_move  <= start_i || (auto_restart_i && start_move_auto);
+        
         if (!rst_n) begin
-            start_move  <= start_i || (auto_restart_i && start_move_auto);
-
             start_move_auto  <= 0;
             hamming_finished <= 0;
         end else begin

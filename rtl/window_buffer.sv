@@ -25,9 +25,9 @@ module window_buffer #(
     output logic                       idle_o
 );
     logic [WIDTH - 1:0] buffer [0:FRAME_SIZE - 1];
-    int write_ptr;
-    int internal_read_ptr;
-    int read_ptr;
+    integer write_ptr;
+    integer internal_read_ptr;
+    integer read_ptr;
 
     typedef enum logic [2:0] {
         IDLE,
@@ -38,7 +38,7 @@ module window_buffer #(
     } state_t;
 
     state_t current_state, next_state;
-    int move_counter;
+    integer move_counter;
 
     // Controle de estados
     always_ff @(posedge clk) begin
@@ -128,16 +128,21 @@ module window_buffer #(
         end
     end
 
+    logic [31:0] output_pointer;
+
     always_ff @( posedge clk ) begin
         if(!rst_n) begin
             read_ptr <= 0;
+            output_pointer <= 0;
         end else begin
+            output_pointer <= (read_ptr + internal_read_ptr) % FRAME_SIZE;
             if(rd_en_i && valid_to_read_o) begin
                 read_ptr <= (read_ptr + 1) % FRAME_SIZE;
             end
         end
     end
 
-    assign read_data_o = buffer[(read_ptr + internal_read_ptr) % FRAME_SIZE];
+    //assign output_pointer = (read_ptr + internal_read_ptr) % FRAME_SIZE;
+    assign read_data_o = buffer[output_pointer];
 
 endmodule

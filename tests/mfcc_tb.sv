@@ -58,7 +58,7 @@ module mfcc_tb ();
             fd = $fopen(filename, "w");
             if (fd) begin
                 for (i = 0; i < 257; i = i + 1) begin
-                    $fwrite(fd, "%h\n", uut.u_mel.power_spectrum_mem[i]);
+                    //$fwrite(fd, "%h\n", uut.u_mel.power_spectrum_mem[i]);
                 end
                 $fclose(fd);
             end else begin

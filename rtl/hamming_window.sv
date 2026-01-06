@@ -89,14 +89,14 @@ module hamming_window #(
                     end
                 end
                 PADDING: begin
-                    rd_en_o <= 0;
+                    rd_en_o    <= 0;
+                    temp_valid <= 1;
+
                     if(frame_ptr < NFFT_SIZE_COMPAIR[NFFT_LOG2 - 1:0]) begin
                         hamming_sample_temp <= 0;
-                        temp_valid          <= 1;
                         frame_ptr           <= frame_ptr + 1;
                         temp_ptr            <= frame_ptr;
                     end else begin
-                        temp_valid    <= 1;
                         temp_ptr      <= frame_ptr;
                         hamming_state <= FINISH;
                     end
