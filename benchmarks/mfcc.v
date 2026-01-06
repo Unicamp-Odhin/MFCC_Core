@@ -478,7 +478,7 @@ module fifo (
 	reg [WIDTH - 1:0] memory [DEPTH - 1:0];
 	reg [PTR_WIDTH - 1:0] read_ptr;
 	reg [PTR_WIDTH - 1:0] write_ptr;
-	always @(posedge clk or negedge rst_n)
+	always @(posedge clk)
 		if (!rst_n) begin
 			read_ptr <= 1'sb0;
 			read_data_o <= 1'sb0;
@@ -489,7 +489,7 @@ module fifo (
 		end
 		else if (rd_en_i && empty_o)
 			read_data_o <= 1'sb0;
-	always @(posedge clk or negedge rst_n)
+	always @(posedge clk)
 		if (!rst_n)
 			write_ptr <= 1'sb0;
 		else if (wr_en_i && !full_o) begin
@@ -576,14 +576,13 @@ module hamming_window (
 				end
 				2'd2: begin
 					rd_en_o <= 0;
+					temp_valid <= 1;
 					if (frame_ptr < NFFT_SIZE_COMPAIR[NFFT_LOG2 - 1:0]) begin
 						hamming_sample_temp <= 0;
-						temp_valid <= 1;
 						frame_ptr <= frame_ptr + 1;
 						temp_ptr <= frame_ptr;
 					end
 					else begin
-						temp_valid <= 1;
 						temp_ptr <= frame_ptr;
 						hamming_state <= 2'd3;
 					end
@@ -596,7 +595,7 @@ module hamming_window (
 				default: hamming_state <= 2'd0;
 			endcase
 	end
-	always @(posedge clk or negedge rst_n)
+	always @(posedge clk)
 		if (!rst_n)
 			out_valid_o <= 0;
 		else begin
@@ -618,7 +617,6 @@ module mel (
 	mel_prt_energies,
 	mel_valid
 );
-	reg _sv2v_0;
 	parameter NUM_FILTERS = 40;
 	parameter NFFT = 512;
 	parameter NRFFT = (NFFT / 2) + 1;
@@ -637,128 +635,94 @@ module mel (
 	output reg [NF_LOG2 - 1:0] mel_prt_energies;
 	output reg mel_valid;
 	reg [INPUT_WIDTH - 1:0] power_spectrum_mem [0:NRFFT - 1];
-	always @(posedge clk) begin : POWER_SPECTRUM_BUFFER_INPUT_LOGIC
+	always @(posedge clk)
 		if (in_valid)
 			power_spectrum_mem[power_spectrum_frame_ptr] <= power_spectrum_frame_in;
-	end
 	reg [31:0] sum;
-	reg [31:0] sum_next;
 	reg [5:0] i;
-	reg [5:0] i_next;
 	reg [8:0] k;
-	reg [8:0] k_next;
-	wire [8:0] k_init;
+	reg [8:0] k_init;
+	reg [8:0] k_end;
 	reg [10:0] i_total;
 	reg [10:0] i_total_next;
-	reg [63:0] temp_mul_next;
+	reg [63:0] temp_mul;
 	wire [7:0] temp_log2;
 	wire [31:0] power_spectrum;
 	assign power_spectrum = power_spectrum_mem[k];
 	reg [31:0] mel_memory [0:1319];
-	wire [10:0] prt_memory;
+	reg [10:0] prt_memory;
 	wire [31:0] filter;
-	assign prt_memory = ((i_total + 2) + k) - k_init;
 	assign filter = (prt_memory < 1320 ? mel_memory[prt_memory] : 32'h00000000);
 	initial $readmemh("tables/mel_data.hex", mel_memory);
-	reg [1:0] state;
-	reg [1:0] next_state;
+	reg [2:0] state;
 	always @(posedge clk)
 		if (!rst_n) begin
-			state <= 2'd0;
+			state <= 3'd0;
 			sum <= 0;
 			i <= 0;
 			k <= 0;
+			k_init <= 0;
+			k_end <= 0;
 			i_total <= 0;
 			mel_done_o <= 0;
+			mel_valid <= 0;
+			mel_value_energies <= 0;
 		end
-		else begin
-			state <= next_state;
-			sum <= sum_next;
-			i <= i_next;
-			k <= k_next;
-			i_total <= i_total_next;
-			if (i == 40) begin
-				state <= 2'd0;
-				mel_done_o <= 1;
-			end
-			else
-				mel_done_o <= 0;
-		end
-	assign k_init = mel_memory[i_total][8:0];
-	always @(*) begin
-		if (_sv2v_0)
-			;
-		mel_value_energies = 1'sb0;
-		mel_prt_energies = i;
-		mel_valid = 1'b0;
-		next_state = state;
-		sum_next = sum;
-		i_next = i;
-		k_next = k;
-		temp_mul_next = 0;
-		i_total_next = i_total;
-		case (state)
-			2'd0: begin
-				mel_valid = 1'b0;
-				sum_next = 0;
-				i_next = 0;
-				i_total_next = 0;
-				if (mel_start_i)
-					next_state = 2'd1;
-			end
-			2'd1: begin
-				mel_valid = 1'b0;
-				mel_value_energies = 1'sb0;
-				mel_prt_energies = i;
-				if (i < NUM_FILTERS) begin
-					k_next = mel_memory[i_total][8:0];
-					next_state = 2'd2;
+		else
+			case (state)
+				3'd0: begin
+					sum <= 0;
+					i <= 0;
+					i_total <= 0;
+					mel_valid <= 0;
+					mel_done_o <= 0;
+					if (mel_start_i)
+						state <= 3'd1;
 				end
-				else
-					next_state = 2'd0;
-			end
-			2'd2: begin
-				mel_valid = 1'b0;
-				mel_value_energies = 1'sb0;
-				mel_prt_energies = i;
-				if (k <= mel_memory[i_total + 1][8:0]) begin
-					temp_mul_next = (power_spectrum * filter) + 1073741824;
-					sum_next = sum + temp_mul_next[62:31];
-					k_next = k + 1;
-					next_state = 2'd2;
+				3'd1: begin
+					mel_prt_energies <= i;
+					if (i < NUM_FILTERS) begin
+						k_init <= mel_memory[i_total][8:0];
+						k <= mel_memory[i_total][8:0];
+						k_end <= mel_memory[i_total + 1][8:0];
+						i_total_next <= i_total + 33;
+						prt_memory <= i_total + 2;
+						state <= 3'd2;
+					end
+					else begin
+						mel_done_o <= 1;
+						state <= 3'd0;
+					end
 				end
-				else
-					next_state = 2'd3;
-			end
-			2'd3: begin
-				i_next = i + 1;
-				i_total_next = i_total + 33;
-				sum_next = 0;
-				mel_valid = 1'b1;
-				mel_prt_energies = i;
-				if (sum <= 0)
-					mel_value_energies = 8'h00;
-				else
-					mel_value_energies = temp_log2;
-				next_state = 2'd1;
-			end
-			default: begin
-				next_state = 2'd0;
-				sum_next = 0;
-				i_next = 0;
-				i_total_next = 0;
-				k_next = 0;
-				mel_valid = 1'b0;
-				mel_value_energies = 8'h00;
-				mel_prt_energies = 6'h00;
-			end
-		endcase
-	end
+				3'd2:
+					if (k <= k_end) begin
+						temp_mul <= power_spectrum * filter;
+						state <= 3'd3;
+					end
+					else
+						state <= 3'd4;
+				3'd3: begin
+					sum <= sum + temp_mul[62:31];
+					k <= k + 1;
+					prt_memory <= ((i_total + 3) + k) - k_init;
+					state <= 3'd2;
+				end
+				3'd4: begin
+					mel_valid <= 1;
+					if (sum <= 0)
+						mel_value_energies <= 8'h00;
+					else
+						mel_value_energies <= temp_log2;
+					i <= i + 1;
+					i_total <= i_total_next;
+					sum <= 0;
+					state <= 3'd1;
+				end
+			endcase
 	base2log u_base2log(
 		.number_i(sum),
 		.log_o(temp_log2)
 	);
-	initial _sv2v_0 = 0;
 endmodule
 module MFCC_Core (
 	clk,
@@ -766,6 +730,7 @@ module MFCC_Core (
 	pcm_in,
 	pcm_ready_i,
 	start_i,
+	auto_restart_i,
 	mfcc_done_o,
 	mfcc_data_o
 );
@@ -782,6 +747,7 @@ module MFCC_Core (
 	input wire [SAMPLE_WIDTH - 1:0] pcm_in;
 	input wire pcm_ready_i;
 	input wire start_i;
+	input wire auto_restart_i;
 	output wire mfcc_done_o;
 	output wire [(NUM_COEFFICIENTS * 16) - 1:0] mfcc_data_o;
 	wire pre_emphasis_valid;
@@ -815,8 +781,9 @@ module MFCC_Core (
 	wire [SAMPLE_WIDTH - 1:0] window_buffer_data_o;
 	wire window_valid_to_read;
 	wire window_rd_en;
-	wire start_move;
+	reg start_move;
 	wire start_hamming;
+	wire idle;
 	window_buffer #(
 		.WIDTH(SAMPLE_WIDTH),
 		.FRAME_SIZE(FRAME_SIZE),
@@ -831,7 +798,8 @@ module MFCC_Core (
 		.rd_en_i(window_rd_en),
 		.read_data_o(window_buffer_data_o),
 		.valid_to_read_o(window_valid_to_read),
-		.start_next_state_o(start_hamming)
+		.start_next_state_o(start_hamming),
+		.idle_o(idle)
 	);
 	wire hamming_done;
 	wire hamming_out_valid;
@@ -919,10 +887,22 @@ module MFCC_Core (
 	always @(posedge clk)
 		if (dct_valid)
 			coeficientes[((NUM_COEFFICIENTS - 1) - ceps_ptr) * 16+:16] <= ceps_sample;
-	wire hamming_finished;
-	wire idle;
-	assign idle = u_window_buffer.current_state == 0;
-	assign start_move = start_i;
+	reg hamming_finished;
+	reg start_move_auto;
+	always @(posedge clk) begin : RESTARTIG_LOGIC
+		start_move <= start_i || (auto_restart_i && start_move_auto);
+		if (!rst_n) begin
+			start_move_auto <= 0;
+			hamming_finished <= 0;
+		end
+		else begin
+			if (hamming_done)
+				hamming_finished <= 1;
+			start_move_auto <= hamming_finished && idle;
+			if (hamming_finished && idle)
+				hamming_finished <= 0;
+		end
+	end
 	assign mfcc_done_o = dct_done;
 	assign mfcc_data_o = coeficientes;
 endmodule
@@ -966,7 +946,8 @@ module window_buffer (
 	rd_en_i,
 	read_data_o,
 	valid_to_read_o,
-	start_next_state_o
+	start_next_state_o,
+	idle_o
 );
 	reg _sv2v_0;
 	parameter WIDTH = 16;
@@ -982,13 +963,14 @@ module window_buffer (
 	output wire [WIDTH - 1:0] read_data_o;
 	output wire valid_to_read_o;
 	output reg start_next_state_o;
+	output reg idle_o;
 	reg [WIDTH - 1:0] buffer [0:FRAME_SIZE - 1];
-	reg signed [31:0] write_ptr;
-	reg signed [31:0] internal_read_ptr;
-	reg signed [31:0] read_ptr;
+	integer write_ptr;
+	integer internal_read_ptr;
+	integer read_ptr;
 	reg [2:0] current_state;
 	reg [2:0] next_state;
-	reg signed [31:0] move_counter;
+	integer move_counter;
 	always @(posedge clk)
 		if (!rst_n)
 			current_state <= 3'd1;
@@ -1000,11 +982,14 @@ module window_buffer (
 		if (_sv2v_0)
 			;
 		next_state = current_state;
+		idle_o = 0;
 		(* full_case, parallel_case *)
 		case (current_state)
-			3'd0:
+			3'd0: begin
+				idle_o = 1;
 				if (start_move)
 					next_state = 3'd2;
+			end
 			3'd1: next_state = 3'd3;
 			3'd2: next_state = 3'd3;
 			3'd3:
@@ -1061,11 +1046,17 @@ module window_buffer (
 					;
 			endcase
 	end
+	reg [31:0] output_pointer;
 	always @(posedge clk)
-		if (!rst_n)
+		if (!rst_n) begin
 			read_ptr <= 0;
-		else if (rd_en_i && valid_to_read_o)
-			read_ptr <= (read_ptr + 1) % FRAME_SIZE;
-	assign read_data_o = buffer[(read_ptr + internal_read_ptr) % FRAME_SIZE];
+			output_pointer <= 0;
+		end
+		else begin
+			output_pointer <= (read_ptr + internal_read_ptr) % FRAME_SIZE;
+			if (rd_en_i && valid_to_read_o)
+				read_ptr <= (read_ptr + 1) % FRAME_SIZE;
+		end
+	assign read_data_o = buffer[output_pointer];
 	initial _sv2v_0 = 0;
 endmodule

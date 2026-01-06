@@ -233,3 +233,5 @@ y.py
 renaming.c
 enderecos.txt
 impl
+rtl/mel_old.sv
+rtl/mel_me.sv
