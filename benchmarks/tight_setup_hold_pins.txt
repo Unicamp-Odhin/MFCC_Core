@@ -1,9 +1,0 @@
-+====================+===================+============================================+
-| Launch Setup Clock | Launch Hold Clock | Pin                                        |
-+====================+===================+============================================+
-| sys_clk            | sys_clk           | u_window_buffer/buffer_reg/ADDRBWRADDR[9]  |
-| sys_clk            | sys_clk           | u_window_buffer/buffer_reg/ADDRBWRADDR[8]  |
-| sys_clk            | sys_clk           | u_window_buffer/buffer_reg/ADDRBWRADDR[10] |
-| sys_clk            | sys_clk           | u_window_buffer/buffer_reg/ADDRBWRADDR[12] |
-| sys_clk            | sys_clk           | u_window_buffer/buffer_reg/ADDRBWRADDR[11] |
-+--------------------+-------------------+--------------------------------------------+
