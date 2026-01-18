@@ -17,8 +17,8 @@ if [ ! -f "$WAV_FILE" ]; then
 fi
 
 # Verificar se o executável existe
-if [ ! -f "./build/main.elf" ]; then
-    echo "Erro: Executável './build/main.elf' não encontrado!"
+if [ ! -f "../build/main.elf" ]; then
+    echo "Erro: Executável '../build/main.elf' não encontrado!"
     echo "Execute 'make' primeiro para compilar"
     exit 1
 fi
@@ -32,7 +32,7 @@ declare -a time_array
 # Coletar dados para N amostras
 for ((i=1; i<=$N; i++)); do
     # Executar e capturar a saída do executável
-    result=$(./build/main.elf "$WAV_FILE")
+    result=$(../build/main.elf "$WAV_FILE")
     
     # Extrair tempo de execução (em microsegundos)
     exec_time_us=$(echo "$result" | grep -oP '(?<=Execution Time \(us\): )\d+')
