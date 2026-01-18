@@ -1,5 +1,0 @@
-set title "Pré-Ênfase do Áudio"
-set xlabel "Amostra"
-set ylabel "Amplitude"
-plot "data/preemphasis.dat" using 1:2 with lines title "Pré-Ênfase"
-pause -1 "Pressione Enter para sair..."
