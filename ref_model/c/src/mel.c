@@ -60,7 +60,7 @@ static inline int hz_to_bin(float freq, int sample_rate) {
 }
 
 void save_filterbank_to_file(float filterbank[NUM_FILTERS][NFFT/2 + 1]) {
-    const char *filepath = "src/filter_bank.dat";
+    const char *filepath = "tables/filter_bank.dat";
     FILE *file = fopen(filepath, "w");
     if (!file) {
         perror("Erro ao abrir o arquivo para salvar o filterbank");
@@ -79,7 +79,7 @@ void save_filterbank_to_file(float filterbank[NUM_FILTERS][NFFT/2 + 1]) {
 
 // Carrega o filterbank da memória a partir de um arquivo
 void load_filterbank_from_file(float filterbank[NUM_FILTERS][NFFT/2 + 1]) {
-    const char *filepath = "src/filter_bank.dat";
+    const char *filepath = "tables/filter_bank.dat";
     FILE *file = fopen(filepath, "r");
     if (!file) {
         perror("Erro ao abrir o arquivo de filterbank");
@@ -251,7 +251,7 @@ void optimization_filterbank_q15(int32_t filterbank[NUM_FILTERS][OPTIMIZATION_SI
         }
     }
     // Save the optimized filterbank to a file
-    const char *filepath = "src/optimized_filter_bank.dat";
+    const char *filepath = "tables/optimized_filter_bank.dat";
     FILE *file = fopen(filepath, "w");
     if (!file) {
         perror("Erro ao abrir o arquivo para salvar o filterbank otimizado");

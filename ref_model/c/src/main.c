@@ -10,10 +10,35 @@
 #include "dct.h"
 #include <time.h>
 #include <x86intrin.h>
+#include <sys/stat.h>
+
 
 #define ALPHA 31785
 #define FRAME_SIZE 0.025 // seconds
 #define FRAME_STEP 0.01 // seconds
+
+int create_dirs(){
+    const char *dir_data = "data";
+    const char *dir_dumps = "dumps";
+    struct stat st = {0};
+
+    if (stat(dir_data, &st) == -1) {
+        if (mkdir(dir_data, 0755) != 0) {
+            perror("Failed to create dumps directory");
+            return -1;
+        }
+    }
+
+
+    if (stat(dir_dumps, &st) == -1) {
+        if (mkdir(dir_dumps, 0755) != 0) {
+            perror("Failed to create data directory");
+            return -1;
+        }
+    }
+
+    return 0;
+}
 
 void dump_buffer_to_hex_16(const char *file_name, int16_t *buffer, int size) {
     FILE *fp = fopen(file_name, "w");
@@ -63,8 +88,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // system("mkdir -p data");
-
     int16_t *samples = NULL;
     WavHeader *header = open_wav_file(argv[1], &samples);
 
@@ -73,12 +96,16 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    if (create_dirs()) return -1;
+
+
     int sample_rate = header->sampleRate;
     int frame_size  = (int)ceil(sample_rate * FRAME_SIZE);
     int frame_step  = (int)ceil(sample_rate * FRAME_STEP);
     int num_samples = header->subchunk2Size / sizeof(uint16_t);
     int num_frames = (int)ceil((double)(num_samples - frame_size) / frame_step) + 1;
     
+
     #ifdef CONFIG_VERBOSE 
         printf("Número total de frames: %d\n", num_frames);
         printf("Sample rate: %d Hz\n", sample_rate);
@@ -91,6 +118,8 @@ int main(int argc, char *argv[]) {
     #ifdef CONFIG_LOG 
         dump_buffer_to_hex_16("data/samples_dump.hex", samples, num_samples);
     #endif
+
+    
 
     pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), ALPHA);
 
@@ -106,16 +135,12 @@ int main(int argc, char *argv[]) {
     #endif
 
 
-    // if (!frames) {
-    //     fprintf(stderr, "Failed to create frames from samples.\n");
-    //     free(samples);
-    //     free(header);
-    //     return 1;
-    // }
-
-    for(int i = 0; i < num_frames; i++) {
-        hamming_window(frames[i], frame_size);
-    }
+    
+    #ifdef CONFIG_CREATE_DATABANK
+        for(int i = 0; i < num_frames; i++) {
+            hamming_window(frames[i], frame_size);
+        }
+    #endif
     
     #ifdef CONFIG_LOG
         for(int i = 0; i < num_frames; i++) {
@@ -124,6 +149,8 @@ int main(int argc, char *argv[]) {
             dump_buffer_to_hex_32(file_name, frames[i], frame_size);
         }
     #endif
+
+
 
     #ifdef CONFIG_LOG
         FILE *fp = fopen("data/preemphasis.dat", "w");
@@ -139,6 +166,9 @@ int main(int argc, char *argv[]) {
         fclose(fp);
     #endif
 
+
+
+
     int num_freqs = NFFT; // Frequências DC a Nyquist, NFFT é definido no q15_fft.h
     
     int32_t power_spectrum[num_frames][num_freqs]; // transposição do espectro de potência
@@ -148,6 +178,7 @@ int main(int argc, char *argv[]) {
         fft_q15_real_power(frames[i], frame_size, power_spectrum[i]);
     }
 
+    
     #ifdef CONFIG_LOG
         dump_buffer_to_hex_32("data/power_spectrum.hex", power_spectrum[0], NFFT/2 + 1);
         
@@ -165,6 +196,7 @@ int main(int argc, char *argv[]) {
     #endif
 
 
+
     FILE *fp4 = fopen("data/ceps_matrix.dat", "w");
     if (!fp4) {
         perror("Erro ao abrir arquivos de saída");
@@ -177,25 +209,32 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < num_frames; i++) {
         char file_name[50];
         optimization_apply_q15(power_spectrum[i], energies);
-        
+
+
         #ifdef CONFIG_LOG
-        FILE *fp3 = fopen("data/spectrogram_matrix.dat", "w");
-            for (int j = 0; j < NUM_FILTERS; j++) {
-                fprintf(fp3, "%d%c", energies[j], (j == NUM_FILTERS - 1) ? '\n' : ' ');
+            FILE *fp3 = fopen("data/spectrogram_matrix.dat", "w");
+            if (fp3 != NULL) {
+                for (int j = 0; j < NUM_FILTERS; j++) {
+                    fprintf(fp3, "%d%c", energies[j],
+                            (j == NUM_FILTERS - 1) ? '\n' : ' ');
+                }
+                fclose(fp3);
+            } else {
+                perror("Erro ao abrir data/spectrogram_matrix.dat");
             }
-            fclose(fp3);
         #endif
 
         int32_t ceps[NUM_CEPS];
         dct_fixed(energies, NUM_FILTERS, ceps);
-        snprintf(file_name, sizeof(file_name), "dumps/c/ceps_%03d.hex", i);
-        dump_short_int_buffer_to_hex(file_name, ceps, NUM_CEPS);
 
+        snprintf(file_name, sizeof(file_name), "dumps/ceps_%03d.hex", i);
+        dump_short_int_buffer_to_hex(file_name, ceps, NUM_CEPS);
         for (int j = 0; j < NUM_CEPS; j++) {
-            fprintf(fp4, "%.6f%c", (float)ceps[j] / 32768.0f, (j == NUM_CEPS - 1) ? '\n' : ' ');
-            // fprintf(fp4, "%d%c", ceps[j], (j == NUM_CEPS - 1) ? '\n' : ' ');
-        }
+            fprintf(fp4, "%.6f%c", (float)ceps[j] / 32768.0f, (j == NUM_CEPS - 1) ? '\n' : ' ');        }
     }
+
+
+
     clock_t end_time = clock();
     double time_spent = (double)(end_time - start_time) / CLOCKS_PER_SEC;
     printf("Execution Time (us): %.2f\n", time_spent * 1e6);

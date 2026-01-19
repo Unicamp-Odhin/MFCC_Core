@@ -27,6 +27,7 @@ void generate_twiddles(complex_q15* twiddles, int N) {
 }
 
 void save_twiddles(complex_q15* twiddles, int N) {
+
     FILE* file = fopen("data/twiddles.hex", "w");
     if (!file) {
         perror("Failed to open file for saving twiddles");
@@ -44,7 +45,6 @@ void fft_iterative(complex_q15* x, int N, complex_q15* twiddles) {
     int logN = 0;
     for (int temp = N; temp > 1; temp >>= 1) logN++;
 
-    //printf("FFT Iterative: N = %d, logN = %d\n", N, logN);
 
     // Bit-reversal permutation
     for (int i = 0, j = 0; i < N; i++) {
