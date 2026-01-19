@@ -31,6 +31,10 @@ else
 endif
 
 # Adicionar flags condicionais
+ifeq ($(CREATE_DATABANK),1)
+	CFLAGS += -DCONFIG_CREATE_DATABANK
+endif
+
 ifeq ($(LOG),1)
 	CFLAGS += -DCONFIG_LOG
 endif
@@ -39,6 +43,7 @@ ifeq ($(VERBOSE),1)
 	CFLAGS += -DCONFIG_VERBOSE
 
 endif
+
 
 # Mostrar flags finais
 $(info [INFO] CFLAGS: $(CFLAGS))
