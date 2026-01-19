@@ -26,26 +26,18 @@ USE_FLOAT ?= 0
 # Debug tem prioridade máxima
 ifeq ($(DEBUG),1)
     CFLAGS = -g -O0
-    $(info [INFO] Modo DEBUG ativado)
 else
     CFLAGS = -O3 -march=native
 endif
 
 # Adicionar flags condicionais
-ifeq ($(CREATE_DATABANK),1)
-	CFLAGS += -DCONFIG_CREATE_DATABANK
-endif
-
 ifeq ($(LOG),1)
 	CFLAGS += -DCONFIG_LOG
 endif
 
 ifeq ($(VERBOSE),1)
 	CFLAGS += -DCONFIG_VERBOSE
-endif
 
-ifeq ($(USE_FLOAT),1)
-    CFLAGS += -DCONFIG_USE_FLOAT
 endif
 
 # Mostrar flags finais
