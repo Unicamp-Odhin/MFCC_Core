@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.fftpack import dct
 import sys
 import os
+import struct
 
 # Define macros
 FRAME_SIZE = 0.025  # seconds
@@ -15,6 +16,27 @@ PRE_EMPHASIS = 0.97
 NFFT = 512
 NFILT = 40
 NUM_CEPS = 12
+
+
+def dump_buffer_to_hex(file_name, buffer):
+    os.makedirs(os.path.dirname(file_name), exist_ok=True)
+    
+    with open(file_name, 'w') as fp:
+        for value in buffer:
+            int_value = int(value) & 0xFFFF  
+            hex_str = f"{int_value:04x}"
+            fp.write(f"{hex_str}\n")
+
+def dump_buffer_to_hex_float(filename, buffer):
+    with open(filename, 'w') as f:
+        for i, value in enumerate(buffer):
+            hex_value = struct.pack('f', value).hex()
+            
+            if i == len(buffer) - 1:
+                f.write(f"{hex_value}")
+            else:
+                f.write(f"{hex_value}\n")
+            
 
 def print_samples(samples, num_samples):
     for i in range(min(num_samples, len(samples))):
@@ -197,56 +219,90 @@ def plot_mfcc(mfcc, output_dir, audio_name):
     output_file = os.path.join(output_dir, f"{audio_name}_mfcc.png")
     plt.savefig(output_file)
     plt.show()
-
 def main():
     if len(sys.argv) < 2:
         print("Usage: python main.py <audio_file_path>")
         sys.exit(1)
 
-    # Create output directory
-    output_dir = "data/python"
+    LOG = True
+    PLOT = False
+
+    output_dir = "dumps/"
     os.makedirs(output_dir, exist_ok=True)
     audio_path = sys.argv[1]
     audio_name = os.path.splitext(os.path.basename(audio_path))[0]
 
     # Step 1: Load audio
     y, sample_rate, frame_size, frame_step = load_audio(audio_path)
-    plot_waveform(y, output_dir, audio_name)
+    if PLOT:
+        plot_waveform(y, output_dir, audio_name)
 
     # Step 2: Pre-emphasis
     y_preemphasized = pre_emphasis(y)
-    plot_pre_emphasized(y_preemphasized, output_dir, audio_name)
+    if PLOT:
+        plot_pre_emphasized(y_preemphasized, output_dir, audio_name)
+    if LOG:
+        file_name = "dumps/1_pre_emphasis.hex"
+        dump_buffer_to_hex(file_name, y_preemphasized)
 
     # Step 3: Frame the signal
     frames, frame_length = frame_signal(y_preemphasized, sample_rate, FRAME_SIZE, FRAME_STEP)
-    plot_frames(frames, output_dir, audio_name)
+    if PLOT:
+        plot_frames(frames, output_dir, audio_name)
+    if LOG:
+        os.makedirs("dumps/2_frames", exist_ok=True)
+        for i in range(len(frames)):
+            file_name = f"dumps/2_frames/{i:04d}.hex"
+            dump_buffer_to_hex(file_name, frames[i])
+    
 
     # Step 4: Apply window function
     frames = apply_window(frames, frame_length)
-    plot_windowed_frame(frames, output_dir, audio_name)
+    if PLOT:
+        plot_windowed_frame(frames, output_dir, audio_name)
 
     # Step 5: Compute spectrum
     mag_frames, pow_frames = compute_spectrum(frames)
-    plot_spectrum(mag_frames, output_dir, audio_name)
-
-    print_samples(pow_frames[0], len(pow_frames[0]))
+    if PLOT:
+        plot_spectrum(mag_frames, output_dir, audio_name)
+    if LOG:
+        os.makedirs("dumps/3_hamming_frames", exist_ok=True)
+        for i in range(len(frames)):
+            file_name = f"dumps/3_hamming_frames/{i:04d}.hex"
+            dump_buffer_to_hex(file_name, mag_frames[i])
 
     # Step 6: Apply Mel filterbank
     filter_banks = apply_mel_filterbank(pow_frames, sample_rate)
-    save_and_plot_filterbanks(filter_banks, output_dir, audio_name)
+    if PLOT:
+        save_and_plot_filterbanks(filter_banks, output_dir, audio_name)
+    
+    if LOG:
+        os.makedirs("dumps/4_energies", exist_ok=True)
+        for i in range(len(filter_banks)):
+            file_name = f"dumps/4_energies/{i:04d}.hex"
+            dump_buffer_to_hex_float(file_name, filter_banks[i])
+        
+        with open("dumps/5_spectrogram_matrix.dat", "w") as fp_spec:
+            for frame in filter_banks:
+                fp_spec.write(" ".join(f"{value}" for value in frame))
+                fp_spec.write("\n")
 
     # Step 7: Compute MFCCs
     mfcc = compute_mfcc(filter_banks)
-    plot_mfcc(mfcc, output_dir, audio_name)
+    if PLOT:
+        plot_mfcc(mfcc, output_dir, audio_name)
 
-    # Save each MFCC frame to a separate file in hexadecimal format
-    mfcc_dir = os.path.join("dumps/python")
-    if not os.path.exists(mfcc_dir):
-        os.makedirs(mfcc_dir, exist_ok=True)
+    os.makedirs("dumps/6_ceps", exist_ok=True)
     for i, frame in enumerate(mfcc):
-        frame_file = os.path.join(mfcc_dir, f"ceps_{i:03d}.hex")
+        frame_file = os.path.join("dumps/6_ceps", f"{i:04d}.hex")
         with open(frame_file, "w") as fp:
-            fp.write(" ".join(f"{value:.6f}\n" for value in frame))
+            fp.write("\n".join(f"{value / 32768.0}" for value in frame))
+    
+    if LOG:
+        with open("dumps/7_ceps_matrix.dat", "w") as fp_ceps:
+            for frame in mfcc:
+                fp_ceps.write(" ".join(f"{value:.6f}" for value in frame))
+                fp_ceps.write("\n")
 
 if __name__ == "__main__":
     main()

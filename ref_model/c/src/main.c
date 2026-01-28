@@ -11,32 +11,36 @@
 #include <time.h>
 #include <x86intrin.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 
 #define ALPHA 31785
 #define FRAME_SIZE 0.025 // seconds
 #define FRAME_STEP 0.01 // seconds
 
-int create_dirs(){
-    const char *dir_data = "data";
-    const char *dir_dumps = "dumps";
-    struct stat st = {0};
+int ensure_dir(const char *path) {
+    struct stat st;
 
-    if (stat(dir_data, &st) == -1) {
-        if (mkdir(dir_data, 0755) != 0) {
-            perror("Failed to create dumps directory");
+    if (stat(path, &st) == -1) {
+        if (mkdir(path, 0755) != 0) {
+            perror(path);
             return -1;
         }
     }
+    return 0;
+}
 
-
-    if (stat(dir_dumps, &st) == -1) {
-        if (mkdir(dir_dumps, 0755) != 0) {
-            perror("Failed to create data directory");
-            return -1;
-        }
-    }
-
+int create_dirs(void) {
+    if (ensure_dir("data") != 0) return -1;
+    if (ensure_dir("dumps") != 0) return -1;
+    if (ensure_dir("dumps") != 0) return -1;
+    if (ensure_dir("dumps/plots") != 0) return -1;
+    if (ensure_dir("dumps/power_spectrum") != 0) return -1;
+    if (ensure_dir("dumps/2_frames") != 0) return -1;
+    if (ensure_dir("dumps/3_hamming_frames") != 0) return -1;
+    if (ensure_dir("dumps/4_energies") != 0) return -1;
+    if (ensure_dir("dumps/6_ceps") != 0) return -1;
+    
     return 0;
 }
 
@@ -120,54 +124,47 @@ int main(int argc, char *argv[]) {
     #endif
 
     
-
+    //PRIMEIRA ETAPA "pre enfase"
     pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), ALPHA);
-
-    int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step, &num_frames);
-
-
     #ifdef CONFIG_LOG 
-        for(int i = 0; i < num_frames; i++) {
-            char file_name[50];
-            snprintf(file_name, sizeof(file_name), "dumps/frame_%d.hex", i);
-            dump_buffer_to_hex_32(file_name, frames[i], frame_size);
-        }
+        char file_name[50];
+        snprintf(file_name, sizeof(file_name), "dumps/1_pre_emphasis.hex");
+        dump_buffer_to_hex_16(file_name, samples, num_samples);
     #endif
 
 
-    
+    //SEGUNDA ETAPA "enquadramento"
+    int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step, &num_frames);
+    #ifdef CONFIG_LOG
+        for (int i = 0; i < num_frames; i++) {
+            char file_name[64];
+            snprintf(file_name, sizeof(file_name), "dumps/2_frames/%04d.hex", i);
+            dump_buffer_to_hex_32(file_name, frames[i], frame_size);
+        }
+
+    #endif
+
+    //TERCEIRA ETAPA "janelamento"
+    int16_t window_q15[frame_size];
+    generate_hamming_window_q15(window_q15, frame_size);
+
+    for(int i = 0; i < num_frames; i++) {
+        hamming_window_fixed(frames[i], window_q15, frame_size);
+    }
+
     #ifdef CONFIG_CREATE_DATABANK
-        for(int i = 0; i < num_frames; i++) {
-            hamming_window(frames[i], frame_size);
-        }
+        save_window_to_file("tables/hamming_window.hex", window_q15, frame_size);
     #endif
     
     #ifdef CONFIG_LOG
         for(int i = 0; i < num_frames; i++) {
             char file_name[50];
-            snprintf(file_name, sizeof(file_name), "dumps/hamming_frame_%d.hex", i);
+            snprintf(file_name, sizeof(file_name), "dumps/3_hamming_frames/%04d.hex", i);
             dump_buffer_to_hex_32(file_name, frames[i], frame_size);
         }
     #endif
 
-
-
-    #ifdef CONFIG_LOG
-        FILE *fp = fopen("data/preemphasis.dat", "w");
-        if (!fp) {
-            perror("fopen");
-            return 1;
-        }
-        
-        for (int i = 0; i < frame_size; i++) {
-            fprintf(fp, "%d %d\n", i, frames[0][i]);
-        }
-        
-        fclose(fp);
-    #endif
-
-
-
+    //QUARTA ETAPA FFT
 
     int num_freqs = NFFT; // Frequências DC a Nyquist, NFFT é definido no q15_fft.h
     
@@ -180,58 +177,79 @@ int main(int argc, char *argv[]) {
 
     
     #ifdef CONFIG_LOG
-        dump_buffer_to_hex_32("data/power_spectrum.hex", power_spectrum[0], NFFT/2 + 1);
-        
-        // Salvar o primeiro frame em arquivo para plot
-        FILE *fp1 = fopen("data/frame1.dat", "w");
-        if (!fp1) {
-        perror("Erro ao criar arquivo de dados");
-    } else {
-        for (int i = 0; i < NFFT/2 + 1; i++) {
-            fprintf(fp1, "%d %d\n", i, power_spectrum[1][i]);
+        for (int i = 0; i < num_frames; i++) {
+            char filename[128];
+            snprintf(filename, sizeof(filename), "dumps/power_spectrum/%04d.hex", i);
+
+            dump_buffer_to_hex_32(filename, power_spectrum[0], NFFT/2 + 1);
         }
-        fclose(fp1);
-        system("gnuplot -p -e \"plot 'data/frame1.dat' with lines title 'Frame 1 power'\"");
-    }
+
+        // Salvar o primeiro frame em arquivo para plot
+        FILE *fp1 = fopen("dumps/plots/frame1.dat", "w");
+        if (!fp1) {
+            perror("Erro ao criar arquivo de dados");
+        } else {
+            for (int i = 0; i < NFFT/2 + 1; i++) {
+                fprintf(fp1, "%d %d\n", i, power_spectrum[1][i]);
+            }
+            fclose(fp1);
+            system("gnuplot -p -e \"plot 'data/frame1.dat' with lines title 'Frame 1 power'\"");
+        }
     #endif
 
 
 
-    FILE *fp4 = fopen("data/ceps_matrix.dat", "w");
-    if (!fp4) {
-        perror("Erro ao abrir arquivos de saída");
-        return 1;
-    }
+    //QUINTA ETAPA Banco de filtros + DCT (cepstrais)
 
     int32_t energies[NUM_FILTERS];
     init_cos_lut();
 
+    #ifdef CONFIG_LOG
+        FILE *fp_ceps = fopen("dumps/7_ceps_matrix.dat", "w");
+        if (!fp_ceps) perror("Erro ao criar 7_ceps_matrix.dat");
+
+        FILE *fp_spec = fopen("dumps/5_spectrogram_matrix.dat", "w");
+        if (!fp_spec) perror("Erro ao criar 5_spectrogram_matrix.dat");
+    #endif
+
     for (int i = 0; i < num_frames; i++) {
-        char file_name[50];
+
         optimization_apply_q15(power_spectrum[i], energies);
 
-
         #ifdef CONFIG_LOG
-            FILE *fp3 = fopen("data/spectrogram_matrix.dat", "w");
-            if (fp3 != NULL) {
+            char energy_file[64];
+            snprintf(energy_file, sizeof(energy_file), "dumps/4_energies/%04d.hex", i);
+            dump_buffer_to_hex_32(energy_file, energies, NUM_FILTERS);
+
+            if (fp_spec) {
                 for (int j = 0; j < NUM_FILTERS; j++) {
-                    fprintf(fp3, "%d%c", energies[j],
+                    fprintf(fp_spec, "%d%c",
+                            energies[j],
                             (j == NUM_FILTERS - 1) ? '\n' : ' ');
                 }
-                fclose(fp3);
-            } else {
-                perror("Erro ao abrir data/spectrogram_matrix.dat");
             }
         #endif
 
         int32_t ceps[NUM_CEPS];
         dct_fixed(energies, NUM_FILTERS, ceps);
 
-        snprintf(file_name, sizeof(file_name), "dumps/ceps_%03d.hex", i);
-        dump_short_int_buffer_to_hex(file_name, ceps, NUM_CEPS);
-        for (int j = 0; j < NUM_CEPS; j++) {
-            fprintf(fp4, "%.6f%c", (float)ceps[j] / 32768.0f, (j == NUM_CEPS - 1) ? '\n' : ' ');        }
+        #ifdef CONFIG_LOG
+            char ceps_file[64];
+            snprintf(ceps_file, sizeof(ceps_file), "dumps/6_ceps/%04d.hex", i);
+            dump_short_int_buffer_to_hex(ceps_file, ceps, NUM_CEPS);
+
+            if (fp_ceps) {
+                for (int j = 0; j < NUM_CEPS; j++) {
+                    fprintf(fp_ceps, "%.6f%c", (float)ceps[j] / 32768.0f, (j == NUM_CEPS - 1) ? '\n' : ' ');
+                }
+            }
+        #endif
     }
+
+    #ifdef CONFIG_LOG
+        if (fp_ceps) fclose(fp_ceps);
+        if (fp_spec) fclose(fp_spec);
+    #endif
 
 
 
@@ -240,8 +258,6 @@ int main(int argc, char *argv[]) {
     printf("Execution Time (us): %.2f\n", time_spent * 1e6);
     unsigned long long end_cycles = __rdtsc();
     printf("CPU Cycles: %llu\n", end_cycles - start_cycles);
-
-    fclose(fp4);
 
 
     free(frames);
