@@ -58,19 +58,6 @@ void hamming_window_fixed_table(int32_t *frame, int frame_size) {
     }
 }
 
-void hamming_window(int32_t *frame, int frame_size) {
-    // Aloca espaço para a janela Hamming em Q15
-    int16_t window_q15[frame_size];
-
-    // Gera os coeficientes da janela Hamming em Q15
-    generate_hamming_window_q15(window_q15, frame_size);
-
-    save_window_to_file("tables/hamming_window.hex", window_q15, frame_size);
-
-    // Aplica a janela usando ponto fixo
-    hamming_window_fixed(frame, window_q15, frame_size);
-}
-
 // Função para criar os frames do sinal
 int32_t** frame_signal_int(const int16_t *samples, int num_samples, int frame_size, int frame_step, int *out_num_frames) {
     int num_frames = ceil_div((num_samples - frame_size), frame_step) + 1;
