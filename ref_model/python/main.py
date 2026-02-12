@@ -230,6 +230,7 @@ def plot_mfcc(mfcc, output_dir, audio_name):
     output_file = os.path.join(output_dir, f"{audio_name}_mfcc.png")
     plt.savefig(output_file)
     plt.show()
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: python main.py <audio_file_path>")
@@ -272,15 +273,17 @@ def main():
     if PLOT:
         plot_windowed_frame(frames, output_dir, audio_name)
 
-    # Step 5: Compute spectrum
-    mag_frames, pow_frames = compute_spectrum(frames)
-    if PLOT:
-        plot_spectrum(mag_frames, output_dir, audio_name)
     if LOG:
         os.makedirs("dumps/3_hamming_frames", exist_ok=True)
         for i in range(len(frames)):
             file_name = f"dumps/3_hamming_frames/{i:04d}.hex"
-            dump_buffer_to_hex_32(file_name, mag_frames[i])
+            dump_buffer_to_hex_16(file_name, frames[i])
+
+    # Step 5: Compute spectrum
+    mag_frames, pow_frames = compute_spectrum(frames)
+    if PLOT:
+        plot_spectrum(mag_frames, output_dir, audio_name)
+
 
     # Step 6: Apply Mel filterbank
     filter_banks = apply_mel_filterbank(pow_frames, sample_rate)
