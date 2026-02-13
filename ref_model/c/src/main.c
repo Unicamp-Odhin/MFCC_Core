@@ -68,6 +68,18 @@ void dump_buffer_to_hex_32(const char *file_name, int32_t *buffer, int size) {
     fclose(fp);
 }
 
+void dump_buffer_q15_to_float(const char *file_name, int32_t *buffer, int size) {
+    FILE *fp = fopen(file_name, "w");
+    if (!fp) {
+        perror("fopen");
+        return;
+    }
+    for (int i = 0; i < size; i++) {
+        fprintf(fp, "%f\n", q15_16_to_float(buffer[i]));
+    }
+    fclose(fp);
+}
+
 void dump_short_int_buffer_to_hex(const char *file_name, int32_t *buffer, int size) {
     FILE *fp = fopen(file_name, "w");
     if (!fp) {
@@ -75,7 +87,7 @@ void dump_short_int_buffer_to_hex(const char *file_name, int32_t *buffer, int si
         return;
     }
     for (int i = 0; i < size; i++) {
-        fprintf(fp, "%.6f\n", q15_to_float(buffer[i]) * (2 << 15));
+        fprintf(fp, "%.6f\n", q15_16_to_float(buffer[i]) * (2 << 15));
 
     }
     fclose(fp);
@@ -219,7 +231,7 @@ int main(int argc, char *argv[]) {
         #ifdef CONFIG_LOG
             char energy_file[64];
             snprintf(energy_file, sizeof(energy_file), "dumps/4_energies/%04d.hex", i);
-            dump_buffer_to_hex_32(energy_file, energies, NUM_FILTERS);
+            dump_buffer_q15_to_float(energy_file, energies, NUM_FILTERS);
 
             if (fp_spec) {
                 for (int j = 0; j < NUM_FILTERS; j++) {

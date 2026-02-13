@@ -1,7 +1,7 @@
 #ifndef __MEL_H__
 #define __MEL_H__
 
-#include "q15.h"
+#include "q15_16.h"
 #include "q15_fft.h"
 
 #define NUM_FILTERS 40

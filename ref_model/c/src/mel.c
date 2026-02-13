@@ -3,12 +3,12 @@
 #include <math.h>
 #include <stdint.h>
 #include "mel.h"
-#include "q15.h"
+#include "q15_16.h"
 #include "q15_fft.h"
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MIN_LOG_ENERGY_Q15 FLOAT_TO_Q15(-20.0f)
+#define MIN_LOG_ENERGY_Q15_16 FLOAT_TO_Q15_16(-20.0f)
 
 
 int32_t filterbank_15[NUM_FILTERS][OPTIMIZATION_SIZE] = {
@@ -156,15 +156,15 @@ void apply_filterbank(
 // Converte frequência em Hz para índice de bin na FFT em Q1.15
 static inline int hz_to_bin_q15(int freq, int sample_rate) {
     // ratio = freq / (sample_rate / 2.0)
-    int32_t ratio_q15 = ((int32_t)freq << Q15_SHIFT) / (sample_rate / 2);
+    int32_t ratio_q15 = ((int32_t)freq << Q15) / (sample_rate / 2);
 
     // ratio * (NFFT / 2)
-    return (ratio_q15 * (NFFT / 2)) >> Q15_SHIFT;
+    return (ratio_q15 * (NFFT / 2)) >> Q15;
 }
 
 void create_filterbank_q15(int16_t filterbank[NUM_FILTERS][NFFT/2 + 1], int sample_rate) {
     int32_t high_freq = sample_rate / 2;
-    int32_t high_freq_q15 = high_freq << Q15_SHIFT;
+    int32_t high_freq_q15 = high_freq << Q15;
 
     for (int m = 1; m <= NUM_FILTERS; m++) {
         int32_t m_minus = m - 1;
@@ -176,17 +176,17 @@ void create_filterbank_q15(int16_t filterbank[NUM_FILTERS][NFFT/2 + 1], int samp
         int32_t f_m_q15 = (m_center * high_freq_q15) / denom;
         int32_t f_m_plus_q15 = (m_plus * high_freq_q15) / denom;
 
-        int bin_left = hz_to_bin_q15(f_m_minus_q15 >> Q15_SHIFT, sample_rate);
-        int bin_center = hz_to_bin_q15(f_m_q15 >> Q15_SHIFT, sample_rate);
-        int bin_right = hz_to_bin_q15(f_m_plus_q15 >> Q15_SHIFT, sample_rate);
+        int bin_left = hz_to_bin_q15(f_m_minus_q15 >> Q15, sample_rate);
+        int bin_center = hz_to_bin_q15(f_m_q15 >> Q15, sample_rate);
+        int bin_right = hz_to_bin_q15(f_m_plus_q15 >> Q15, sample_rate);
 
         for (int k = bin_left; k < bin_center && k < NFFT/2 + 1; k++) {
-            int32_t num = (k - bin_left) << Q15_SHIFT;
+            int32_t num = (k - bin_left) << Q15;
             int32_t den = (bin_center - bin_left);
             filterbank[m - 1][k] = (den != 0) ? (int16_t)(num / den) : 0;
         }
         for (int k = bin_center; k < bin_right && k < NFFT/2 + 1; k++) {
-            int32_t num = (bin_right - k) << Q15_SHIFT;
+            int32_t num = (bin_right - k) << Q15;
             int32_t den = (bin_right - bin_center);
             filterbank[m - 1][k] = (den != 0) ? (int16_t)(num / den) : 0;
         }
@@ -204,14 +204,14 @@ void apply_filterbank_q15(
         int32_t sum = 0;
 
         for (int k = 0; k < NFFT/2 + 1; k++) {
-            sum = q15_add(sum, q15_mul(power_spectrum_frame[k], filterbank[m][k]));  // acumulando em Q30
+            sum = q15_16_add(sum, q15_16_mul(power_spectrum_frame[k], filterbank[m][k]));  // acumulando em Q30
         }
 
         if (sum <= 0) {
             //energies_q15[m] = MIN_LOG_ENERGY_Q15;
             energies_q15[m] = 0x80;
         } else {
-            energies_q15[m] = 6 * q15_log2(sum);
+            energies_q15[m] = 6 * q15_16_log2(sum);
 
         }
     }
@@ -280,14 +280,14 @@ void optimization_apply_q15(
         int end_index = filterbank_15[i][1] + 1;
 
         for (int k = init_index; k < end_index ; k++) {
-            sum = q15_add(sum, q15_mul(power_spectrum_frame[k], filterbank_15[i][2 + k - init_index]));
+            sum = q15_16_add(sum, q15_16_mul(power_spectrum_frame[k], filterbank_15[i][2 + k - init_index]));
         }
 
         if (sum <= 0) {
-            energies_q15[i] = MIN_LOG_ENERGY_Q15;
+            energies_q15[i] = MIN_LOG_ENERGY_Q15_16;
         } else {
-            // energies_q15[i] = q15_log2(sum);
-            energies_q15[i] = q15_mul(float_to_q15(6.0f), q15_log2(sum));
+            energies_q15[i] = q15_16_log10(sum);
+            // energies_q15[i] = q15_16_mul(float_to_q15_16(6.0f), q15_16_log2(sum));
         }
     }
 }

@@ -6,30 +6,30 @@
 #include "fft.h"
 
 
-Complex complex_add(Complex a, Complex b) {
-    Complex result = {a.real + b.real, a.imag + b.imag};
+complex_q15_16 complex_add(complex_q15_16 a, complex_q15_16 b) {
+    complex_q15_16 result = {a.real + b.real, a.imag + b.imag};
     return result;
 }
 
-Complex complex_sub(Complex a, Complex b) {
-    Complex result = {a.real - b.real, a.imag - b.imag};
+complex_q15_16 complex_sub(complex_q15_16 a, complex_q15_16 b) {
+    complex_q15_16 result = {a.real - b.real, a.imag - b.imag};
     return result;
 }
 
-Complex complex_mul(Complex a, Complex b) {
-    Complex result = {
+complex_q15_16 complex_mul(complex_q15_16 a, complex_q15_16 b) {
+    complex_q15_16 result = {
         a.real * b.real - a.imag * b.imag,
         a.real * b.imag + a.imag * b.real
     };
     return result;
 }
 
-Complex complex_exp(double angle) {
-    Complex result = {cos(angle), sin(angle)};
+complex_q15_16 complex_exp(double angle) {
+    complex_q15_16 result = {cos(angle), sin(angle)};
     return result;
 }
 
-void dft(Complex* x, Complex* X, int N) {
+void dft(complex_q15_16* x, complex_q15_16* X, int N) {
     for (int k = 0; k < N; k++) {
         double sum_real = 0.0;
         double sum_imag = 0.0;
@@ -43,16 +43,16 @@ void dft(Complex* x, Complex* X, int N) {
     }
 }
 
-void fft_radix2(Complex* x, Complex* X, int N) {
+void fft_radix2(complex_q15_16* x, complex_q15_16* X, int N) {
     if (N == 1) {
         X[0] = x[0];
         return;
     }
 
-    Complex* even = (Complex*)malloc(N / 2 * sizeof(Complex));
-    Complex* odd  = (Complex*)malloc(N / 2 * sizeof(Complex));
-    Complex* even_fft = (Complex*)malloc(N / 2 * sizeof(Complex));
-    Complex* odd_fft  = (Complex*)malloc(N / 2 * sizeof(Complex));
+    complex_q15_16* even = (complex_q15_16*)malloc(N / 2 * sizeof(complex_q15_16));
+    complex_q15_16* odd  = (complex_q15_16*)malloc(N / 2 * sizeof(complex_q15_16));
+    complex_q15_16* even_fft = (complex_q15_16*)malloc(N / 2 * sizeof(complex_q15_16));
+    complex_q15_16* odd_fft  = (complex_q15_16*)malloc(N / 2 * sizeof(complex_q15_16));
 
     for (int i = 0; i < N / 2; i++) {
         even[i] = x[2 * i];
@@ -64,8 +64,8 @@ void fft_radix2(Complex* x, Complex* X, int N) {
 
     for (int k = 0; k < N / 2; k++) {
         double angle = -2.0 * M_PI * k / N;
-        Complex twiddle = complex_exp(angle);
-        Complex t = complex_mul(twiddle, odd_fft[k]);
+        complex_q15_16 twiddle = complex_exp(angle);
+        complex_q15_16 t = complex_mul(twiddle, odd_fft[k]);
         X[k] = complex_add(even_fft[k], t);
         X[k + N / 2] = complex_sub(even_fft[k], t);
     }
@@ -86,7 +86,7 @@ unsigned int bit_reverse(unsigned int x, int log2n) {
     return n;
 }
 
-void fft_radix2_iterative(Complex* x, int N) {
+void fft_radix2_iterative(complex_q15_16* x, int N) {
     int log2n = 0;
     int n = N;
     while (n >>= 1) log2n++;
@@ -95,7 +95,7 @@ void fft_radix2_iterative(Complex* x, int N) {
     for (int i = 0; i < N; i++) {
         int j = bit_reverse(i, log2n);
         if (j > i) {
-            Complex temp = x[i];
+            complex_q15_16 temp = x[i];
             x[i] = x[j];
             x[j] = temp;
         }
@@ -108,9 +108,9 @@ void fft_radix2_iterative(Complex* x, int N) {
         for (int k = 0; k < N; k += m) {
             for (int j = 0; j < m / 2; j++) {
                 double angle = j * angle_step;
-                Complex twiddle = complex_exp(angle);
-                Complex t = complex_mul(twiddle, x[k + j + m / 2]);
-                Complex u = x[k + j];
+                complex_q15_16 twiddle = complex_exp(angle);
+                complex_q15_16 t = complex_mul(twiddle, x[k + j + m / 2]);
+                complex_q15_16 u = x[k + j];
                 x[k + j] = complex_add(u, t);
                 x[k + j + m / 2] = complex_sub(u, t);
             }
@@ -118,9 +118,9 @@ void fft_radix2_iterative(Complex* x, int N) {
     }
 }
 
-void rfft(int16_t* x_real, Complex* X_rfft, int N) {
-    Complex* x_complex = (Complex*)malloc(N * sizeof(Complex));
-    Complex* X_full = (Complex*)malloc(N * sizeof(Complex));
+void rfft(int16_t* x_real, complex_q15_16* X_rfft, int N) {
+    complex_q15_16* x_complex = (complex_q15_16*)malloc(N * sizeof(complex_q15_16));
+    complex_q15_16* X_full = (complex_q15_16*)malloc(N * sizeof(complex_q15_16));
 
     for (int i = 0; i < N; i++) {
         x_complex[i].real = (double)x_real[i];

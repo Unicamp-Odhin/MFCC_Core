@@ -1,13 +1,13 @@
-#include "q15.h"
+#include "q15_16.h"
 #include <inttypes.h>
 #include <stdio.h>
 #include "q15_fft.h"
 
-int64_t complex_power_q30(complex_q15 x) {
+int64_t complex_power_q30(complex_q15_16 x) {
     return ((int64_t)x.real * x.real) + ((int64_t)x.imag * x.imag); // Q30
 }
 
-int16_t complex_power_q15(complex_q15 x) {
+int16_t complex_power_q15(complex_q15_16 x) {
     int32_t real_sq = (int32_t)x.real * x.real; // Q15 * Q15 = Q30
     int32_t imag_sq = (int32_t)x.imag * x.imag; // Q30
     int32_t sum = real_sq + imag_sq;            // Q30
@@ -15,18 +15,18 @@ int16_t complex_power_q15(complex_q15 x) {
     return result;
 }
 
-void generate_twiddles(complex_q15* twiddles, int N) {
+void generate_twiddles(complex_q15_16* twiddles, int N) {
     for (int k = 0; k < N / 2; k++) {
         float angle = -2.0f * M_PI * k / N;
         // A versão comentada gera um errar os coeficientes, mas gera um grafico visualmente mais próximo do programa em python
         // twiddles[k].real = (int32_t)((Q15_MAX) * cosf(angle)); // Scale to Q15
         // twiddles[k].imag = (int32_t)((Q15_MAX) * sinf(angle)); // Scale to Q15
-        twiddles[k].real = float_to_q15(cosf(angle)); // Scale to Q15
-        twiddles[k].imag = float_to_q15(sinf(angle)); // Scale to Q15
+        twiddles[k].real = float_to_q15_16(cosf(angle)); // Scale to Q15
+        twiddles[k].imag = float_to_q15_16(sinf(angle)); // Scale to Q15
     }
 }
 
-void save_twiddles(complex_q15* twiddles, int N) {
+void save_twiddles(complex_q15_16* twiddles, int N) {
 
     FILE* file = fopen("data/twiddles.hex", "w");
     if (!file) {
@@ -41,7 +41,7 @@ void save_twiddles(complex_q15* twiddles, int N) {
     fclose(file);
 }
 
-void fft_iterative(complex_q15* x, int N, complex_q15* twiddles) {
+void fft_iterative(complex_q15_16* x, int N, complex_q15_16* twiddles) {
     int logN = 0;
     for (int temp = N; temp > 1; temp >>= 1) logN++;
 
@@ -50,7 +50,7 @@ void fft_iterative(complex_q15* x, int N, complex_q15* twiddles) {
     for (int i = 0, j = 0; i < N; i++) {
         if (i < j) {
             //printf("Swapping indices %d and %d\n", i, j);
-            complex_q15 temp = x[i];
+            complex_q15_16 temp = x[i];
             x[i] = x[j];
             x[j] = temp;
         }
@@ -73,19 +73,19 @@ void fft_iterative(complex_q15* x, int N, complex_q15* twiddles) {
         for (int k = 0; k < N; k += m) {
             for (int j = 0; j < half_m; j++) {
                 int twiddle_index = j * twiddle_step;
-                complex_q15 t = q15_complex_mul(twiddles[twiddle_index], x[k + j + half_m]);
-                complex_q15 u = x[k + j];
+                complex_q15_16 t = q15_16_complex_mul(twiddles[twiddle_index], x[k + j + half_m]);
+                complex_q15_16 u = x[k + j];
 
-                x[k + j] = q15_complex_add(u, t);
-                x[k + j + half_m] = q15_complex_sub(u, t);
+                x[k + j] = q15_16_complex_add(u, t);
+                x[k + j + half_m] = q15_16_complex_sub(u, t);
             }
         }
     }
 }
 
-void fft_q15_real_power(q15_t* x_real, int N, int32_t* power_out) {
+void fft_q15_real_power(q15_16_t* x_real, int N, int32_t* power_out) {
     // 1. Alocar vetor complexo
-    complex_q15* x = (complex_q15*)malloc(NFFT * sizeof(complex_q15));
+    complex_q15_16* x = (complex_q15_16*)malloc(NFFT * sizeof(complex_q15_16));
 
     for (int i = 0; i < NFFT; i++) {
         if (i >= N)
@@ -95,7 +95,7 @@ void fft_q15_real_power(q15_t* x_real, int N, int32_t* power_out) {
         x[i].imag = 0;
     }
     // 2. Gerar twiddles
-    complex_q15* twiddles = (complex_q15*)malloc((NFFT / 2) * sizeof(complex_q15));
+    complex_q15_16* twiddles = (complex_q15_16*)malloc((NFFT / 2) * sizeof(complex_q15_16));
     generate_twiddles(twiddles, NFFT);
     save_twiddles(twiddles, NFFT);
 

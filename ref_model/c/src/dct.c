@@ -1,7 +1,7 @@
 #include "dct.h"
 #include <math.h>
 #include <stdio.h>
-#include "q15.h"
+#include "q15_16.h"
 #include "mel.h"
 
 
@@ -12,7 +12,7 @@ static int32_t cos_lut[NUM_CEPS][NUM_FILTERS];
 void init_cos_lut() {
     for (int k = 0; k < NUM_CEPS; k++) {
         for (int n = 0; n < NUM_FILTERS; n++) {
-            cos_lut[k][n] = float_to_q15(cos(M_PI * (n + 0.5f) * k / NUM_FILTERS));
+            cos_lut[k][n] = float_to_q15_16(cos(M_PI * (n + 0.5f) * k / NUM_FILTERS));
         }
     }
 }
@@ -44,7 +44,7 @@ void dct_fixed(int32_t energies_q15[], int num_filters, int32_t ceps_q15[NUM_CEP
         int32_t sum = 0;
 
         for (int n = 0; n < num_filters; n++) {
-            sum = q15_add(sum, q15_mul(energies_q15[n], cos_lut[k][n]));
+            sum = q15_16_add(sum, q15_16_mul(energies_q15[n], cos_lut[k][n]));
         }
 
         ceps_q15[k] = sum;
