@@ -235,8 +235,8 @@ int main(int argc, char *argv[]) {
 
             if (fp_spec) {
                 for (int j = 0; j < NUM_FILTERS; j++) {
-                    fprintf(fp_spec, "%d%c",
-                            energies[j],
+                    fprintf(fp_spec, "%2f%c",
+                             q15_16_to_float(energies[j]),
                             (j == NUM_FILTERS - 1) ? '\n' : ' ');
                 }
             }
