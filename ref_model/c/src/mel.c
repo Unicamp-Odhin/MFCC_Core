@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "mel.h"
 #include "q15_16.h"
+#include "q31_32.h"
 #include "q15_fft.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -204,7 +205,7 @@ void apply_filterbank_q15(
         int32_t sum = 0;
 
         for (int k = 0; k < NFFT/2 + 1; k++) {
-            sum = q15_16_add(sum, q15_16_mul(power_spectrum_frame[k], filterbank[m][k]));  // acumulando em Q30
+            sum = q15_16_add(sum, q15_16_mul(power_spectrum_frame[k], filterbank[m][k]));  // acumulando em Q31_32_FRAC_BITS
         }
 
         if (sum <= 0) {
@@ -269,8 +270,10 @@ void optimization_filterbank_q15(int32_t filterbank[NUM_FILTERS][OPTIMIZATION_SI
     fclose(file);
 }
 
+
+//TODO, voltar aqui, apenas mudei os tipos para compilar
 void optimization_apply_q15(
-    int32_t power_spectrum_frame[NFFT/2 + 1],
+    int64_t power_spectrum_frame[NFFT/2 + 1],
     int32_t energies_q15[NUM_FILTERS]
 ) {
     for (int i = 0; i < NUM_FILTERS; i++) {
@@ -280,16 +283,18 @@ void optimization_apply_q15(
         int end_index = filterbank_15[i][1] + 1;
 
         for (int k = init_index; k < end_index ; k++) {
-            sum = q15_16_add(sum, q15_16_mul(power_spectrum_frame[k], filterbank_15[i][2 + k - init_index]));
+            sum = q31_32_add(sum, q31_32_mul(power_spectrum_frame[k], filterbank_15[i][2 + k - init_index]));
         }
 
         if (sum <= 0) {
             energies_q15[i] = MIN_LOG_ENERGY_Q15_16;
         } else {
             // TODO: tem erro
-            energies_q15[i] = q15_16_mul(float_to_q15_16(20.0f), q15_16_log10(sum)) << 1;
+            // printf("%2f ", q15_16_to_float(sum));
+            energies_q15[i] = q31_32_mul(float_to_q31_32(20.0f), q31_32_log10(sum)) << 1;
             // energies_q15[i] = q15_16_ln(sum);
             // energies_q15[i] = q15_16_mul(float_to_q15_16(6.0f), q15_16_log2(sum));
         }
     }
+    // printf("\n");
 }

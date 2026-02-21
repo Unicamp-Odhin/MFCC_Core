@@ -5,7 +5,6 @@
 #include <stdio.h>
 
 q15_16_t float_to_q15_16(float x) {
-    // Saturação
     if (x >= 32768.0f) return Q15_16_MAX;
     if (x <= -32768.0f) return Q15_16_MIN;
 
@@ -25,6 +24,8 @@ q15_16_t q15_16_saturate(int64_t x) {
 
 q15_16_t q15_16_mul(q15_16_t a, q15_16_t b) {
     int64_t temp = (int64_t)a * (int64_t)b;
+    int64_t temp2 = temp>>16;
+    // printf("\t\t %f * %f -> %f -> %f\n", q15_16_to_float(a), q15_16_to_float(b), q15_16_to_float(temp), q15_16_to_float((temp2)));
 
     if (temp >= 0)
         temp += (1LL << (Q15 - 1));
@@ -35,6 +36,30 @@ q15_16_t q15_16_mul(q15_16_t a, q15_16_t b) {
 
     return q15_16_saturate(temp);
 }
+
+q15_16_t q15_16_div(q15_16_t a, q15_16_t b) {
+    if (b == 0) {
+        return (a >= 0) ? Q15_16_MAX : Q15_16_MIN;
+    }
+
+    int64_t dividend = (int64_t)a << 16;
+    int64_t divisor = (int64_t)b;
+    
+    int64_t quotient = dividend / divisor;
+    
+    int64_t remainder = dividend % divisor;
+    if (remainder < 0) remainder = -remainder;
+    
+    if (remainder * 2 >= divisor) {
+        if ((dividend ^ divisor) >= 0)
+            quotient++;
+        else
+            quotient--;
+    }
+    
+    return q15_16_saturate(quotient);
+}
+
 
 
 q15_16_t q15_16_add(q15_16_t a, q15_16_t b) {
@@ -47,27 +72,6 @@ q15_16_t q15_16_sub(q15_16_t a, q15_16_t b) {
     return q15_16_saturate(diff);
 }
 
-
-complex_q15_16 q15_16_complex_add(complex_q15_16 a, complex_q15_16 b) {
-    return (complex_q15_16){ q15_16_add(a.real, b.real), q15_16_add(a.imag, b.imag) };
-}
-
-complex_q15_16 q15_16_complex_sub(complex_q15_16 a, complex_q15_16 b) {
-    return (complex_q15_16){ q15_16_sub(a.real, b.real), q15_16_sub(a.imag, b.imag) };
-}
-
-complex_q15_16 q15_16_complex_mul(complex_q15_16 a, complex_q15_16 b) {
-    int64_t real_part = (int64_t)a.real * b.real - (int64_t)a.imag * b.imag;
-    int64_t imag_part = (int64_t)a.real * b.imag + (int64_t)a.imag * b.real;
-
-    real_part >>= 16;
-    imag_part >>= 16;
-
-    q15_16_t real = q15_16_saturate(real_part);
-    q15_16_t imag = q15_16_saturate(imag_part);
-
-    return (complex_q15_16){real, imag};
-}
 
 q15_16_t q15_16_log2(q15_16_t x) {
     if (x <= 0) return Q15_16_MIN;
@@ -107,13 +111,43 @@ q15_16_t q15_16_log10(q15_16_t x) {
     return q15_16_mul(log2x , LOG10_2_Q15_16);
 }
 
-int32_t q15_16_ln(int32_t x) {
+q15_16_t q15_16_ln(q15_16_t x) {
     q15_16_t log2x = q15_16_log2(x);
     return q15_16_mul(log2x, LN2_Q15_16);
 }
 
-int32_t q15_cos(int32_t angle_q15) {
+q15_16_t q15_cos(q15_16_t angle_q15) {
     float angle = ((float)angle_q15) / Q15_16_ONE;
     float cos_val = cosf(angle);
     return float_to_q15_16(cos_val);
+}
+
+
+complex_q15_16 q15_16_complex_add(complex_q15_16 a, complex_q15_16 b) {
+    return (complex_q15_16){ q15_16_add(a.real, b.real), q15_16_add(a.imag, b.imag) };
+}
+
+complex_q15_16 q15_16_complex_sub(complex_q15_16 a, complex_q15_16 b) {
+    return (complex_q15_16){ q15_16_sub(a.real, b.real), q15_16_sub(a.imag, b.imag) };
+}
+
+complex_q15_16 q15_16_complex_mul(complex_q15_16 a, complex_q15_16 b) {
+    int64_t real = q15_16_mul(a.real, b.real) - q15_16_mul(a.imag, b.imag);
+    int64_t imag = q15_16_mul(a.real, b.imag) + q15_16_mul(a.imag, b.real);
+
+    return (complex_q15_16){real, imag};
+}
+
+q15_16_t q15_16_complex_power(complex_q15_16 a) {
+    int64_t real_sq = (int64_t)a.real * a.real;
+    int64_t imag_sq = (int64_t)a.imag * a.imag;
+    int64_t sum = real_sq + imag_sq;
+    
+    return q15_16_saturate(sum >> 16);
+}
+
+q15_16_t q15_16_complex_mag2(complex_q15_16 a) {
+    int64_t sum = (int64_t)a.real * a.real + (int64_t)a.imag * a.imag;
+    sum >>= 16;
+    return q15_16_saturate(sum);
 }

@@ -6,6 +6,7 @@
 #include <math.h>
 #include <string.h>
 #include "q15_16.h"
+#include "q31_32.h"
 
 #define NFFT 512
 
@@ -15,9 +16,8 @@
 
 int64_t complex_power_q30(complex_q15_16 x);
 int16_t complex_power_q15(complex_q15_16 x);
-void generate_twiddles(complex_q15_16* twiddles, int N);
 void fft_recursive(complex_q15_16* x, int N, complex_q15_16* twiddles, int N_total);
-void fft_q15_real_power(q15_16_t* x_real, int N, int32_t* power_out);
+void fft_q15_real_power(q15_16_t* x_real, int N, q31_32_t* power_out);
 
 
 #endif // !__Q15_FFT_H__

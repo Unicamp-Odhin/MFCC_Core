@@ -6,6 +6,7 @@
 #include "wav.h"
 #include "process.h"
 #include "q15_fft.h"
+#include "q31_32.h"
 #include "mel.h"
 #include "dct.h"
 #include <time.h>
@@ -43,6 +44,17 @@ int create_dirs(void) {
     
     return 0;
 }
+void dump_buffer_unsigned(const char *file_name, int32_t *buffer, int size) {
+    FILE *fp = fopen(file_name, "w");
+    if (!fp) {
+        perror("fopen");
+        return;
+    }
+    for (int i = 0; i < size; i++) {
+        fprintf(fp, "%u\n", buffer[i]);
+    }
+    fclose(fp);
+}
 
 void dump_buffer_to_hex_16(const char *file_name, int16_t *buffer, int size) {
     FILE *fp = fopen(file_name, "w");
@@ -76,6 +88,18 @@ void dump_buffer_q15_to_float(const char *file_name, int32_t *buffer, int size) 
     }
     for (int i = 0; i < size; i++) {
         fprintf(fp, "%f\n", q15_16_to_float(buffer[i]));
+    }
+    fclose(fp);
+}
+
+void dump_buffer_q31_to_float(const char *file_name, int64_t *buffer, int size) {
+    FILE *fp = fopen(file_name, "w");
+    if (!fp) {
+        perror("fopen");
+        return;
+    }
+    for (int i = 0; i < size; i++) {
+        fprintf(fp, "%f\n", q31_32_to_float(buffer[i]));
     }
     fclose(fp);
 }
@@ -180,8 +204,9 @@ int main(int argc, char *argv[]) {
 
     int num_freqs = NFFT; // Frequências DC a Nyquist, NFFT é definido no q15_fft.h
     
-    int32_t power_spectrum[num_frames][num_freqs]; // transposição do espectro de potência
+    q31_32_t power_spectrum[num_frames][num_freqs]; // transposição do espectro de potência
     
+
     for(int i = 0; i < num_frames; i++) {
         power_spectrum[i][0] = 0; // DC é zero
         fft_q15_real_power(frames[i], frame_size, power_spectrum[i]);
@@ -193,9 +218,9 @@ int main(int argc, char *argv[]) {
             char filename[128];
             snprintf(filename, sizeof(filename), "dumps/power_spectrum/%04d.hex", i);
 
-            dump_buffer_to_hex_32(filename, power_spectrum[0], NFFT/2 + 1);
+            dump_buffer_q31_to_float(filename, power_spectrum[i], NFFT/2 + 1);
         }
-
+ 
         // Salvar o primeiro frame em arquivo para plot
         FILE *fp1 = fopen("dumps/plots/frame1.dat", "w");
         if (!fp1) {
@@ -248,7 +273,7 @@ int main(int argc, char *argv[]) {
         #ifdef CONFIG_LOG
             char ceps_file[64];
             snprintf(ceps_file, sizeof(ceps_file), "dumps/6_ceps/%04d.hex", i);
-            dump_short_int_buffer_to_hex(ceps_file, ceps, NUM_CEPS);
+            dump_buffer_q15_to_float(ceps_file, ceps, NUM_CEPS);
 
             if (fp_ceps) {
                 for (int j = 0; j < NUM_CEPS; j++) {

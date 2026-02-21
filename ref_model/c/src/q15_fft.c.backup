@@ -1,0 +1,144 @@
+#include "q15_16.h"
+#include <inttypes.h>
+#include <stdio.h>
+#include "q15_fft.h"
+
+
+void generate_twiddles(complex_q15_16* twiddles, int N) {
+    for (int k = 0; k < N / 2; k++) {
+        float angle = -2.0f * M_PI * k / N;
+        twiddles[k].real = float_to_q15_16(cosf(angle)); // Scale to Q15
+        twiddles[k].imag = float_to_q15_16(sinf(angle)); // Scale to Q15
+    }
+}
+
+void save_twiddles(complex_q15_16* twiddles, int N) {
+
+    FILE* file = fopen("data/twiddles.hex", "w");
+    if (!file) {
+        perror("Failed to open file for saving twiddles");
+        return;
+    }
+
+    for (int i = 0; i < N / 2; i++) {
+        fprintf(file, "%.8X%.8X\n", twiddles[i].real, twiddles[i].imag);
+    }
+
+    fclose(file);
+}
+
+void fft_iterative(complex_q15_16* x, int N, complex_q15_16* twiddles) {
+    int logN = 0;
+    for (int temp = N; temp > 1; temp >>= 1) logN++;
+
+    // Bit-reversal permutation
+    for (int i = 0, j = 0; i < N; i++) {
+        if (i < j) {
+            complex_q15_16 temp = x[i];
+            x[i] = x[j];
+            x[j] = temp;
+        }
+        int mask = N >> 1;
+        while (j & mask) {
+            j &= ~mask;
+            mask >>= 1;
+        }
+        j |= mask;
+    }
+
+    /*
+        TODO:
+            o problema está que as constas na fft estão sendo meitas em q15_16, e procavelemte isso estpa estourando o numero de bits da parte interira, ou a parte fracionária não tem suporta pra conseguir fazer as constas com os cosenos, então devou mudar o tipo de variável que estou usando, possívelmente para algo com maior precisão
+    */
+    
+    // Iterative FFT
+    for (int s = 1; s <= logN; s++) {
+        int m = 1 << s; // 2^s
+        int half_m = m >> 1;
+        int twiddle_step = N / m;
+
+        for (int k = 0; k < N; k += m) {
+            for (int j = 0; j < half_m; j++) {
+                int twiddle_index = j * twiddle_step;
+                complex_q15_16 t = q15_16_complex_mul(twiddles[twiddle_index], x[k + j + half_m]);
+                complex_q15_16 u = x[k + j];
+
+                x[k + j] = q15_16_complex_add(u, t);
+                x[k + j + half_m] = q15_16_complex_sub(u, t);
+
+                printf("\tt: (%2f, %2f) = (%2f, %2f) * (%2f, %2f)\n",
+                    q15_16_to_float(t.real),
+                    q15_16_to_float(t.imag),
+
+                    q15_16_to_float(twiddles[twiddle_index].real),
+                    q15_16_to_float(twiddles[twiddle_index].imag),
+
+                    q15_16_to_float(x[k + j + half_m].real),
+                    q15_16_to_float(x[k + j + half_m].imag)
+                );
+
+                printf("\tu: (%2f, %2f)\n",
+                    q15_16_to_float(u.real),
+                    q15_16_to_float(u.imag));
+
+                printf("\tu + t: (%2f, %2f)\n",
+                    q15_16_to_float(x[k + j].real),
+                    q15_16_to_float(x[k + j].imag)
+                );
+
+                printf("\tu - t: (%2f, %2f)\n\n",
+                    q15_16_to_float(x[k + j + half_m].real),
+                    q15_16_to_float(x[k + j + half_m].imag)
+                );
+
+
+            }
+        }
+    }
+}
+
+uint32_t complex_mag2_div(complex_q15_16 a) {
+    //convert to int
+    // printf("(%2f, %2f)\n", q15_16_to_float(a.real), q15_16_to_float(a.imag));
+
+    uint32_t real = a.real >> 16;
+    uint32_t imag = a.imag >> 16;
+
+    uint64_t sum = real * real + imag * imag;
+
+    return  (uint32_t)sum; // poderia fazer >> 8
+}
+
+void fft_q15_real_power(q15_16_t* x_real, int N, int32_t* power_out) {
+    // Aloca vetor complexo de tamanho NFFT
+
+    complex_q15_16* x = (complex_q15_16*)malloc(NFFT * sizeof(complex_q15_16));
+    if (!x) return;
+
+    // Preenche com zeros até NFFT (zero-padding)
+    for (int i = 0; i < NFFT; i++) {
+        if (i < N)
+            x[i].real = x_real[i];
+        else
+            x[i].real = 0;
+        x[i].imag = 0;
+    }
+
+    // Gera twiddles (apenas metade, devido à simetria)
+    complex_q15_16* twiddles = (complex_q15_16*)malloc((NFFT / 2) * sizeof(complex_q15_16));
+    if (!twiddles) {
+        free(x);
+        return;
+    }
+    generate_twiddles(twiddles, NFFT);  
+
+    // Executa a FFT iterativa
+    fft_iterative(x, NFFT, twiddles); 
+
+    for (int k = 0; k <= NFFT / 2; k++) {
+        power_out[k]  = complex_mag2_div(x[k]);   // |X[k]|^2 / 512
+    }
+
+    free(x);
+    free(twiddles);
+}

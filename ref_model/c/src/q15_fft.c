@@ -1,31 +1,19 @@
 #include "q15_16.h"
+#include "q31_32.h"
 #include <inttypes.h>
 #include <stdio.h>
 #include "q15_fft.h"
 
-int64_t complex_power_q30(complex_q15_16 x) {
-    return ((int64_t)x.real * x.real) + ((int64_t)x.imag * x.imag); // Q30
-}
 
-int16_t complex_power_q15(complex_q15_16 x) {
-    int32_t real_sq = (int32_t)x.real * x.real; // Q15 * Q15 = Q30
-    int32_t imag_sq = (int32_t)x.imag * x.imag; // Q30
-    int32_t sum = real_sq + imag_sq;            // Q30
-    int16_t result = (int16_t)(sum >> 15);      // Q30 -> Q15
-    return result;
-}
-
-void generate_twiddles(complex_q15_16* twiddles, int N) {
+void generate_twiddles(complex_q31_32* twiddles, int N) {
     for (int k = 0; k < N / 2; k++) {
         float angle = -2.0f * M_PI * k / N;
-        // A versão comentada gera um errar os coeficientes, mas gera um grafico visualmente mais próximo do programa em python
-        // twiddles[k].real = (int32_t)((Q15_MAX) * cosf(angle)); // Scale to Q15
-        // twiddles[k].imag = (int32_t)((Q15_MAX) * sinf(angle)); // Scale to Q15
-        twiddles[k].real = float_to_q15_16(cosf(angle)); // Scale to Q15
-        twiddles[k].imag = float_to_q15_16(sinf(angle)); // Scale to Q15
+        twiddles[k].real = float_to_q31_32(cosf(angle));
+        twiddles[k].imag = float_to_q31_32(sinf(angle));
     }
 }
 
+// TODO, refazer isso para q32.21
 void save_twiddles(complex_q15_16* twiddles, int N) {
 
     FILE* file = fopen("data/twiddles.hex", "w");
@@ -41,77 +29,111 @@ void save_twiddles(complex_q15_16* twiddles, int N) {
     fclose(file);
 }
 
-void fft_iterative(complex_q15_16* x, int N, complex_q15_16* twiddles) {
+void fft_iterative(complex_q31_32* x, int N, complex_q31_32* twiddles) {
     int logN = 0;
     for (int temp = N; temp > 1; temp >>= 1) logN++;
 
-
     // Bit-reversal permutation
-    for (int i = 0, j = 0; i < N; i++) {
+    for (int64_t i = 0, j = 0; i < N; i++) {
         if (i < j) {
-            //printf("Swapping indices %d and %d\n", i, j);
-            complex_q15_16 temp = x[i];
+            complex_q31_32 temp = x[i];
             x[i] = x[j];
             x[j] = temp;
         }
-        int mask = N >> 1;
+        int64_t mask = N >> 1;
         while (j & mask) {
             j &= ~mask;
             mask >>= 1;
         }
         j |= mask;
     }
-
+    
     // Iterative FFT
     for (int s = 1; s <= logN; s++) {
         int m = 1 << s; // 2^s
         int half_m = m >> 1;
         int twiddle_step = N / m;
 
-        //printf("Stage %d: m = %d, half_m = %d, twiddle_step = %d\n", s, m, half_m, twiddle_step);
-
         for (int k = 0; k < N; k += m) {
             for (int j = 0; j < half_m; j++) {
                 int twiddle_index = j * twiddle_step;
-                complex_q15_16 t = q15_16_complex_mul(twiddles[twiddle_index], x[k + j + half_m]);
-                complex_q15_16 u = x[k + j];
+                complex_q31_32 t = q31_32_complex_mul(twiddles[twiddle_index], x[k + j + half_m]);
+                complex_q31_32 u = x[k + j];
 
-                x[k + j] = q15_16_complex_add(u, t);
-                x[k + j + half_m] = q15_16_complex_sub(u, t);
+
+                // printf("\tt: (%2f, %2f) = (%2f, %2f) * (%2f, %2f)\n",
+                //     q31_32_to_float(t.real),
+                //     q31_32_to_float(t.imag),
+
+                //     q31_32_to_float(twiddles[twiddle_index].real),
+                //     q31_32_to_float(twiddles[twiddle_index].imag),
+
+                //     q31_32_to_float(x[k + j + half_m].real),
+                //     q31_32_to_float(x[k + j + half_m].imag)
+                // );
+
+                x[k + j] = q31_32_complex_add(u, t);
+                x[k + j + half_m] = q31_32_complex_sub(u, t);
+
+                // printf("\tu: (%2f, %2f)\n",
+                //     q31_32_to_float(u.real),
+                //     q31_32_to_float(u.imag));
+
+                // printf("\tu + t: (%2f, %2f)\n",
+                //     q31_32_to_float(x[k + j].real),
+                //     q31_32_to_float(x[k + j].imag)
+                // );
+
+                // printf("\tu - t: (%2f, %2f)\n\n",
+                //     q31_32_to_float(x[k + j + half_m].real),
+                //     q31_32_to_float(x[k + j + half_m].imag)
+                // );
+
+
             }
         }
     }
 }
 
-void fft_q15_real_power(q15_16_t* x_real, int N, int32_t* power_out) {
-    // 1. Alocar vetor complexo
-    complex_q15_16* x = (complex_q15_16*)malloc(NFFT * sizeof(complex_q15_16));
+int32_t complex_mag2_div(complex_q31_32 a) {
+    return (int32_t)(q31_32_complex_mag2(a) >> 16);
+    uint32_t real = a.real >> 16;
+    uint32_t imag = a.imag >> 16;
 
+    return  (uint32_t)(real * real + imag * imag);
+}
+
+void fft_q15_real_power(q15_16_t* x_real, int N, q31_32_t* power_out) {
+    // Aloca vetor complexo de tamanho NFFT
+
+    complex_q31_32* x = (complex_q31_32*)malloc(NFFT * sizeof(complex_q31_32));
+    if (!x) return;
+
+    // Preenche com zeros até NFFT (zero-padding)
     for (int i = 0; i < NFFT; i++) {
-        if (i >= N)
-            x[i].real = 0;
+        if (i < N)
+            x[i].real = x_real[i] << 16; // Q15.16 -> Q31.32
         else
-            x[i].real = x_real[i];
+            x[i].real = 0;
         x[i].imag = 0;
     }
-    // 2. Gerar twiddles
-    complex_q15_16* twiddles = (complex_q15_16*)malloc((NFFT / 2) * sizeof(complex_q15_16));
-    generate_twiddles(twiddles, NFFT);
-    save_twiddles(twiddles, NFFT);
 
-    // 3. Executar FFT
-    fft_iterative(x, NFFT, twiddles);
+    // Gera twiddles (apenas metade, devido à simetria)
+    complex_q31_32* twiddles = (complex_q31_32*)malloc((NFFT / 2) * sizeof(complex_q31_32));
+    if (!twiddles) {
+        free(x);
+        return;
+    }
+    generate_twiddles(twiddles, NFFT);  
 
-    // 4. Calcular espectro de potência até N/2 (DC a Nyquist)
+    // Executa a FFT iterativa
+    fft_iterative(x, NFFT, twiddles); 
+
     for (int k = 0; k <= NFFT / 2; k++) {
-        int64_t temppower = complex_power_q30(x[k]); // Q30
-        // printf("x[%d] = {real: %" PRId16 ", imag: %" PRId16 "}, pow = %" PRId64 "\n", 
-        //        k, x[k].real, x[k].imag, temppower);
-
-        // Ajuste do ganho (*1/512 = >>9)
-        temppower = temppower >> 9;  // Q30->Q21
-
-        power_out[k] = (int32_t)temppower; // Guarda em Q21
+        x[k].real = x[k].real << 16;
+        x[k].imag = x[k].imag << 16;
+        power_out[k]  = q31_32_complex_mag2(x[k]) >> 9;   // |X[k]|^2 / 512
+        printf("(%f, %f) -> %f\n", q31_32_to_float(x[k].real), q31_32_to_float(x[k].imag), q31_32_to_float(power_out[k]));
     }
 
     free(x);

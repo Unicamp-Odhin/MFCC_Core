@@ -28,6 +28,8 @@ float q15_16_to_float(q15_16_t x);
 
 q15_16_t q15_16_mul(q15_16_t a, q15_16_t b);
 
+q15_16_t q15_16_div(q15_16_t a, q15_16_t b);
+
 q15_16_t q15_16_saturate(int64_t x);
 
 q15_16_t q15_16_add(q15_16_t a, q15_16_t b);
@@ -44,6 +46,10 @@ complex_q15_16 q15_16_complex_add(complex_q15_16 a, complex_q15_16 b);
 complex_q15_16 q15_16_complex_sub(complex_q15_16 a, complex_q15_16 b);
 
 complex_q15_16 q15_16_complex_mul(complex_q15_16 a, complex_q15_16 b);
+
+q15_16_t q15_16_complex_power(complex_q15_16 a);
+
+q15_16_t q15_16_complex_mag2(complex_q15_16 a);
 
 int32_t q15_16_pow(int32_t x, int32_t a, int32_t b);
 
