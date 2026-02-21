@@ -277,24 +277,22 @@ void optimization_apply_q15(
     int32_t energies_q15[NUM_FILTERS]
 ) {
     for (int i = 0; i < NUM_FILTERS; i++) {
-        int32_t sum = 0;
+        q31_32_t sum = 0;
 
         int init_index = filterbank_15[i][0];
         int end_index = filterbank_15[i][1] + 1;
 
+
+        // Como o banco do filtro foi calculado com 15 bits de decimais, apenas desloquei 16 bits
         for (int k = init_index; k < end_index ; k++) {
-            sum = q31_32_add(sum, q31_32_mul(power_spectrum_frame[k], filterbank_15[i][2 + k - init_index]));
+            sum = q31_32_add(sum, q31_32_mul(power_spectrum_frame[k], (q31_32_t)filterbank_15[i][2 + k - init_index] << 16));
         }
 
         if (sum <= 0) {
             energies_q15[i] = MIN_LOG_ENERGY_Q15_16;
         } else {
-            // TODO: tem erro
-            // printf("%2f ", q15_16_to_float(sum));
-            energies_q15[i] = q31_32_mul(float_to_q31_32(20.0f), q31_32_log10(sum)) << 1;
-            // energies_q15[i] = q15_16_ln(sum);
-            // energies_q15[i] = q15_16_mul(float_to_q15_16(6.0f), q15_16_log2(sum));
+            int64_t temp = q31_32_mul(float_to_q31_32(20.0f), q31_32_log10(sum));
+            energies_q15[i] = (q15_16_t)(temp >> 16);
         }
     }
-    // printf("\n");
 }

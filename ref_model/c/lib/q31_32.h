@@ -28,6 +28,8 @@ typedef int64_t q31_32_t;
 #define Q31_32_MAX_FLOAT  ((float)Q31_32_MAX / Q31_32_SCALE)
 #define Q31_32_MIN_FLOAT  ((float)Q31_32_MIN / Q31_32_SCALE)
 
+#define FLOAT_TO_Q31_32(x) ((q31_32_t)((x) * Q31_32_ONE))
+
 #define LOG10_2_Q31_32 1292913988  //log10(2) ~= 0.301029996
 
 

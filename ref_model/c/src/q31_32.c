@@ -119,32 +119,34 @@ q31_32_t q31_32_log2(q31_32_t x) {
     q31_32_t result = 0;
     int int_part = 0;
 
-    if (x >= (1 << Q31)) {
-        while (x >= (2 << Q31)) {
+    const q31_32_t ONE = (1LL << Q31);
+    const q31_32_t TWO = (2LL << Q31);
+
+    if (x >= ONE) {
+        while (x >= TWO) {
             x >>= 1;
             int_part++;
         }
     } else {
-        while (x < (1 << Q31)) {
+        while (x < ONE) {
             x <<= 1;
             int_part--;
         }
     }
 
-    result = (q31_32_t)int_part << Q31;
+    result = ((q31_32_t)int_part) << Q31;
 
     for (int i = 1; i <= Q31; i++) {
-        x = (int64_t)x * x >> Q31;
+        x = (q31_32_t)(((__int128)x * x) >> Q31);
 
-        if (x >= (2 << Q31)) {
+        if (x >= TWO) {
             x >>= 1;
-            result |= (1 << (Q31 - i));
+            result |= (1LL << (Q31 - i));
         }
     }
 
     return result;
 }
-
 
 q31_32_t q31_32_log10(q31_32_t x) {
     q31_32_t log2x = q31_32_log2(x);

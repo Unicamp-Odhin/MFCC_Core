@@ -249,9 +249,12 @@ int main(int argc, char *argv[]) {
         if (!fp_spec) perror("Erro ao criar 5_spectrogram_matrix.dat");
     #endif
 
+
     for (int i = 0; i < num_frames; i++) {
 
         optimization_apply_q15(power_spectrum[i], energies);
+
+
 
         #ifdef CONFIG_LOG
             char energy_file[64];
@@ -282,6 +285,8 @@ int main(int argc, char *argv[]) {
             }
         #endif
     }
+
+
 
     #ifdef CONFIG_LOG
         if (fp_ceps) fclose(fp_ceps);
