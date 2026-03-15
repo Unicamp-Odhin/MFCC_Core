@@ -5,7 +5,6 @@
 #include "q15_fft.h"
 
 #define NUM_FILTERS 40
-#define OPTIMIZATION_SIZE 31
 
 void create_filterbank(float filterbank[NUM_FILTERS][NFFT/2 + 1], int sample_rate);
 void save_filterbank_to_file(float filterbank[NUM_FILTERS][NFFT/2 + 1]);
@@ -16,13 +15,14 @@ void apply_filterbank(
     float energies[NUM_FILTERS]
 );
 
-void optimization_filterbank_q15(int32_t filterbank[NUM_FILTERS][OPTIMIZATION_SIZE]);
+void create_op_filterbank_q31_32(q31_32_t** filterbank_op, int sample_rate);
 void optimization_apply_q15(
     int64_t power_spectrum_frame[NFFT/2 + 1], 
-    int32_t energies_q15[NUM_FILTERS]
+    int32_t energies_q15[NUM_FILTERS],
+    int sample_rate
 );
 
-void create_filterbank_q15(int16_t filterbank[NUM_FILTERS][NFFT/2 + 1], int sample_rate);
+void create_op_filterbank_q31_32(q31_32_t** filterbank_op, int sample_rate);
 void apply_filterbank_q15(
     int32_t power_spectrum_frame[NFFT/2 + 1],
     int32_t filterbank[NUM_FILTERS][NFFT/2 + 1],

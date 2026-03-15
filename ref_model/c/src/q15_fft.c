@@ -60,36 +60,8 @@ void fft_iterative(complex_q31_32* x, int N, complex_q31_32* twiddles) {
                 complex_q31_32 t = q31_32_complex_mul(twiddles[twiddle_index], x[k + j + half_m]);
                 complex_q31_32 u = x[k + j];
 
-
-                // printf("\tt: (%2f, %2f) = (%2f, %2f) * (%2f, %2f)\n",
-                //     q31_32_to_float(t.real),
-                //     q31_32_to_float(t.imag),
-
-                //     q31_32_to_float(twiddles[twiddle_index].real),
-                //     q31_32_to_float(twiddles[twiddle_index].imag),
-
-                //     q31_32_to_float(x[k + j + half_m].real),
-                //     q31_32_to_float(x[k + j + half_m].imag)
-                // );
-
                 x[k + j] = q31_32_complex_add(u, t);
                 x[k + j + half_m] = q31_32_complex_sub(u, t);
-
-                // printf("\tu: (%2f, %2f)\n",
-                //     q31_32_to_float(u.real),
-                //     q31_32_to_float(u.imag));
-
-                // printf("\tu + t: (%2f, %2f)\n",
-                //     q31_32_to_float(x[k + j].real),
-                //     q31_32_to_float(x[k + j].imag)
-                // );
-
-                // printf("\tu - t: (%2f, %2f)\n\n",
-                //     q31_32_to_float(x[k + j + half_m].real),
-                //     q31_32_to_float(x[k + j + half_m].imag)
-                // );
-
-
             }
         }
     }

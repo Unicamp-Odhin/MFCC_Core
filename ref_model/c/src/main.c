@@ -176,6 +176,7 @@ int main(int argc, char *argv[]) {
             char file_name[64];
             snprintf(file_name, sizeof(file_name), "dumps/2_frames/%04d.hex", i);
             dump_buffer_to_hex_32(file_name, frames[i], frame_size);
+
         }
 
     #endif
@@ -242,17 +243,17 @@ int main(int argc, char *argv[]) {
     init_cos_lut();
 
     #ifdef CONFIG_LOG
-        FILE *fp_ceps = fopen("dumps/7_ceps_matrix.dat", "w");
-        if (!fp_ceps) perror("Erro ao criar 7_ceps_matrix.dat");
+        FILE *fp_ceps = fopen("dumps/plots/ceps_matrix.dat", "w");
+        if (!fp_ceps) perror("Erro ao criar ceps_matrix.dat");
 
-        FILE *fp_spec = fopen("dumps/5_spectrogram_matrix.dat", "w");
-        if (!fp_spec) perror("Erro ao criar 5_spectrogram_matrix.dat");
+        FILE *fp_spec = fopen("dumps/plots/spectrogram_matrix.dat", "w");
+        if (!fp_spec) perror("Erro ao criar spectrogram_matrix.dat");
     #endif
 
 
     for (int i = 0; i < num_frames; i++) {
 
-        optimization_apply_q15(power_spectrum[i], energies);
+        optimization_apply_q15(power_spectrum[i], energies, sample_rate);
 
 
 

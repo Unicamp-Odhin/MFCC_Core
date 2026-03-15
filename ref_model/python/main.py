@@ -7,6 +7,7 @@ from scipy.fftpack import dct
 import sys
 import os
 import struct
+import math
 
 # Define macros
 FRAME_SIZE = 0.025  # seconds
@@ -36,6 +37,14 @@ def dump_buffer_to_hex_32(file_name, buffer):
             hex_str = f"{int_value:04x}"
             fp.write(f"{hex_str}\n")
 
+def dump_buffer(filename, buffer):
+    with open(filename, 'w') as f:
+        for i, value in enumerate(buffer):
+            if i == len(buffer) - 1:
+                f.write(f"{value}")
+            else:
+                f.write(f"{value}\n")
+
 def dump_buffer_to_hex_float(filename, buffer):
     with open(filename, 'w') as f:
         for i, value in enumerate(buffer):
@@ -46,7 +55,6 @@ def dump_buffer_to_hex_float(filename, buffer):
             else:
                 f.write(f"{hex_value}\n")
             
-
 def print_samples(samples, num_samples):
     for i in range(min(num_samples, len(samples))):
         print(f"Sample[{i}]: {int(samples[i])}")
@@ -158,7 +166,6 @@ def compute_spectrum(frames, NFFT=NFFT):
     pow_frames = np.zeros_like(mag_frames)
     for i in range(len(mag_frames)):
         pow_frames[i] = (mag_frames[i] ** 2) / NFFT
-
     return mag_frames, pow_frames
 
 def plot_spectrum(mag_frames, output_dir, audio_name):
@@ -190,9 +197,13 @@ def apply_mel_filterbank(pow_frames, sample_rate, NFFT=NFFT, nfilt=NFILT):
             fbank[m - 1, k] = (k - bin[m - 1]) / (bin[m] - bin[m - 1])
         for k in range(f_m, f_m_plus):
             fbank[m - 1, k] = (bin[m + 1] - k) / (bin[m + 1] - bin[m])
+    
+    for k in range(f_m, f_m_plus):
+        fbank[m - 1, k] = (bin[m + 1] - k) / (bin[m + 1] - bin[m])
 
     filter_banks = np.dot(pow_frames, fbank.T)
     filter_banks = np.where(filter_banks <= 0, np.finfo(float).eps, filter_banks)
+
     filter_banks = 20 * np.log10(filter_banks)
     return filter_banks
 
@@ -215,9 +226,45 @@ def save_and_plot_filterbanks(filter_banks, output_dir, audio_name):
     plt.savefig(output_file)
     plt.show()
 
+# def compute_mfcc(filter_banks, num_ceps=NUM_CEPS):
+#     """Step 7: Compute MFCCs from filter bank energies"""
+#     mfcc = dct(filter_banks, type=2, axis=1, norm='ortho')[:, :num_ceps]
+#     return mfcc
+
+
 def compute_mfcc(filter_banks, num_ceps=NUM_CEPS):
-    """Step 7: Compute MFCCs from filter bank energies"""
-    mfcc = dct(filter_banks, type=2, axis=1, norm='ortho')[:, :num_ceps]
+    n_frames, n_filters = filter_banks.shape
+    mfcc = np.zeros((n_frames, num_ceps))
+    
+    for i in range(n_frames):
+        x = filter_banks[i]
+        
+        for k in range(num_ceps):
+            soma = 0.0
+            
+            print(f"\n---- k = {k} ----")
+            
+            for n in range(n_filters):
+                cos_val = np.cos(np.pi * (n + 0.5) * k / n_filters)
+                mult = x[n] * cos_val
+                
+                print(f"n={n} | amostra={x[n]:.6f} | cos={cos_val:.6f} | "
+                      f"mult={mult:.6f} | soma_antes={soma:.6f}", end="")
+                
+                soma += mult
+                
+                print(f" | soma_depois={soma:.6f}")
+            
+            # Fator de escala ortonormal
+            if k == 0:
+                escala = np.sqrt(1.0 / n_filters)
+            else:
+                escala = np.sqrt(2.0 / n_filters)
+            
+            mfcc[i, k] = soma * escala
+            
+            print(f"Resultado final mfcc[{k}] = {mfcc[i, k]:.6f}")
+    
     return mfcc
 
 def plot_mfcc(mfcc, output_dir, audio_name):
@@ -284,6 +331,12 @@ def main():
     if PLOT:
         plot_spectrum(mag_frames, output_dir, audio_name)
 
+    if LOG:
+        os.makedirs("dumps/power_spectrum", exist_ok=True)
+        for i in range(len(pow_frames)):
+            file_name = f"dumps/power_spectrum/{i:04d}.hex"
+            dump_buffer(file_name, pow_frames[i])
+
 
     # Step 6: Apply Mel filterbank
     filter_banks = apply_mel_filterbank(pow_frames, sample_rate)
@@ -294,9 +347,11 @@ def main():
         os.makedirs("dumps/4_energies", exist_ok=True)
         for i in range(len(filter_banks)):
             file_name = f"dumps/4_energies/{i:04d}.hex"
-            dump_buffer_to_hex_float(file_name, filter_banks[i])
+            dump_buffer(file_name, filter_banks[i])
+            # dump_buffer_to_hex_float(file_name, filter_banks[i])
         
-        with open("dumps/5_spectrogram_matrix.dat", "w") as fp_spec:
+        os.makedirs("dumps/plot/", exist_ok=True)
+        with open("dumps/plot/spectrogram_matrix.dat", "w") as fp_spec:
             for frame in filter_banks:
                 fp_spec.write(" ".join(f"{value}" for value in frame))
                 fp_spec.write("\n")
@@ -310,10 +365,11 @@ def main():
     for i, frame in enumerate(mfcc):
         frame_file = os.path.join("dumps/6_ceps", f"{i:04d}.hex")
         with open(frame_file, "w") as fp:
-            fp.write("\n".join(f"{value / 32768.0}" for value in frame))
+            fp.write("\n".join(f"{value}" for value in frame))
     
     if LOG:
-        with open("dumps/7_ceps_matrix.dat", "w") as fp_ceps:
+        os.makedirs("dumps/plot/", exist_ok=True)
+        with open("dumps/plot/ceps_matrix.dat", "w") as fp_ceps:
             for frame in mfcc:
                 fp_ceps.write(" ".join(f"{value:.6f}" for value in frame))
                 fp_ceps.write("\n")
