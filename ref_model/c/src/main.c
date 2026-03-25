@@ -184,8 +184,10 @@ int main(int argc, char *argv[]) {
     #endif
 
 
-    //SEGUNDA ETAPA "enquadramento"
-    int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step, &num_frames);
+    //SEGUNDA ETAPA "enquadramento
+    //TODO problema no frame_step: provavelmente por arredondamento isso gera um passo diferente do python,
+    //o que está inplicando em frames diferentes que geram um "erro" ao final
+    int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step + 1, &num_frames);
     #ifdef CONFIG_LOG
         for (int i = 0; i < num_frames; i++) {
             char file_name[64];
