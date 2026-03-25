@@ -10,7 +10,10 @@
 #include "mel.h"
 #include "dct.h"
 #include <time.h>
-#include <x86intrin.h>
+#ifdef __x86_64__
+	#include <x86intrin.h>
+#endif
+
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -117,10 +120,22 @@ void dump_short_int_buffer_to_hex(const char *file_name, int32_t *buffer, int si
     fclose(fp);
 }
 
+unsigned long long get_cycles() {
+#ifdef __x86_64__
+    return __rdtsc();  
+#elif defined(__arm__) || defined(__aarch64__)
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts); 
+    return ts.tv_sec * 1000000000LL + ts.tv_nsec; 
+#else
+    return 0;
+#endif
+}
+
 int main(int argc, char *argv[]) {
 
     clock_t start_time = clock();
-    unsigned long long start_cycles = __rdtsc();
+    unsigned long long start_cycles = get_cycles();
 
 
     if (argc < 2) {
@@ -299,7 +314,7 @@ int main(int argc, char *argv[]) {
     clock_t end_time = clock();
     double time_spent = (double)(end_time - start_time) / CLOCKS_PER_SEC;
     printf("Execution Time (us): %.2f\n", time_spent * 1e6);
-    unsigned long long end_cycles = __rdtsc();
+    unsigned long long end_cycles = get_cycles();
     printf("CPU Cycles: %llu\n", end_cycles - start_cycles);
 
 
