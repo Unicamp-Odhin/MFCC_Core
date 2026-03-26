@@ -206,4 +206,5 @@ rtl/mel_old.sv
 rtl/mel_me.sv
 wav/
 
+**/tables_to_rtl/
 **/data
