@@ -14,7 +14,7 @@ def operation_time(cycles: int, freq_mhz: float) -> float:
 if __name__ == "__main__":
     # Exemplo: 400 ciclos, clock de 100 MHz
     cycles = 4211
-    freq = 75.0  # MHz
+    freq = 241.16  # MHz
 
     t_us = operation_time(cycles, freq)
     print(f"Ciclos: {cycles}")
