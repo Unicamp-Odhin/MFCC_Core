@@ -79,7 +79,7 @@ void dump_buffer_to_hex_32(const char *file_name, int32_t *buffer, int size) {
         return;
     }
     for (int i = 0; i < size; i++) {
-        fprintf(fp, "%04x\n", buffer[i] & 0xFFFF);
+        fprintf(fp, "%08x\n", buffer[i]);
     }
     fclose(fp);
 }
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
     // acumulando um erro perceptível no resultado final.
 
                                                                                      // NOTE o "+ 1"
-    int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step + 1, &num_frames);
+    int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step, &num_frames);
     #ifdef CONFIG_LOG
         for (int i = 0; i < num_frames; i++) {
             char file_name[64];

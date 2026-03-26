@@ -25,6 +25,9 @@ void generate_hamming_window_q15(int16_t *window, int frame_size) {
 void hamming_window_fixed(int32_t *frame, const int16_t *window_q15, int frame_size) {
     for (int i = 0; i < frame_size; i++) {
         int32_t temp = (int32_t)frame[i] * window_q15[i];
+        printf("\n%d:\n", i + 1);
+        printf("%08X (>> 15) | %08X = %08X * %08X | %2f\n", temp >> 15, temp, frame[i], window_q15[i], 0.54 - 0.46 * cos(2 * M_PI * i / (frame_size - 1)));
+        printf("%d = %d * %2f\n", temp >> 15, frame[i], window_q15[i], 0.54 - 0.46 * cos(2 * M_PI * i / (frame_size - 1)));
         frame[i] = (temp >> 15);  // retorna para Q15
     }
 }

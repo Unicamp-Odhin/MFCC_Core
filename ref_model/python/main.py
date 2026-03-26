@@ -145,6 +145,8 @@ def plot_frames(frames, output_dir, audio_name):
 
 def apply_window(frames, frame_length):
     """Step 4: Apply a window function to each frame"""
+    for i in ...
+        print()
     frames *= np.hamming(frame_length)
     return frames
 
@@ -242,20 +244,12 @@ def compute_mfcc(filter_banks, num_ceps=NUM_CEPS):
         for k in range(num_ceps):
             soma = 0.0
             
-            print(f"\n---- k = {k} ----")
-            
             for n in range(n_filters):
                 cos_val = np.cos(np.pi * (n + 0.5) * k / n_filters)
                 mult = x[n] * cos_val
                 
-                print(f"n={n} | amostra={x[n]:.6f} | cos={cos_val:.6f} | "
-                      f"mult={mult:.6f} | soma_antes={soma:.6f}", end="")
-                
                 soma += mult
                 
-                print(f" | soma_depois={soma:.6f}")
-            
-            # Fator de escala ortonormal
             if k == 0:
                 escala = np.sqrt(1.0 / n_filters)
             else:
@@ -263,7 +257,6 @@ def compute_mfcc(filter_banks, num_ceps=NUM_CEPS):
             
             mfcc[i, k] = soma * escala
             
-            print(f"Resultado final mfcc[{k}] = {mfcc[i, k]:.6f}")
     
     return mfcc
 
