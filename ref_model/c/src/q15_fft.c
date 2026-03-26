@@ -102,9 +102,14 @@ void fft_q15_real_power(q15_16_t* x_real, int N, q31_32_t* power_out) {
     fft_iterative(x, NFFT, twiddles); 
 
     for (int k = 0; k <= NFFT / 2; k++) {
-        x[k].real = x[k].real << 16;
-        x[k].imag = x[k].imag << 16;
-        power_out[k]  = q31_32_complex_mag2(x[k]) >> 9;   // |X[k]|^2 / 512
+        // x[k].real = x[k].real << 16;
+        // x[k].imag = x[k].imag << 16;
+        // power_out[k]  = q31_32_complex_mag2(x[k]) >> 9;   // |X[k]|^2 / 512
+
+
+        ;
+        power_out[k]  = ((x[k].real >> 2) * (x[k].real >> 2) + (x[k].imag >> 2) * (x[k].imag >> 2)) >> 5;   // |X[k]|^2 / 512
+
         // printf("(%f, %f) -> %f\n", q31_32_to_float(x[k].real), q31_32_to_float(x[k].imag), q31_32_to_float(power_out[k]));
     }
 

@@ -298,7 +298,7 @@ int main(int argc, char *argv[]) {
 
             if (fp_ceps) {
                 for (int j = 0; j < NUM_CEPS; j++) {
-                    fprintf(fp_ceps, "%.6f%c", (float)ceps[j] / 32768.0f, (j == NUM_CEPS - 1) ? '\n' : ' ');
+                    fprintf(fp_ceps, "%.6f%c", (float)ceps[j], (j == NUM_CEPS - 1) ? '\n' : ' ');
                 }
             }
         #endif
