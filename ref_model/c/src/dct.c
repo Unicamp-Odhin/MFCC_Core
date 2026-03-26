@@ -51,22 +51,22 @@ void dct_fixed(int32_t energies_q15[], int num_filters, int32_t ceps_q15[NUM_CEP
 
         int32_t sum = 0;
 
-        printf("\n---- k = %d ----\n", k);
+        // printf("\n---- k = %d ----\n", k);
 
         for (int n = 0; n < num_filters; n++) {
 
             q15_16_t tmp = q15_16_mul(energies_q15[n], cos_lut[k][n]);
 
-            printf("n=%d | amostra=%f | cos=%f | mult=%f | soma_antes=%f",
-                   n,
-                   q15_16_to_float(energies_q15[n]),
-                   q15_16_to_float(cos_lut[k][n]),
-                   q15_16_to_float(tmp),
-                   q15_16_to_float(sum));
+            // printf("n=%d | amostra=%f | cos=%f | mult=%f | soma_antes=%f",
+            //        n,
+            //        q15_16_to_float(energies_q15[n]),
+            //        q15_16_to_float(cos_lut[k][n]),
+            //        q15_16_to_float(tmp),
+            //        q15_16_to_float(sum));
 
-            sum = q15_16_add(sum, tmp);
+            // sum = q15_16_add(sum, tmp);
 
-            printf(" | soma_depois=%f\n", q15_16_to_float(sum));
+            // printf(" | soma_depois=%f\n", q15_16_to_float(sum));
         }
 
         if (k == 0)
@@ -74,6 +74,6 @@ void dct_fixed(int32_t energies_q15[], int num_filters, int32_t ceps_q15[NUM_CEP
         else
             ceps_q15[k] = q15_16_mul(sum, factork);
 
-        printf("Resultado final ceps[%d] = %f\n", k, q15_16_to_float(ceps_q15[k]));
+        // printf("Resultado final ceps[%d] = %f\n", k, q15_16_to_float(ceps_q15[k]));
     }
 }

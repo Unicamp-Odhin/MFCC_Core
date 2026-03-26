@@ -212,8 +212,11 @@ void optimization_apply_q15(int64_t power_spectrum_frame[NFFT/2 + 1], int32_t en
 
         if (sum <= 0) {
             energies_q15[i] = MIN_LOG_ENERGY_Q15_16;
+        // }else if (sum > (1LL << 53)){
+        //     energies_q15[i] = 0;
         } else {
-            int64_t temp = q31_32_mul(float_to_q31_32(20.0f), q31_32_log10(sum));
+            // int64_t temp = q31_32_mul(float_to_q31_32(20.0f), q31_32_log10(sum));
+            int64_t temp = q31_32_mul(float_to_q31_32(20.0f * 0.301029996), q31_32_log2(sum));
             energies_q15[i] = (q15_16_t)(temp >> 16);
         }
     }
