@@ -3,13 +3,33 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include "q15_fft.h"
+#include <inttypes.h>
 
 
 void generate_twiddles(complex_q31_32* twiddles, int N) {
+    // Essa parte poderia ser otimizada se usarmos q1.30,
+    // pois sabemos que seno e cos só vão até 1, logo 1 bit 
+    // para a parte inteira seria suficiênte
+
+#ifdef CONFIG_CREATE_DATABANK
+    FILE *fp = fopen("tables_to_rtl/twiddles_table.hex", "w");
+    if (!fp) {
+        perror("fopen");
+        return;
+    }
+#endif
+
     for (int k = 0; k < N / 2; k++) {
         float angle = -2.0f * M_PI * k / N;
         twiddles[k].real = float_to_q31_32(cosf(angle));
         twiddles[k].imag = float_to_q31_32(sinf(angle));
+
+#ifdef CONFIG_CREATE_DATABANK
+        // TODO verificar como o rtl ta carregando
+        fprintf(fp, "%016" PRIx64 "\n", twiddles[k].real);
+        fprintf(fp, "%016" PRIx64 "\n", twiddles[k].imag);
+#endif
+
     }
 }
 

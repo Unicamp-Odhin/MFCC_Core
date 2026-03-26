@@ -10,12 +10,30 @@
 static q15_16_t cos_lut[NUM_CEPS][NUM_FILTERS];
 
 void init_cos_lut() {
+    // Essa parte poderia ser otimizada se usarmos q1.14,
+    // pois sabemos que seno e cos só vão até 1, logo 1 bit 
+    // para a parte inteira seria suficiênte
+#ifdef CONFIG_CREATE_DATABANK
+    FILE *fp = fopen("tables_to_rtl/cos_table.hex", "w");
+    if (!fp) {
+        perror("fopen");
+        return;
+    }
+#endif
+
     for (int k = 0; k < NUM_CEPS; k++) {
         for (int n = 0; n < NUM_FILTERS; n++) {
             float cos_float = cos(M_PI * (n + 0.5f) * k / NUM_FILTERS);
             cos_lut[k][n] = float_to_q15_16(cos_float);
+#ifdef CONFIG_CREATE_DATABANK
+            fprintf(fp, "%08" PRIx32 "\n", (uint32_t)cos_lut[k][n]);
+#endif
         }
     }
+
+#ifdef CONFIG_CREATE_DATABANK
+    fclose(fp);
+#endif
 }
 
 void dct(float energies[], int num_filters, float ceps[NUM_CEPS]) {

@@ -36,7 +36,7 @@ int ensure_dir(const char *path) {
 
 int create_dirs(void) {
     if (ensure_dir("data") != 0) return -1;
-    if (ensure_dir("data_to_rtl") != 0) return -1;
+    if (ensure_dir("tables_to_rtl") != 0) return -1;
     if (ensure_dir("dumps") != 0) return -1;
     if (ensure_dir("dumps") != 0) return -1;
     if (ensure_dir("dumps/plots") != 0) return -1;

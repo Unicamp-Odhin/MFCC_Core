@@ -8,6 +8,7 @@
 #include "q15_fft.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #define MIN_LOG_ENERGY_Q15_16 FLOAT_TO_Q15_16(-20.0f)
 
@@ -138,11 +139,20 @@ void create_filterbank_q31_32(q31_32_t filterbank[NUM_FILTERS][NFFT/2 + 1], int 
             filterbank[i][j] = float_to_q31_32(filterbank_float[i][j]);
 }
 
+
 void create_op_filterbank_q31_32(q31_32_t** filterbank_op, int sample_rate) {
     int16_t init_index;
     int16_t end_index;
     int16_t tmp;
     int16_t max_size = 0;
+
+#ifdef CONFIG_CREATE_DATABANK
+    FILE *fp = fopen("tables_to_rtl/mel_table.hex", "w");
+    if (!fp) {
+        perror("fopen");
+        return;
+    }
+#endif
 
     q31_32_t filterbank[NUM_FILTERS][NFFT/2 + 1];
     create_filterbank_q31_32(filterbank, sample_rate);
@@ -180,6 +190,8 @@ void create_op_filterbank_q31_32(q31_32_t** filterbank_op, int sample_rate) {
 
         int k = 2;
 
+        int start_index = i * (max_size + 2);
+
         filterbank_op[i][0] = init_index;
         filterbank_op[i][1] = end_index;
 
@@ -190,8 +202,31 @@ void create_op_filterbank_q31_32(q31_32_t** filterbank_op, int sample_rate) {
         while (k < max_size + 2) {
             filterbank_op[i][k++] = 0;
         }
+
+
+#ifdef CONFIG_CREATE_DATABANK
+        k = 2;
+
+        fprintf(fp, "%016" PRIx64 "\n", filterbank_op[i][0]);
+        fprintf(fp, "%016" PRIx64 "\n", filterbank_op[i][1]);
+
+        for (int j = init_index; j <= end_index; j++) {
+            fprintf(fp, "%016" PRIx64 "\n", filterbank_op[i][k]);
+            k++;
+        }
+
+        while (k < max_size + 2) {
+            fprintf(fp, "%016" PRIx64 "\n", filterbank_op[i][k]);
+            k++;
+        }
+#endif
     }
+
+#ifdef CONFIG_CREATE_DATABANK
+    fclose(fp);
+#endif
 }
+
 
 void optimization_apply_q15(int64_t power_spectrum_frame[NFFT/2 + 1], int32_t energies_q15[NUM_FILTERS], int sample_rate) {
     q31_32_t **filterbank_q31_32 = malloc(NUM_FILTERS * sizeof(q31_32_t*));
