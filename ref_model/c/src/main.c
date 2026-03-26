@@ -36,6 +36,7 @@ int ensure_dir(const char *path) {
 
 int create_dirs(void) {
     if (ensure_dir("data") != 0) return -1;
+    if (ensure_dir("data_to_rtl") != 0) return -1;
     if (ensure_dir("dumps") != 0) return -1;
     if (ensure_dir("dumps") != 0) return -1;
     if (ensure_dir("dumps/plots") != 0) return -1;
@@ -185,8 +186,12 @@ int main(int argc, char *argv[]) {
 
 
     //SEGUNDA ETAPA "enquadramento
-    //TODO problema no frame_step: provavelmente por arredondamento isso gera um passo diferente do python,
-    //o que está inplicando em frames diferentes que geram um "erro" ao final
+
+    // Pode haver inconsistência no cálculo de frame_step devido a arredondamentos.
+    // Isso pode levar à geração de frames levemente diferentes ao longo do tempo,
+    // acumulando um erro perceptível no resultado final.
+
+                                                                                     // NOTE o "+ 1"
     int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step + 1, &num_frames);
     #ifdef CONFIG_LOG
         for (int i = 0; i < num_frames; i++) {
@@ -221,7 +226,6 @@ int main(int argc, char *argv[]) {
     //QUARTA ETAPA FFT
 
     int num_freqs = NFFT; // Frequências DC a Nyquist, NFFT é definido no q15_fft.h
-    
     q31_32_t power_spectrum[num_frames][num_freqs]; // transposição do espectro de potência
     
 

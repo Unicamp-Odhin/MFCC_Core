@@ -25,7 +25,6 @@ q15_16_t q15_16_saturate(int64_t x) {
 q15_16_t q15_16_mul(q15_16_t a, q15_16_t b) {
     int64_t temp = (int64_t)a * (int64_t)b;
     int64_t temp2 = temp>>16;
-    // printf("\t\t %f * %f -> %f -> %f\n", q15_16_to_float(a), q15_16_to_float(b), q15_16_to_float(temp), q15_16_to_float((temp2)));
 
     if (temp >= 0)
         temp += (1LL << (Q15 - 1));

@@ -12,13 +12,7 @@ int ceil_div(int a, int b) {
     return (a + b - 1) / b;
 }
 
-/*
-void hamming_window(int16_t *frame, int frame_size) {
-    for (int i = 0; i < frame_size; i++) {
-        frame[i] = (int16_t)(frame[i] * (0.54 - 0.46 * cos(2 * M_PI * i / (frame_size - 1))));
-    }
-}
-*/
+
 // Pré-calcula a janela de Hamming em Q15
 void generate_hamming_window_q15(int16_t *window, int frame_size) {
     for (int i = 0; i < frame_size; i++) {
@@ -32,7 +26,6 @@ void hamming_window_fixed(int32_t *frame, const int16_t *window_q15, int frame_s
     for (int i = 0; i < frame_size; i++) {
         int32_t temp = (int32_t)frame[i] * window_q15[i];
         frame[i] = (temp >> 15);  // retorna para Q15
-        // POSSIVEL ERRO VOLTAR
     }
 }
 
@@ -100,7 +93,6 @@ void pre_emphasis(int16_t *samples, size_t sample_count, int16_t alpha) {
     for (size_t i = sample_count - 1; i > 0; i--) {
         // O correto seria multiplicar por 0.97, que é 31785 >> 15 = 0.97
         temp = alpha * samples[i - 1];
-        //printf("Pre-emphasis: %X * %X = %X\n", alpha, samples[i - 1], temp);
         temp = temp >> 15; // Ajusta para Q15
         samples[i] = samples[i] - temp; // Ajusta para Q15
     }

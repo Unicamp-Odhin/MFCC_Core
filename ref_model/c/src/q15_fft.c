@@ -13,22 +13,6 @@ void generate_twiddles(complex_q31_32* twiddles, int N) {
     }
 }
 
-// TODO, refazer isso para q32.21
-void save_twiddles(complex_q15_16* twiddles, int N) {
-
-    FILE* file = fopen("data/twiddles.hex", "w");
-    if (!file) {
-        perror("Failed to open file for saving twiddles");
-        return;
-    }
-
-    for (int i = 0; i < N / 2; i++) {
-        fprintf(file, "%.8X%.8X\n", twiddles[i].real, twiddles[i].imag);
-    }
-
-    fclose(file);
-}
-
 void fft_iterative(complex_q31_32* x, int N, complex_q31_32* twiddles) {
     int logN = 0;
     for (int temp = N; temp > 1; temp >>= 1) logN++;
@@ -50,7 +34,7 @@ void fft_iterative(complex_q31_32* x, int N, complex_q31_32* twiddles) {
     
     // Iterative FFT
     for (int s = 1; s <= logN; s++) {
-        int m = 1 << s; // 2^s
+        int m = 1 << s;
         int half_m = m >> 1;
         int twiddle_step = N / m;
 
@@ -98,19 +82,15 @@ void fft_q15_real_power(q15_16_t* x_real, int N, q31_32_t* power_out) {
     }
     generate_twiddles(twiddles, NFFT);  
 
-    // Executa a FFT iterativa
     fft_iterative(x, NFFT, twiddles); 
 
     for (int k = 0; k <= NFFT / 2; k++) {
-        // x[k].real = x[k].real << 16;
-        // x[k].imag = x[k].imag << 16;
-        // power_out[k]  = q31_32_complex_mag2(x[k]) >> 9;   // |X[k]|^2 / 512
-
-
-        ;
-        power_out[k]  = ((x[k].real >> 2) * (x[k].real >> 2) + (x[k].imag >> 2) * (x[k].imag >> 2)) >> 5;   // |X[k]|^2 / 512
-
-        // printf("(%f, %f) -> %f\n", q31_32_to_float(x[k].real), q31_32_to_float(x[k].imag), q31_32_to_float(power_out[k]));
+        // A escala foi aplicada para evitar overflow durante o cálculo.
+        // Cada componente é deslocado (>> 2) antes da multiplicação para
+        // reduzir a magnitude, e após a multiplicação equivale a >> 4
+        // e o resultado final é ajustado com (>> 5), resultando em |X[k]|^2 / 512.
+        power_out[k] = ((x[k].real >> 2) * (x[k].real >> 2) +
+                        (x[k].imag >> 2) * (x[k].imag >> 2)) >> 5;  // |X[k]|^2 / 512
     }
 
     free(x);

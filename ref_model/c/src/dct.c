@@ -40,7 +40,6 @@ void dct(float energies[], int num_filters, float ceps[NUM_CEPS]) {
     }
 }
 
-#include <stdio.h>
 
 void dct_fixed(int32_t energies_q15[], int num_filters, int32_t ceps_q15[NUM_CEPS]) {
 

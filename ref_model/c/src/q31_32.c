@@ -102,7 +102,6 @@ q31_32_t q31_32_complex_mag2(complex_q31_32 a) {
     sum += (__int128)1 << 31;
     sum >>= 32;
 
-    //TESTE
     if (sum < 0)
         sum = -1 * sum;
 
