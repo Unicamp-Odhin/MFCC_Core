@@ -207,3 +207,6 @@ rtl/mel_me.sv
 wav/
 
 **/data
+ref_model/c/generate_heatmap.py
+ref_model/c/heatmap_hardware.pdf
+ref_model/c/heatmap_hardware.png
