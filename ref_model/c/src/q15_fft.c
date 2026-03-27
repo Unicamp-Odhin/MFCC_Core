@@ -106,11 +106,11 @@ void fft_q15_real_power(q15_16_t* x_real, int N, q31_32_t* power_out) {
 
     for (int k = 0; k <= NFFT / 2; k++) {
         // A escala foi aplicada para evitar overflow durante o cálculo.
-        // Cada componente é deslocado (>> 2) antes da multiplicação para
-        // reduzir a magnitude, e após a multiplicação equivale a >> 4
+        // Cada componente é deslocado (>> 4) antes da multiplicação para
+        // reduzir a magnitude, e após a multiplicação equivale a >> 8
         // e o resultado final é ajustado com (>> 5), resultando em |X[k]|^2 / 512.
-        power_out[k] = ((x[k].real >> 2) * (x[k].real >> 2) +
-                        (x[k].imag >> 2) * (x[k].imag >> 2)) >> 5;  // |X[k]|^2 / 512
+        power_out[k] = ((x[k].real >> 4) * (x[k].real >> 4) +
+                        (x[k].imag >> 4) * (x[k].imag >> 4)) >> 1;  // |X[k]|^2 / 512
     }
 
     free(x);

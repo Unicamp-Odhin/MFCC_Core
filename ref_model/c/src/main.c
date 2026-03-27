@@ -40,10 +40,10 @@ int create_dirs(void) {
     if (ensure_dir("dumps") != 0) return -1;
     if (ensure_dir("dumps") != 0) return -1;
     if (ensure_dir("dumps/plots") != 0) return -1;
-    if (ensure_dir("dumps/power_spectrum") != 0) return -1;
     if (ensure_dir("dumps/2_frames") != 0) return -1;
     if (ensure_dir("dumps/3_hamming_frames") != 0) return -1;
-    if (ensure_dir("dumps/4_energies") != 0) return -1;
+    if (ensure_dir("dumps/4_power_spectrum") != 0) return -1;
+    if (ensure_dir("dumps/5_energies") != 0) return -1;
     if (ensure_dir("dumps/6_ceps") != 0) return -1;
     
     return 0;
@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) {
     int frame_step  = (int)ceil(sample_rate * FRAME_STEP);
     int num_samples = header->subchunk2Size / sizeof(uint16_t);
     int num_frames = (int)ceil((double)(num_samples - frame_size) / frame_step) + 1;
-    
+    int32_t *samples_32bit = malloc(sizeof(int32_t) * num_samples);
 
     #ifdef CONFIG_VERBOSE 
         printf("Número total de frames: %d\n", num_frames);
@@ -172,16 +172,16 @@ int main(int argc, char *argv[]) {
     
     
     #ifdef CONFIG_LOG 
-        dump_buffer_to_hex_16("data/samples_dump.hex", samples, num_samples);
+        dump_buffer_to_hex_16("dumps/0_samples_dump.hex", samples, num_samples);
     #endif
 
     
     //PRIMEIRA ETAPA "pre enfase"
-    pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), ALPHA);
+    pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), ALPHA, samples_32bit);
     #ifdef CONFIG_LOG 
         char file_name[50];
         snprintf(file_name, sizeof(file_name), "dumps/1_pre_emphasis.hex");
-        dump_buffer_to_hex_16(file_name, samples, num_samples);
+        dump_buffer_to_hex_32(file_name, samples_32bit, num_samples);
     #endif
 
 
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
     // acumulando um erro perceptível no resultado final.
 
                                                                                      // NOTE o "+ 1"
-    int32_t **frames = frame_signal_int((int16_t *)samples, num_samples, frame_size, frame_step, &num_frames);
+    int32_t **frames = frame_signal_int(samples_32bit, num_samples, frame_size, frame_step, &num_frames);
     #ifdef CONFIG_LOG
         for (int i = 0; i < num_frames; i++) {
             char file_name[64];
@@ -238,7 +238,7 @@ int main(int argc, char *argv[]) {
     #ifdef CONFIG_LOG
         for (int i = 0; i < num_frames; i++) {
             char filename[128];
-            snprintf(filename, sizeof(filename), "dumps/power_spectrum/%04d.hex", i);
+            snprintf(filename, sizeof(filename), "dumps/4_power_spectrum/%04d.hex", i);
 
             dump_buffer_q31_to_float(filename, power_spectrum[i], NFFT/2 + 1);
         }
@@ -280,7 +280,7 @@ int main(int argc, char *argv[]) {
 
         #ifdef CONFIG_LOG
             char energy_file[64];
-            snprintf(energy_file, sizeof(energy_file), "dumps/4_energies/%04d.hex", i);
+            snprintf(energy_file, sizeof(energy_file), "dumps/5_energies/%04d.hex", i);
             dump_buffer_q15_to_float(energy_file, energies, NUM_FILTERS);
 
             if (fp_spec) {

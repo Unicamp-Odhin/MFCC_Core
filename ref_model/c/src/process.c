@@ -25,9 +25,6 @@ void generate_hamming_window_q15(int16_t *window, int frame_size) {
 void hamming_window_fixed(int32_t *frame, const int16_t *window_q15, int frame_size) {
     for (int i = 0; i < frame_size; i++) {
         int32_t temp = (int32_t)frame[i] * window_q15[i];
-        printf("\n%d:\n", i + 1);
-        printf("%08X (>> 15) | %08X = %08X * %08X | %2f\n", temp >> 15, temp, frame[i], window_q15[i], 0.54 - 0.46 * cos(2 * M_PI * i / (frame_size - 1)));
-        printf("%d = %d * %2f\n", temp >> 15, frame[i], window_q15[i], 0.54 - 0.46 * cos(2 * M_PI * i / (frame_size - 1)));
         frame[i] = (temp >> 15);  // retorna para Q15
     }
 }
@@ -55,7 +52,7 @@ void hamming_window_fixed_table(int32_t *frame, int frame_size) {
 }
 
 // Função para criar os frames do sinal
-int32_t** frame_signal_int(const int16_t *samples, int num_samples, int frame_size, int frame_step, int *out_num_frames) {
+int32_t** frame_signal_int(int32_t *samples, int num_samples, int frame_size, int frame_step, int *out_num_frames) {
     int num_frames = ceil_div((num_samples - frame_size), frame_step) + 1;
 
     // Aloca matriz de frames (num_frames x frame_size)
@@ -91,12 +88,14 @@ int32_t** frame_signal_int(const int16_t *samples, int num_samples, int frame_si
     return frames;
 }
 
-void pre_emphasis(int16_t *samples, size_t sample_count, int16_t alpha) {
+
+
+void pre_emphasis(int16_t *samples, size_t sample_count, int16_t alpha, int32_t *samples_out) {
     int32_t temp;
     for (size_t i = sample_count - 1; i > 0; i--) {
         // O correto seria multiplicar por 0.97, que é 31785 >> 15 = 0.97
-        temp = alpha * samples[i - 1];
+        temp = (int32_t)alpha * (int32_t)samples[i - 1];
         temp = temp >> 15; // Ajusta para Q15
-        samples[i] = samples[i] - temp; // Ajusta para Q15
+        samples_out[i] = (int32_t)samples[i] - temp; // Ajusta para Q15
     }
 }
