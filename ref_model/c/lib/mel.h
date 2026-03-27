@@ -17,7 +17,7 @@ void apply_filterbank(
 
 void create_op_filterbank_q31_32(q31_32_t** filterbank_op, int sample_rate);
 void optimization_apply_q15(
-    int64_t power_spectrum_frame[NFFT/2 + 1], 
+    int32_t power_spectrum_frame[NFFT/2 + 1], 
     int32_t energies_q15[NUM_FILTERS],
     int sample_rate
 );

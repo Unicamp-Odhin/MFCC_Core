@@ -204,7 +204,7 @@ int main(int argc, char *argv[]) {
     #endif
 
     //TERCEIRA ETAPA "janelamento"
-    int16_t window_q15[frame_size];
+    int32_t window_q15[frame_size];
     generate_hamming_window_q15(window_q15, frame_size);
 
     for(int i = 0; i < num_frames; i++) {
@@ -226,7 +226,7 @@ int main(int argc, char *argv[]) {
     //QUARTA ETAPA FFT
 
     int num_freqs = NFFT; // Frequências DC a Nyquist, NFFT é definido no q15_fft.h
-    q31_32_t power_spectrum[num_frames][num_freqs]; // transposição do espectro de potência
+    int32_t power_spectrum[num_frames][num_freqs]; // transposição do espectro de potência
     
 
     for(int i = 0; i < num_frames; i++) {
@@ -240,7 +240,7 @@ int main(int argc, char *argv[]) {
             char filename[128];
             snprintf(filename, sizeof(filename), "dumps/4_power_spectrum/%04d.hex", i);
 
-            dump_buffer_q31_to_float(filename, power_spectrum[i], NFFT/2 + 1);
+            dump_buffer_unsigned(filename, power_spectrum[i], NFFT/2 + 1);
         }
  
         // Salvar o primeiro frame em arquivo para plot

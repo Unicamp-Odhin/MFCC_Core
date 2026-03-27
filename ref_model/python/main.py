@@ -33,8 +33,8 @@ def dump_buffer_to_hex_32(file_name, buffer):
     
     with open(file_name, 'w') as fp:
         for value in buffer:
-            int_value = int(value) & 0xFFFF  
-            hex_str = f"{int_value:04x}"
+            int_value = int(value) & 0xFFFFFFFF
+            hex_str = f"{int_value:08x}"
             fp.write(f"{hex_str}\n")
 
 def dump_buffer(filename, buffer):
@@ -145,8 +145,6 @@ def plot_frames(frames, output_dir, audio_name):
 
 def apply_window(frames, frame_length):
     """Step 4: Apply a window function to each frame"""
-    for i in ...
-        print()
     frames *= np.hamming(frame_length)
     return frames
 
@@ -294,6 +292,8 @@ def main():
     if PLOT:
         plot_pre_emphasized(y_preemphasized, output_dir, audio_name)
     if LOG:
+        file_name = "dumps/0_samples_dump.hex"
+        dump_buffer_to_hex_16(file_name, y)
         file_name = "dumps/1_pre_emphasis.hex"
         dump_buffer_to_hex_16(file_name, y_preemphasized)
 
@@ -325,9 +325,9 @@ def main():
         plot_spectrum(mag_frames, output_dir, audio_name)
 
     if LOG:
-        os.makedirs("dumps/power_spectrum", exist_ok=True)
+        os.makedirs("dumps/4_power_spectrum", exist_ok=True)
         for i in range(len(pow_frames)):
-            file_name = f"dumps/power_spectrum/{i:04d}.hex"
+            file_name = f"dumps/4_power_spectrum/{i:04d}.hex"
             dump_buffer(file_name, pow_frames[i])
 
 
@@ -337,9 +337,9 @@ def main():
         save_and_plot_filterbanks(filter_banks, output_dir, audio_name)
     
     if LOG:
-        os.makedirs("dumps/4_energies", exist_ok=True)
+        os.makedirs("dumps/5_energies", exist_ok=True)
         for i in range(len(filter_banks)):
-            file_name = f"dumps/4_energies/{i:04d}.hex"
+            file_name = f"dumps/5_energies/{i:04d}.hex"
             dump_buffer(file_name, filter_banks[i])
             # dump_buffer_to_hex_float(file_name, filter_banks[i])
         

@@ -71,15 +71,7 @@ void fft_iterative(complex_q31_32* x, int N, complex_q31_32* twiddles) {
     }
 }
 
-int32_t complex_mag2_div(complex_q31_32 a) {
-    return (int32_t)(q31_32_complex_mag2(a) >> 16);
-    uint32_t real = a.real >> 16;
-    uint32_t imag = a.imag >> 16;
-
-    return  (uint32_t)(real * real + imag * imag);
-}
-
-void fft_q15_real_power(q15_16_t* x_real, int N, q31_32_t* power_out) {
+void fft_q15_real_power(int32_t* x_real, int N, int32_t* power_out) {
     // Aloca vetor complexo de tamanho NFFT
 
     complex_q31_32* x = (complex_q31_32*)malloc(NFFT * sizeof(complex_q31_32));
@@ -88,10 +80,12 @@ void fft_q15_real_power(q15_16_t* x_real, int N, q31_32_t* power_out) {
     // Preenche com zeros até NFFT (zero-padding)
     for (int i = 0; i < NFFT; i++) {
         if (i < N)
-            x[i].real = x_real[i] << 16; // Q15.16 -> Q31.32
+            x[i].real = (int64_t)x_real[i] << 32; // Q31.32
         else
             x[i].real = 0;
         x[i].imag = 0;
+        // printf("%d -> %ld %ld\n", x_real[i], x[i].real, x[i].imag);
+
     }
 
     // Gera twiddles (apenas metade, devido à simetria)
@@ -105,12 +99,9 @@ void fft_q15_real_power(q15_16_t* x_real, int N, q31_32_t* power_out) {
     fft_iterative(x, NFFT, twiddles); 
 
     for (int k = 0; k <= NFFT / 2; k++) {
-        // A escala foi aplicada para evitar overflow durante o cálculo.
-        // Cada componente é deslocado (>> 4) antes da multiplicação para
-        // reduzir a magnitude, e após a multiplicação equivale a >> 8
-        // e o resultado final é ajustado com (>> 5), resultando em |X[k]|^2 / 512.
-        power_out[k] = ((x[k].real >> 4) * (x[k].real >> 4) +
-                        (x[k].imag >> 4) * (x[k].imag >> 4)) >> 1;  // |X[k]|^2 / 512
+        int64_t temp = ((int64_t)(x[k].real >> 32) * (int64_t)(x[k].real >> 32) +
+                        (int64_t)(x[k].imag >> 32) * (int64_t)(x[k].imag >> 32));  
+        power_out[k] = (int32_t)(temp / 512); // |X[k]|^2 / 512
     }
 
     free(x);

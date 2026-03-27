@@ -228,7 +228,7 @@ void create_op_filterbank_q31_32(q31_32_t** filterbank_op, int sample_rate) {
 }
 
 
-void optimization_apply_q15(int64_t power_spectrum_frame[NFFT/2 + 1], int32_t energies_q15[NUM_FILTERS], int sample_rate) {
+void optimization_apply_q15(int32_t power_spectrum_frame[NFFT/2 + 1], int32_t energies_q15[NUM_FILTERS], int sample_rate) {
     q31_32_t **filterbank_q31_32 = malloc(NUM_FILTERS * sizeof(q31_32_t*));
 
     create_op_filterbank_q31_32(filterbank_q31_32, sample_rate);
@@ -241,7 +241,9 @@ void optimization_apply_q15(int64_t power_spectrum_frame[NFFT/2 + 1], int32_t en
 
 
         for (int k = init_index; k < end_index ; k++) {
-            sum = q31_32_add(sum, q31_32_mul(power_spectrum_frame[k], filterbank_q31_32[i][2 + k - init_index]));
+            // como  power_spectrum_frame é inteiro, posso operar direto sem a necessidade de lib
+            // pois o resultado está naturalmente em q31.32
+            sum = sum + power_spectrum_frame[k] * filterbank_q31_32[i][2 + k - init_index];
         }
 
         if (sum <= 0) {

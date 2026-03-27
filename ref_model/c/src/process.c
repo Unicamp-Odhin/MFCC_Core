@@ -14,18 +14,19 @@ int ceil_div(int a, int b) {
 
 
 // Pré-calcula a janela de Hamming em Q15
-void generate_hamming_window_q15(int16_t *window, int frame_size) {
+void generate_hamming_window_q15(int32_t *window, int frame_size) {
     for (int i = 0; i < frame_size; i++) {
         float w = 0.54 - 0.46 * cos(2 * M_PI * i / (frame_size - 1));
-        window[i] = (int16_t)(w * Q15_SCALE); // conversão para Q15
+        window[i] = (int32_t)(w * Q15_SCALE); // conversão para Q15
     }
 }
 
 // Aplica a janela Hamming com ponto fixo
-void hamming_window_fixed(int32_t *frame, const int16_t *window_q15, int frame_size) {
+void hamming_window_fixed(int32_t *frame, int32_t *window_q15, int frame_size) {
     for (int i = 0; i < frame_size; i++) {
-        int32_t temp = (int32_t)frame[i] * window_q15[i];
-        frame[i] = (temp >> 15);  // retorna para Q15
+        int64_t temp = (int64_t)frame[i] * (int64_t)window_q15[i];
+        frame[i] = (int32_t)(temp >> 15);  // retorna inteiro
+        frame[i] += 1; //TESTEE
     }
 }
 
@@ -41,14 +42,6 @@ void save_window_to_file(const char *filename, const int16_t *window, int size) 
     }
 
     fclose(file);
-}
-
-void hamming_window_fixed_table(int32_t *frame, int frame_size) {
-    // Aplica a janela Hamming usando a tabela pré-calculada
-    for (int i = 0; i < frame_size; i++) {
-        int32_t temp = (int32_t)frame[i] * hamming_window_lut[i];
-        frame[i] = (temp >> 15);  // Ajusta para Q15
-    }
 }
 
 // Função para criar os frames do sinal
@@ -77,7 +70,7 @@ int32_t** frame_signal_int(int32_t *samples, int num_samples, int frame_size, in
         for (int j = 0; j < frame_size; j++) {
             int sample_index = frame_start + j;
             if (sample_index < num_samples) {
-                frames[i][j] = (int32_t)samples[sample_index];
+                frames[i][j] = samples[sample_index];
             } else {
                 frames[i][j] = 0;  // Zero padding
             }
@@ -93,9 +86,8 @@ int32_t** frame_signal_int(int32_t *samples, int num_samples, int frame_size, in
 void pre_emphasis(int16_t *samples, size_t sample_count, int16_t alpha, int32_t *samples_out) {
     int32_t temp;
     for (size_t i = sample_count - 1; i > 0; i--) {
-        // O correto seria multiplicar por 0.97, que é 31785 >> 15 = 0.97
         temp = (int32_t)alpha * (int32_t)samples[i - 1];
-        temp = temp >> 15; // Ajusta para Q15
-        samples_out[i] = (int32_t)samples[i] - temp; // Ajusta para Q15
+        temp = temp >> 15; // Ajusta para inteiro
+        samples_out[i] = (int32_t)samples[i] - temp; 
     }
 }
