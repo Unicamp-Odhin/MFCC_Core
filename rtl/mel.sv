@@ -32,7 +32,16 @@ module mel #(
 
     // Memória de filtros Mel
     logic [31:0] mel_memory [0:1319];
+
+    //TODO: Precisamos colocar a nova tabela, o que irá precicar mudar a quantidade de bits
+    // no C está com Q31.32, mas note que 30 bits são iníteis, pois os valores só vão até
+    // 1 ou -1, ou seja, prodemos criar uma memoria de 32 bits sendo 1 sinal, 1 inteiro e 30 de
+    // decimal, se queremos econimixar memória
     initial $readmemh("tables/mel_data.hex", mel_memory);
+    //TODO além disso, devemos padronizar nesse momento a questão dessa tabela,
+    // pois os pesos dela dependem do tempo de amostragem do aúdio, CUIDADO com que audio ela será
+    // gerada no C, pois isso pode gerar um erro, CUIDADO CUIDADO COM O SENO.wav
+
 
     // Pipeline registers
     typedef struct packed {
@@ -78,6 +87,15 @@ module mel #(
            
             // Multiplicação
             stage_sum <= stage_mul;
+
+            /*
+            TODO como  power_spectrum_frame é inteiro, posso operar direto sem a necessidade de deslocamentos
+            pois o resultado está naturalmente em q31.32, assim podemos seguir o C:
+                 
+                 
+                 sum = sum + power_spectrum_frame[k] * filterbank_q31_32[i][2 + k - init_index];
+            */
+
             stage_sum.sum <= stage_mul.sum + ((stage_mul.power_spectrum * stage_mul.filter + (1<<30)) >> 31);
             stage_sum.k <= stage_mul.k + 1;
 
@@ -89,6 +107,8 @@ module mel #(
                 if (stage_sum.sum <= 0)
                     mel_value_energies <= 8'h0;
                 else
+                    //TODO acho que está faltando a questão de multiplicar pela constate:
+                    //  20.0f * 0.301029996
                     mel_value_energies <= temp_log2;
 
                 // Preparar próximo filtro

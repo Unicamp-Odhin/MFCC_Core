@@ -10,7 +10,7 @@ module fft_radix2 #(
     input  logic rst_n,
 
     input  logic in_valid,
-    input  logic [NFFT_LOG2 - 1:0]    frame_ptr_i,
+    input  logic [NFFT_LOG2 - 1:0]    frame_ptr_i, //TODO isso no C chega como inteiro e passo para Q31.32
     input  logic [INPUT_WIDTH - 1:0] real_in,
 
     input  logic start_i,
@@ -19,7 +19,9 @@ module fft_radix2 #(
 
     output logic power_valid_o,
     output logic [NFFT_LOG2 - 1:0]      power_ptr_o,
-    output logic [COMPLEX_WIDTH - 1: 0] power_sample_o
+    output logic [COMPLEX_WIDTH - 1: 0] power_sample_o // TODO cuidado aqui a saída no C é em INT
+                                                       // Pois como a magniture é muito grande a parte 
+                                                       // parte fracionária não importa!
 );
 
     /*
@@ -243,7 +245,7 @@ module fft_radix2 #(
                         power_valid_stage3 <= power_valid_stage2;
 
                         // Power pipeline Stage 4
-                        power_stage4       <= power_stage3[COMPLEX_WIDTH - 1 + NFFT_LOG2:NFFT_LOG2];
+                        power_stage4       <= power_stage3[COMPLEX_WIDTH - 1 + NFFT_LOG2:NFFT_LOG2]; 
                         power_ptr_stage4   <= power_ptr_stage3;
                         power_valid_stage4 <= power_valid_stage3;
                     end

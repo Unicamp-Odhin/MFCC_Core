@@ -28,6 +28,16 @@ module dct #(
     (* ramstyle = "logic" *)
     logic signed [INPUT_WIDTH - 1:0] mel_filters[NUM_FILTERS]; // Buffer de entrada
 
+
+    /*
+    TODO Atualizar a tabela para essa:
+        tables_to_rtl/cos_table.hex
+    Pois sai de q1.31 para q15.16 que é ruim, porque perde precisão,
+    mas que padronizou as libs no C
+
+    Ou seja, podemos deixar aqui em q1.31, é apenas uma escolha
+    */
+
     initial begin
         $readmemh("tables/cos.hex", cos_lut);
     end

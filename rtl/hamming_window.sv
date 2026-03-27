@@ -16,6 +16,8 @@ module hamming_window #(
 
     output logic [NFFT_LOG2 - 1:0] frame_ptr_o,
 
+
+    //TODO: Como ele já passou da pré enfase devemos aumentar a largura do sinal
     input  logic signed [SAMPLE_WIDTH - 1:0] frame_sample_i,
     output logic signed [SAMPLE_WIDTH - 1:0] hamming_sample_o,
     output logic out_valid_o,
@@ -42,7 +44,15 @@ module hamming_window #(
     logic [NFFT_LOG2 - 1:0] frame_ptr;
 
     logic signed [SAMPLE_WIDTH - 1:0] hamming_coefficient;
+
+    //TODO: aqui temos que aumentar a largura, pois a pré-enfase faz:
+    // saida = y[i] - 0.97y[i - 1]
+    //isso pode necessitar de mais bit pois imagina um numero o mais positivo possível
+    // antecedido por um o mais positivo possível, o que gera overflow
     logic signed [2 * SAMPLE_WIDTH - 1:0] hamming_sample_temp;
+    // LEMBRETE ainda estamos trabalhando com inteiros
+
+
     logic [NFFT_LOG2 - 1:0] temp_ptr;
     logic temp_valid;
     logic done;
@@ -79,8 +89,7 @@ module hamming_window #(
                     end else begin
                         if(valid_to_read_i) begin
                             temp_valid          <= 1;
-                            hamming_sample_temp <= frame_sample_i * 
-                                hamming_coefficient;
+                            hamming_sample_temp <= frame_sample_i * hamming_coefficient;
                             calc_pointer        <= calc_pointer + 1;
                             frame_ptr           <= frame_ptr    + 1;
                             temp_ptr            <= frame_ptr;
