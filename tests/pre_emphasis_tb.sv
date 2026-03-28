@@ -40,7 +40,7 @@ module pre_emphasis_tb ();
         $dumpfile("build/pre_emphasis_tb.vcd");
         $dumpvars(0, pre_emphasis_tb);
 
-        outfile = $fopen("build/pre_emphasis_output.hex", "w"); //TODO fazer um programa para verificar 
+        outfile = $fopen("data/pre_emphasis_output.hex", "w"); //TODO fazer um programa para verificar 
                                                                 //as saída, comparando elas com o C
 
         if (outfile == 0) begin

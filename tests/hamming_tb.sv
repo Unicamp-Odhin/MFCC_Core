@@ -82,6 +82,8 @@ module hamming_tb ();
 
     logic hamming_done, hamming_out_valid;
     logic [8:0] frame_ptr;
+
+    //TODO aumentar a largura do sinal, no C está com 32 bits
     logic signed [SAMPLE_WIDTH - 1:0] hamming_sample;
     logic signed [SAMPLE_WIDTH - 1:0] hamming_frame [0:FFT_SIZE - 1];
 
