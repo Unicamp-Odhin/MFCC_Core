@@ -25,7 +25,6 @@ module dct #(
 );
 
     logic signed [31:0] cos_lut[NUM_CEPS][NUM_FILTERS]; // LUT para os cossenos
-    (* ramstyle = "logic" *)
     logic signed [INPUT_WIDTH - 1:0] mel_filters[NUM_FILTERS]; // Buffer de entrada
 
 
