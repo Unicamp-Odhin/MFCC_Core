@@ -15,7 +15,9 @@ module pre_emphasis_tb ();
     logic [15:0] pcm_in;
     logic pcm_ready_i;
     logic pre_emphasis_valid;
-    logic [15:0] pre_emphasized_signal;
+    logic [15:0] pre_emphasized_signal; //TODO tem que aumentar a largura do sinal
+
+    integer outfile;
 
     pre_emphasis #(
         .SAMPLE_WIDTH (SAMPLE_WIDTH),
@@ -37,6 +39,14 @@ module pre_emphasis_tb ();
         $readmemh(AUDIO_PATH, samples);
         $dumpfile("build/pre_emphasis_tb.vcd");
         $dumpvars(0, pre_emphasis_tb);
+
+        outfile = $fopen("build/pre_emphasis_output.hex", "w"); //TODO fazer um programa para verificar 
+                                                                //as saída, comparando elas com o C
+
+        if (outfile == 0) begin
+            $display("Erro ao abrir arquivo!");
+            $finish;
+        end
         
         $display("Iniciando teste de Pre Emphasis");
 
@@ -51,6 +61,7 @@ module pre_emphasis_tb ();
 
         wait(pcm_ready_i == 0);
 
+        $fclose(outfile);
         $finish;
     end
 
@@ -70,5 +81,11 @@ module pre_emphasis_tb ();
             end
         end
     end
+
+    always_ff @(posedge clk) begin
+    if (pre_emphasis_valid) begin
+        $fdisplay(outfile, "%h", pre_emphasized_signal);
+    end
+end
 
 endmodule
