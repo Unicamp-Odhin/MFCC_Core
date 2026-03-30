@@ -4,13 +4,13 @@ module fft_radix2 #(
     parameter NFFT          = 512,
     parameter INPUT_WIDTH   = 16,
     parameter NFFT_LOG2     = $clog2(NFFT),
-    parameter COMPLEX_WIDTH = 32
+    parameter COMPLEX_WIDTH = 64 // 32
 ) (
     input  logic clk,
     input  logic rst_n,
 
     input  logic in_valid,
-    input  logic [NFFT_LOG2 - 1:0]    frame_ptr_i, //TODO isso no C chega como inteiro e passo para Q31.32
+    input  logic [NFFT_LOG2 - 1:0]   frame_ptr_i, //TODO isso no C chega como inteiro e passo para Q31.32
     input  logic [INPUT_WIDTH - 1:0] real_in,
 
     input  logic start_i,
@@ -19,7 +19,7 @@ module fft_radix2 #(
 
     output logic power_valid_o,
     output logic [NFFT_LOG2 - 1:0]      power_ptr_o,
-    output logic [COMPLEX_WIDTH - 1: 0] power_sample_o // TODO cuidado aqui a saída no C é em INT
+    output logic [COMPLEX_WIDTH / 2 - 1: 0] power_sample_o // TODO cuidado aqui a saída no C é em INT
                                                        // Pois como a magniture é muito grande a parte 
                                                        // parte fracionária não importa!
 );
@@ -41,7 +41,7 @@ module fft_radix2 #(
         return count[1:0];  // equivalente a count & 2'b11
     endfunction
 
-    function automatic complex x_read(input logic [NFFT_LOG2-1:0] addr);
+    function automatic long_complex x_read(input logic [NFFT_LOG2-1:0] addr);
         logic [1:0] bank_id;
         begin
             bank_id = count_ones_and_mask2bit(addr);
@@ -60,12 +60,12 @@ module fft_radix2 #(
 
     logic parity[NFFT_LOG2 - 1:0];
 
-    complex twiddles[0 : NFFT / 2];
+    long_complex twiddles[0 : NFFT / 2];
 
-    complex x_bank0 [0 : NFFT - 1];
-    complex x_bank1 [0 : NFFT - 1];
-    complex x_bank2 [0 : NFFT - 1];
-    complex x_bank3 [0 : NFFT - 1];
+    long_complex x_bank0 [0 : NFFT - 1];
+    long_complex x_bank1 [0 : NFFT - 1];
+    long_complex x_bank2 [0 : NFFT - 1];
+    long_complex x_bank3 [0 : NFFT - 1];
 
     logic [NFFT_LOG2 - 1:0] frame_ptr_reversal;
 
@@ -91,25 +91,25 @@ module fft_radix2 #(
     } butterfly_task_t;
 
     typedef struct packed {
-        complex even;
-        complex odd;
-        complex twiddle;
+        long_complex even;
+        long_complex odd;
+        long_complex twiddle;
         butterfly_task_t meta;
     } pipeline_stage_1_t;
 
     typedef struct packed {
-        logic signed [COMPLEX_WIDTH - 1:0] arbr; // a.re * b.re
-        logic signed [COMPLEX_WIDTH - 1:0] aibi; // a.im * b.im
-        logic signed [COMPLEX_WIDTH - 1:0] arbi; // a.re * b.im
-        logic signed [COMPLEX_WIDTH - 1:0] aibr; // a.im * b.re
-        complex even;
+        logic signed [(COMPLEX_WIDTH * 2) - 1:0] arbr; // a.re * b.re
+        logic signed [(COMPLEX_WIDTH * 2) - 1:0] aibi; // a.im * b.im
+        logic signed [(COMPLEX_WIDTH * 2) - 1:0] arbi; // a.re * b.im
+        logic signed [(COMPLEX_WIDTH * 2) - 1:0] aibr; // a.im * b.re
+        long_complex even;
         logic [NFFT_LOG2:0] addr_even;
         logic [NFFT_LOG2:0] addr_odd;
     } pipeline_stage_mul_t;
 
     typedef struct packed {
-        complex sum;
-        complex diff;
+        long_complex sum;
+        long_complex diff;
         logic [NFFT_LOG2:0] addr_even;
         logic [NFFT_LOG2:0] addr_odd;
         logic [1:0] addr_even_bank;
@@ -125,11 +125,15 @@ module fft_radix2 #(
     pipeline_stage_2_t  stage3_addsub;
 
     // Power calculation pipeline
-    complex                         power_stage1;
-    logic [COMPLEX_WIDTH * 2 - 1:0] power_stage2_re;
-    logic [COMPLEX_WIDTH * 2 - 1:0] power_stage2_im;
-    logic [COMPLEX_WIDTH * 2 - 1:0] power_stage3;
-    logic [COMPLEX_WIDTH - 1:0]     power_stage4;
+    long_complex                    power_stage1;
+    //logic [COMPLEX_WIDTH * 2 - 1:0] power_stage2_re;
+    //logic [COMPLEX_WIDTH * 2 - 1:0] power_stage2_im;
+    logic [COMPLEX_WIDTH * 1 - 1:0] power_stage2_re;
+    logic [COMPLEX_WIDTH * 1 - 1:0] power_stage2_im;
+    //logic [COMPLEX_WIDTH * 2 - 1:0] power_stage3;
+    logic [COMPLEX_WIDTH * 1 - 1:0] power_stage3;
+    //logic [COMPLEX_WIDTH - 1:0]     power_stage4;
+    logic [COMPLEX_WIDTH / 2 - 1:0]     power_stage4;
     logic                           power_valid_stage1;
     logic                           power_valid_stage2;
     logic                           power_valid_stage3;
@@ -234,8 +238,8 @@ module fft_radix2 #(
                         power_valid_stage1 <= 1;
 
                         // Power pipeline Stage 2
-                        power_stage2_re    <= pow2(power_stage1.re);
-                        power_stage2_im    <= pow2(power_stage1.im);
+                        power_stage2_re    <= pow2(power_stage1.re[63:32]);
+                        power_stage2_im    <= pow2(power_stage1.im[63:32]);
                         power_ptr_stage2   <= power_ptr_stage1;
                         power_valid_stage2 <= power_valid_stage1;
 
@@ -245,7 +249,7 @@ module fft_radix2 #(
                         power_valid_stage3 <= power_valid_stage2;
 
                         // Power pipeline Stage 4
-                        power_stage4       <= power_stage3[COMPLEX_WIDTH - 1 + NFFT_LOG2:NFFT_LOG2]; 
+                        power_stage4       <= power_stage3[32 - 1 + NFFT_LOG2:NFFT_LOG2]; // 64/2 - 1 + 9 : 9
                         power_ptr_stage4   <= power_ptr_stage3;
                         power_valid_stage4 <= power_valid_stage3;
                     end
@@ -268,10 +272,10 @@ module fft_radix2 #(
 
     // FFT Pipeline Stage 2: c_mul only
     always_ff @(posedge clk) begin
-        stage2_mul.arbr      <= mul_fixed(stage1.twiddle.re, stage1.odd.re);
-        stage2_mul.aibi      <= mul_fixed(stage1.twiddle.im, stage1.odd.im);
-        stage2_mul.arbi      <= mul_fixed(stage1.twiddle.re, stage1.odd.im);
-        stage2_mul.aibr      <= mul_fixed(stage1.twiddle.im, stage1.odd.re);
+        stage2_mul.arbr      <= long_mul_fixed(stage1.twiddle.re, stage1.odd.re);
+        stage2_mul.aibi      <= long_mul_fixed(stage1.twiddle.im, stage1.odd.im);
+        stage2_mul.arbi      <= long_mul_fixed(stage1.twiddle.re, stage1.odd.im);
+        stage2_mul.aibr      <= long_mul_fixed(stage1.twiddle.im, stage1.odd.re);
         stage2_mul.even      <= stage1.even;
         stage2_mul.addr_even <= stage1.meta.k + stage1.meta.j;
         stage2_mul.addr_odd  <= stage1.meta.k + stage1.meta.j + stage1.meta.half_m;
@@ -290,7 +294,7 @@ module fft_radix2 #(
     end
 
     logic x0_write_en, x1_write_en, x2_write_en, x3_write_en;
-    complex x0_write_data, x1_write_data, x2_write_data, x3_write_data;
+    long_complex x0_write_data, x1_write_data, x2_write_data, x3_write_data;
     logic [NFFT_LOG2 - 1:0] x0_write_addr, x1_write_addr, x2_write_addr, x3_write_addr;
 
     // FFT Pipeline Stage 4: Writeback
@@ -309,10 +313,15 @@ module fft_radix2 #(
             x1_write_en   <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b01;
             x2_write_en   <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b10;
             x3_write_en   <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b11;
-            x0_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, 32'h0}; // Extensão de sinal
-            x1_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, 32'h0}; // Extensão de sinal
-            x2_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, 32'h0}; // Extensão de sinal
-            x3_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, 32'h0}; // Extensão de sinal
+            //x0_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, 32'h0}; // Extensão de sinal
+            //x1_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, 32'h0}; // Extensão de sinal
+            //x2_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, 32'h0}; // Extensão de sinal
+            //x3_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, 32'h0}; // Extensão de sinal
+            x0_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, {32'h0}, 64'h0}; // Extensão de sinal
+            x1_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, {32'h0}, 64'h0}; // Extensão de sinal
+            x2_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, {32'h0}, 64'h0}; // Extensão de sinal
+            x3_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, {32'h0}, 64'h0}; // Extensão de sinal
+            
         end else if(fft_state == PROCESSING) begin
             case (stage3_addsub.addr_even_bank)
                 0: begin

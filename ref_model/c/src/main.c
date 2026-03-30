@@ -67,7 +67,8 @@ void dump_buffer_to_hex_16(const char *file_name, int16_t *buffer, int size) {
         return;
     }
     for (int i = 0; i < size; i++) {
-        fprintf(fp, "%08x\n", buffer[i]);
+        int16_t temp = buffer[i];
+        fprintf(fp, "%04x\n", (uint16_t)temp);
     }
     fclose(fp);
 }
@@ -212,7 +213,11 @@ int main(int argc, char *argv[]) {
     }
 
     #ifdef CONFIG_CREATE_DATABANK
-        save_window_to_file("tables/hamming_window.hex", window_q15, frame_size);
+        int16_t window_q15_compressed[frame_size];
+        for(int i = 0; i < frame_size; i++){
+            window_q15_compressed[i] = (int16_t)window_q15[i];
+        }
+        save_window_to_file("tables/hamming_window.hex", window_q15_compressed, frame_size);
     #endif
     
     #ifdef CONFIG_LOG

@@ -2,7 +2,7 @@
 module hamming_tb ();
 
     localparam AUDIO_PATH     = "data/seno_440Hz.hex";
-    localparam MAX_AUDIO_SIZE = 1600;
+    localparam MAX_AUDIO_SIZE = 4000;
     localparam SAMPLE_WIDTH   = 16;
     localparam PCM_FIFO_DEPTH = 2048;
     localparam FRAME_SIZE     = 400;
@@ -164,7 +164,7 @@ module hamming_tb ();
 
         $display("amostra 0 e 1 window: %h %h", u_window_buffer.buffer[0], u_window_buffer.buffer[1]);
 
-        for(j = 0; j < 8; j++) begin
+        for(j = 0; j < 24; j++) begin
             $display("Processando quadro %0d", j + 1);
 
             wait(hamming_done);

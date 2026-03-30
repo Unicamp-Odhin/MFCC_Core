@@ -18,9 +18,9 @@ NC := \033[0m
 
 # Flags adicionais (valores padrão)
 DEBUG ?= 0
-CREATE_DATABANK ?= 0
-LOG ?= 0
-VERBOSE ?= 0
+CREATE_DATABANK ?= 1
+LOG ?= 1
+VERBOSE ?= 1
 USE_FLOAT ?= 0
 
 # Debug tem prioridade máxima

@@ -6,7 +6,7 @@
 module fft_tb ();
 
     localparam AUDIO_PATH     = "data/seno_440Hz.hex";
-    localparam MAX_AUDIO_SIZE = 1600;
+    localparam MAX_AUDIO_SIZE = 4000;
     localparam SAMPLE_WIDTH   = 16;
     localparam PCM_FIFO_DEPTH = 256;
     localparam FRAME_SIZE     = 400;
@@ -176,7 +176,7 @@ module fft_tb ();
         begin
             fd = $fopen("data/fft_dump.hex", "w");
             for (i = 0; i <= RFFT_SIZE; i = i + 1) begin
-                $fwrite(fd, "%h\n", rfft_power_buffer[i]);
+                $fwrite(fd, "%d\n", rfft_power_buffer[i]);
             end
             $fclose(fd);
         end

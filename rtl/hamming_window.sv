@@ -57,6 +57,8 @@ module hamming_window #(
     logic temp_valid;
     logic done;
 
+    logic start_latency;
+
     always_ff @( posedge clk ) begin
         rd_en_o     <= 0;
         done        <= 0;
@@ -67,6 +69,8 @@ module hamming_window #(
             frame_ptr     <= 0;
             temp_ptr      <= 0;
         end else begin
+            start_latency <= rd_en_o;
+
             case (hamming_state)
                 IDLE: begin
                     if(start_i) begin
@@ -75,24 +79,31 @@ module hamming_window #(
                         frame_ptr         <= 0;
                         temp_ptr          <= 0;
                         temp_valid        <= 0;
-                        rd_en_o           <= 1;
+                        rd_en_o           <= 0;
                     end
                 end
                 CALC: begin
-                    rd_en_o <= 1;
+                    rd_en_o <= 0;
                     
 
                     if(calc_pointer == NUM_COEFFICIENTS) begin
-                        hamming_sample_temp <= 0;
+                        hamming_sample_temp <= -1;
                         rd_en_o             <= 0;
                         hamming_state       <= PADDING;
+                        frame_ptr           <= frame_ptr    + 1;
+                        temp_ptr            <= frame_ptr;
                     end else begin
+                        //hamming_coefficient <= hamming_window_lut[calc_pointer];
                         if(valid_to_read_i) begin
+                            rd_en_o <= 1;
+                        end
+                        if(start_latency) begin
                             temp_valid          <= 1;
                             hamming_sample_temp <= frame_sample_i * hamming_coefficient;
                             calc_pointer        <= calc_pointer + 1;
                             frame_ptr           <= frame_ptr    + 1;
                             temp_ptr            <= frame_ptr;
+                            //rd_en_o <= 1;
                         end
                         hamming_state <= CALC;
                     end
@@ -102,7 +113,7 @@ module hamming_window #(
                     temp_valid <= 1;
 
                     if(frame_ptr < NFFT_SIZE_COMPAIR[NFFT_LOG2 - 1:0]) begin
-                        hamming_sample_temp <= 0;
+                        hamming_sample_temp <= -1;
                         frame_ptr           <= frame_ptr + 1;
                         temp_ptr            <= frame_ptr;
                     end else begin
@@ -126,7 +137,8 @@ module hamming_window #(
         end else begin
             frame_ptr_o      <= temp_ptr;
             out_valid_o      <= temp_valid;
-            hamming_sample_o <= hamming_sample_temp[2 * SAMPLE_WIDTH - 2 : SAMPLE_WIDTH - 1];
+            hamming_sample_o <= hamming_sample_temp[2 * SAMPLE_WIDTH - 2 : SAMPLE_WIDTH - 1] + 1;
+            //hamming_sample_o <= (hamming_sample_temp >> 15) + 1;
         end
     end
 
