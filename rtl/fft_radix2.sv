@@ -1,5 +1,33 @@
 `timescale 1ns/1ps
 
+module long_mul_fixed #(
+    parameter int FIXED_SHIFT = 32
+) (
+    input  logic signed [63:0]  a,
+    input  logic signed [63:0]  b,
+    output logic signed [63:0]  result
+);
+
+    logic signed [127:0] mult_result;
+    logic signed [127:0] rounded_result;
+
+    // Multiplicador 64 x 64 -> 128 bits
+    assign mult_result = a * b;
+
+    // Arredondamento
+    always_comb begin
+        if (mult_result >= 0)
+            rounded_result = mult_result + (128'sd1 <<< (FIXED_SHIFT - 1));
+        else
+            rounded_result = mult_result - (128'sd1 <<< (FIXED_SHIFT - 1));
+    end
+
+    // Conversão Q-format: divide por 2^FIXED_SHIFT
+    assign result = rounded_result >>> FIXED_SHIFT;
+
+endmodule
+
+
 module fft_radix2 #(
     parameter NFFT          = 512,
     parameter INPUT_WIDTH   = 16,
@@ -238,8 +266,8 @@ module fft_radix2 #(
                         power_valid_stage1 <= 1;
 
                         // Power pipeline Stage 2
-                        power_stage2_re    <= pow2(power_stage1.re[63:32]);
-                        power_stage2_im    <= pow2(power_stage1.im[63:32]);
+                        power_stage2_re    <= power_stage1.re[63:32] * power_stage1.re[63:32];
+                        power_stage2_im    <= power_stage1.im[63:32] * power_stage1.im[63:32];
                         power_ptr_stage2   <= power_ptr_stage1;
                         power_valid_stage2 <= power_valid_stage1;
 
@@ -270,16 +298,51 @@ module fft_radix2 #(
         end
     end
 
+
+    logic signed [63:0] arbr_result;
+    logic signed [63:0] aibi_result;
+    logic signed [63:0] arbi_result;
+    logic signed [63:0] aibr_result;
+
+    long_mul_fixed u_mul_arbr (
+        .a      (stage1.twiddle.re),
+        .b      (stage1.odd.re),
+        .result (arbr_result)
+    );
+
+    long_mul_fixed u_mul_aibi (
+        .a      (stage1.twiddle.im),
+        .b      (stage1.odd.im),
+        .result (aibi_result)
+    );
+
+    long_mul_fixed u_mul_arbi (
+        .a      (stage1.twiddle.re),
+        .b      (stage1.odd.im),
+        .result (arbi_result)
+    );
+
+    long_mul_fixed u_mul_aibr (
+        .a      (stage1.twiddle.im),
+        .b      (stage1.odd.re),
+        .result (aibr_result)
+    );
+
+
     // FFT Pipeline Stage 2: c_mul only
     always_ff @(posedge clk) begin
-        stage2_mul.arbr      <= long_mul_fixed(stage1.twiddle.re, stage1.odd.re);
-        stage2_mul.aibi      <= long_mul_fixed(stage1.twiddle.im, stage1.odd.im);
-        stage2_mul.arbi      <= long_mul_fixed(stage1.twiddle.re, stage1.odd.im);
-        stage2_mul.aibr      <= long_mul_fixed(stage1.twiddle.im, stage1.odd.re);
+        stage2_mul.arbr      <= arbr_result;
+        stage2_mul.aibi      <= aibi_result;
+        stage2_mul.arbi      <= arbi_result;
+        stage2_mul.aibr      <= aibr_result;
+
         stage2_mul.even      <= stage1.even;
+
         stage2_mul.addr_even <= stage1.meta.k + stage1.meta.j;
-        stage2_mul.addr_odd  <= stage1.meta.k + stage1.meta.j + stage1.meta.half_m;
+
+        stage2_mul.addr_odd  <= stage1.meta.k  + stage1.meta.j  + stage1.meta.half_m;
     end
+
 
     // FFT Pipeline Stage 3: c_add and c_sub
     always_ff @(posedge clk) begin

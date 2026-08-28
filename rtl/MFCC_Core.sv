@@ -1,7 +1,5 @@
 `timescale 1ns/1ps
 
-import mfcc_pkg::mfcc_data_t;
-
 module MFCC_Core #(
     parameter SAMPLE_WIDTH     = 16,       // Largura do sample de áudio
     parameter NUM_COEFFICIENTS = 13,       // Número de coeficientes MFCC
@@ -24,7 +22,8 @@ module MFCC_Core #(
     input  logic auto_restart_i,
 
     output logic mfcc_done_o,
-    output mfcc_data_t mfcc_data_o [0:NUM_COEFFICIENTS - 1]
+    output logic [15:0] mfcc_data_o [0:NUM_COEFFICIENTS - 1]
+
 );
 
     logic pre_emphasis_valid;
