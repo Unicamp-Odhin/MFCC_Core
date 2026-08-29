@@ -4,7 +4,7 @@ module pre_emphasis_tb ();
     localparam N = 16;
     localparam F = 15;
     localparam MAX_AUDIO_SIZE = 65530;
-    localparam ALPHA = 16'd31785;
+    localparam int ALPHA = $rtoi(0.97 * (1 << F));
 
     logic clk;
     logic rst_n;

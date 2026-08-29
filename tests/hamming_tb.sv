@@ -1,45 +1,50 @@
 `timescale 1ns/1ps
 module hamming_tb ();
-
-    localparam AUDIO_PATH     = "data/seno_440Hz.hex";
-    localparam MAX_AUDIO_SIZE = 4000;
-    localparam SAMPLE_WIDTH   = 16;
+    localparam MAX_AUDIO_SIZE = 65530;
+    localparam SAMPLE_RATE = 12207;
+    localparam N = 16;
+    localparam F_PRE_EMPHASIS = 15;
+    localparam F_HAMMING = 15;
     localparam PCM_FIFO_DEPTH = 2048;
-    localparam FRAME_SIZE     = 400;
-    localparam FRAME_MOVE     = 160;
-    localparam ALPHA          = 16'd31785;
-    localparam FFT_SIZE       = 512;
+    localparam FRAME_SIZE_T = 0.025;
+    localparam FRAME_STEP_T = 0.01;
+    localparam FRAME_SIZE = $rtoi(SAMPLE_RATE * FRAME_SIZE_T);
+    localparam FRAME_STEP = $rtoi(SAMPLE_RATE * FRAME_STEP_T);
+    localparam ALPHA = $rtoi(0.97 * (1 << F_PRE_EMPHASIS));
+    localparam FFT_SIZE = 512;
+
 
     logic clk;
     logic rst_n;
 
-    logic [SAMPLE_WIDTH - 1:0] samples [0:MAX_AUDIO_SIZE - 1];
+    logic [N-1:0] samples [0:MAX_AUDIO_SIZE - 1];
 
-    logic [15:0] pcm_in;
+    logic signed [N-1:0] pcm_in;
+    logic signed [2*N-1:0] pre_emphasized_signal;
     logic pcm_ready_i;
     logic pre_emphasis_valid;
-    logic [15:0] pre_emphasized_signal;
 
     pre_emphasis #(
-        .SAMPLE_WIDTH (SAMPLE_WIDTH),
-        .ALPHA        (ALPHA) // Alpha em Q1.15 (0.97 ≈ 31785)
+        .N (N),
+        .F (F_PRE_EMPHASIS),
+        .ALPHA (ALPHA)
     ) u_pre_emphasis (
-        .clk          (clk),
-        .rst_n        (rst_n),
+        .clk (clk),
+        .rst_n (rst_n),
 
-        .in_valid     (pcm_ready_i),
-        .out_valid    (pre_emphasis_valid),
+        .in_valid (pcm_ready_i),
+        .out_valid (pre_emphasis_valid),
 
-        .x_in         (pcm_in), // Sinal de entrada
-        .y_out        (pre_emphasized_signal) // Sinal de saída
+        .x_in (pcm_in), // Sinal de entrada
+        .y_out (pre_emphasized_signal) // Sinal de saída
     );
 
     logic fifo_empty, fifo_full, fifo_rd_en;
-    logic [SAMPLE_WIDTH - 1:0] fifo_read_data;
+    logic [2*N-1:0] fifo_read_data;
 
     fifo #(
         .DEPTH        (PCM_FIFO_DEPTH),
-        .WIDTH        (SAMPLE_WIDTH)
+        .WIDTH        (2*N)
     ) tx_fifo (
         .clk          (clk),
         .rst_n        (rst_n),
@@ -53,59 +58,62 @@ module hamming_tb ();
         .read_data_o  (fifo_read_data)
     );
 
-    logic [SAMPLE_WIDTH - 1:0] window_buffer_data;
+    logic [2*N-1:0] window_buffer_data;
     logic window_valid_to_read;
     logic window_rd_en;
     logic start_move;
     logic start_hamming;
+    logic idle;
 
     window_buffer #(
-        .WIDTH                (SAMPLE_WIDTH),
-        .FRAME_SIZE           (FRAME_SIZE),
-        .MOVE_SIZE            (FRAME_MOVE)
+        .WIDTH (2*N),
+        .FRAME_SIZE (FRAME_SIZE),
+        .FRAME_STEP (FRAME_STEP)
     ) u_window_buffer (
-        .clk                  (clk),                         // 1 bit
-        .rst_n                (rst_n),                       // 1 bit
+        .clk (clk),
+        .rst_n (rst_n),
 
-        .start_move           (start_move),                  // 1 bit
+        .start_move (start_move),
 
-        .fifo_rd_en_o         (fifo_rd_en),                  // 1 bit
-        .fifo_data_i          (fifo_read_data),              // 16 bits
-        .fifo_empty_i         (fifo_empty),                  // 1 bit
+        .fifo_rd_en_o (fifo_rd_en),
+        .fifo_data_i (fifo_read_data),
+        .fifo_empty_i (fifo_empty),
 
-        .rd_en_i              (window_rd_en),                // 10 bits
-        .read_data_o          (window_buffer_data),          // 16 bits
-        .valid_to_read_o      (window_valid_to_read),        // 1 bit
+        .rd_en_i (window_rd_en),
+        .read_data_o (window_buffer_data),
+        .valid_to_read_o (window_valid_to_read),
 
-        .start_next_state_o   (start_hamming)
+        .start_next_state_o (start_hamming),
+        .idle_o (idle)
+
     );
 
     logic hamming_done, hamming_out_valid;
     logic [8:0] frame_ptr;
 
-    //TODO aumentar a largura do sinal, no C está com 32 bits
-    logic signed [SAMPLE_WIDTH - 1:0] hamming_sample;
-    logic signed [SAMPLE_WIDTH - 1:0] hamming_frame [0:FFT_SIZE - 1];
+    logic signed [2*N-1:0] hamming_sample;
+    logic signed [2*N-1:0] hamming_frame [0:FFT_SIZE - 1];
 
     hamming_window #(
-        .SAMPLE_WIDTH     (SAMPLE_WIDTH),
+        .N (2*N),
+        .F (F_HAMMING),
         .NUM_COEFFICIENTS (FRAME_SIZE),
-        .NFFT_SIZE        (FFT_SIZE)
+        .NFFT_SIZE (FFT_SIZE)
     ) u_hamming_window (
-        .clk              (clk),
-        .rst_n            (rst_n),
+        .clk (clk),
+        .rst_n (rst_n),
 
-        .start_i          (start_hamming),
+        .start_i (start_hamming),
 
-        .valid_to_read_i  (window_valid_to_read),
-        .rd_en_o          (window_rd_en),
+        .valid_to_read_i (window_valid_to_read),
+        .rd_en_o (window_rd_en),
 
-        .frame_ptr_o      (frame_ptr),
-        .frame_sample_i   (window_buffer_data),  // Sinal de entrada
-        .hamming_sample_o (hamming_sample),        // Sinal de saída
+        .frame_ptr_o (frame_ptr),
+        .frame_sample_i (window_buffer_data), // Sinal de entrada
+        .hamming_sample_o (hamming_sample), // Sinal de saída
 
-        .out_valid_o      (hamming_out_valid),
-        .done_o           (hamming_done)
+        .out_valid_o (hamming_out_valid),
+        .done_o (hamming_done)
     );
 
     always_ff @( posedge clk ) begin
@@ -132,7 +140,7 @@ module hamming_tb ();
         string filename;
         begin
             // Monta o nome do arquivo com número
-            filename = $sformatf("data/hamming_dump_%0d.hex", frame_id);
+            filename = $sformatf({`TESTS_DIR, "/data/hamming_tb/hamming_%0d.hex"}, frame_id + 1);
 
             fd = $fopen(filename, "w");
             if (fd) begin
@@ -149,8 +157,9 @@ module hamming_tb ();
     integer i, j;
 
     initial begin
-        $readmemh(AUDIO_PATH, samples);
-        $dumpfile("build/hamming_tb.vcd");
+        $readmemh({`TESTS_DIR, "/data/samples.hex"}, samples);
+        $dumpfile({`TESTS_DIR, "/build/hamming_tb.vcd"});
+
         $dumpvars(0, hamming_tb);
 
         $display("Iniciando teste de Hamming");

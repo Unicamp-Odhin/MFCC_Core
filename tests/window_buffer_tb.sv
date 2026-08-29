@@ -1,44 +1,55 @@
 `timescale 1ns/1ps
 module window_buffer_tb ();
 
-    localparam AUDIO_PATH     = "data/seno_440Hz.hex";
-    localparam MAX_AUDIO_SIZE = 1600;
-    localparam SAMPLE_WIDTH   = 16;
-    localparam PCM_FIFO_DEPTH = 256;
-    localparam FRAME_SIZE     = 400;
-    localparam FRAME_MOVE     = 160;
-    localparam ALPHA          = 16'd31785;
+    localparam MAX_AUDIO_SIZE = 65530;
+    localparam SAMPLE_RATE = 12207;
+    localparam N = 16;
+    localparam F_PRE_EMPHASIS = 15;
+    localparam F_HAMMING = 15;
+    localparam PCM_FIFO_DEPTH = 2048;
+    localparam FRAME_SIZE_T = 0.025;
+    localparam FRAME_STEP_T = 0.01;
+    localparam FRAME_SIZE = $rtoi(SAMPLE_RATE * FRAME_SIZE_T);
+    localparam FRAME_STEP = $rtoi(SAMPLE_RATE * FRAME_STEP_T);
+    localparam ALPHA = $rtoi(0.97 * (1 << F_PRE_EMPHASIS));
+    localparam FFT_SIZE = 512;
+
+    localparam EXPECTED_PTR_1 = FRAME_STEP;
+    localparam EXPECTED_PTR_2 = (FRAME_STEP * 2) % FRAME_SIZE;
+    localparam EXPECTED_PTR_3 = (FRAME_STEP * 3) % FRAME_SIZE;
 
     logic clk;
     logic rst_n;
 
-    logic [SAMPLE_WIDTH - 1:0] samples [0:MAX_AUDIO_SIZE - 1];
+    logic [N-1:0] samples [0:MAX_AUDIO_SIZE - 1];
 
-    logic [15:0] pcm_in;
+    logic signed [N-1:0] pcm_in;
+    logic signed [2*N-1:0] pre_emphasized_signal;
     logic pcm_ready_i;
     logic pre_emphasis_valid;
-    logic [15:0] pre_emphasized_signal;
 
     pre_emphasis #(
-        .SAMPLE_WIDTH (SAMPLE_WIDTH),
-        .ALPHA        (ALPHA) // Alpha em Q1.15 (0.97 ≈ 31785)
+        .N (N),
+        .F (F_PRE_EMPHASIS),
+        .ALPHA (ALPHA)
     ) u_pre_emphasis (
-        .clk          (clk),
-        .rst_n        (rst_n),
+        .clk (clk),
+        .rst_n (rst_n),
 
-        .in_valid     (pcm_ready_i),
-        .out_valid    (pre_emphasis_valid),
+        .in_valid (pcm_ready_i),
+        .out_valid (pre_emphasis_valid),
 
-        .x_in         (pcm_in), // Sinal de entrada
-        .y_out        (pre_emphasized_signal) // Sinal de saída
+        .x_in (pcm_in), // Sinal de entrada
+        .y_out (pre_emphasized_signal) // Sinal de saída
     );
 
+
     logic fifo_empty, fifo_full, fifo_rd_en;
-    logic [SAMPLE_WIDTH - 1:0] fifo_read_data;
+    logic [N-1:0] fifo_read_data;
 
     fifo #(
         .DEPTH        (PCM_FIFO_DEPTH),
-        .WIDTH        (SAMPLE_WIDTH)
+        .WIDTH        (2*N)
     ) tx_fifo (
         .clk          (clk),
         .rst_n        (rst_n),
@@ -52,29 +63,29 @@ module window_buffer_tb ();
         .read_data_o  (fifo_read_data)
     );
 
-    logic [SAMPLE_WIDTH - 1:0] window_buffer_data;
+    logic [2*N-1:0] window_buffer_data;
     logic window_valid_to_read;
     logic window_rd_en;
     logic start_move;
     logic start_hamming;
 
     window_buffer #(
-        .WIDTH                (SAMPLE_WIDTH),
+        .WIDTH                (2*N),
         .FRAME_SIZE           (FRAME_SIZE),
-        .MOVE_SIZE            (FRAME_MOVE)
+        .FRAME_STEP            (FRAME_STEP)
     ) u_window_buffer (
-        .clk                  (clk),                         // 1 bit
-        .rst_n                (rst_n),                       // 1 bit
+        .clk                  (clk),
+        .rst_n                (rst_n),
 
-        .start_move           (start_move),                  // 1 bit
+        .start_move           (start_move),
 
-        .fifo_rd_en_o         (fifo_rd_en),                  // 1 bit
-        .fifo_data_i          (fifo_read_data),              // 16 bits
-        .fifo_empty_i         (fifo_empty),                  // 1 bit
+        .fifo_rd_en_o         (fifo_rd_en),
+        .fifo_data_i          (fifo_read_data),
+        .fifo_empty_i         (fifo_empty),
 
-        .rd_en_i              (window_rd_en),                // 10 bits
-        .read_data_o          (window_buffer_data),          // 16 bits
-        .valid_to_read_o      (window_valid_to_read),        // 1 bit
+        .rd_en_i              (window_rd_en),
+        .read_data_o          (window_buffer_data),
+        .valid_to_read_o      (window_valid_to_read),
 
         .start_next_state_o   (start_hamming)
     );
@@ -95,8 +106,8 @@ module window_buffer_tb ();
     integer i;
 
     initial begin
-        $readmemh(AUDIO_PATH, samples);
-        $dumpfile("build/window_buffer_tb.vcd");
+        $readmemh({`TESTS_DIR, "/data/samples.hex"}, samples);
+        $dumpfile({`TESTS_DIR, "/build/window_buffer_tb.vcd"});
         $dumpvars(0, window_buffer_tb);
 
         $display("Iniciando teste de Window Buffer");
@@ -108,8 +119,7 @@ module window_buffer_tb ();
         rst_n = 1;
 
         $display("Iniciando processamento de áudio");
-        
-        #(1000); // Espera 1ms para garantir que o reset foi aplicado
+        #(1000);
 
         wait(u_window_buffer.current_state == 0);
 
@@ -138,8 +148,8 @@ module window_buffer_tb ();
 
         @(negedge clk); // Espera o próximo ciclo de clock
 
-        assert(u_window_buffer.internal_read_ptr == 160) else begin
-            $error("Erro: internal_read_ptr está na posição errada. %d, esperada: %d", u_window_buffer.internal_read_ptr, 160);
+        assert(u_window_buffer.internal_read_ptr == EXPECTED_PTR_1) else begin
+            $error("Erro: internal_read_ptr está na posição errada. %d, esperada: %d", u_window_buffer.internal_read_ptr, EXPECTED_PTR_1);
             $finish;
         end
 
@@ -147,8 +157,8 @@ module window_buffer_tb ();
 
         wait(u_window_buffer.current_state == 0);
 
-        assert(u_window_buffer.write_ptr == 160) else begin
-            $error("Erro: write_ptr não está correto após o segundo movimento. %d, esperada: %d", u_window_buffer.write_ptr, 160);
+        assert(u_window_buffer.write_ptr == EXPECTED_PTR_1) else begin
+            $error("Erro: write_ptr não está correto após o segundo movimento. %d, esperada: %d", u_window_buffer.write_ptr, EXPECTED_PTR_1);
             $finish;
         end
 
@@ -164,8 +174,8 @@ module window_buffer_tb ();
 
         @(negedge clk); // Espera o próximo ciclo de clock
 
-        assert(u_window_buffer.internal_read_ptr == 320) else begin
-            $error("Erro: internal_read_ptr não está correto após o segundo movimento. %d, esperada: %d", u_window_buffer.internal_read_ptr, 320);
+        assert(u_window_buffer.internal_read_ptr == EXPECTED_PTR_2) else begin
+            $error("Erro: internal_read_ptr não está correto após o segundo movimento. %d, esperada: %d", u_window_buffer.internal_read_ptr, EXPECTED_PTR_2);
             $finish;
         end
 
@@ -173,8 +183,8 @@ module window_buffer_tb ();
 
         wait(u_window_buffer.current_state == 0);
 
-        assert(u_window_buffer.write_ptr == 320) else begin
-            $error("Erro: write_ptr não está correto após o terceiro movimento. %d, esperada: %d", u_window_buffer.write_ptr, 320);
+        assert(u_window_buffer.write_ptr == EXPECTED_PTR_2) else begin
+            $error("Erro: write_ptr não está correto após o terceiro movimento. %d, esperada: %d", u_window_buffer.write_ptr, EXPECTED_PTR_2);
             $finish;
         end
 
@@ -190,8 +200,8 @@ module window_buffer_tb ();
 
         @(negedge clk); // Espera o próximo ciclo de clock
 
-        assert(u_window_buffer.internal_read_ptr == 80) else begin
-            $error("Erro: internal_read_ptr não está correto após o terceiro movimento. %d, esperada: %d", u_window_buffer.internal_read_ptr, 80);
+        assert(u_window_buffer.internal_read_ptr == EXPECTED_PTR_3) else begin
+            $error("Erro: internal_read_ptr não está correto após o terceiro movimento. %d, esperada: %d", u_window_buffer.internal_read_ptr, EXPECTED_PTR_3);
             $finish;
         end
 
@@ -199,8 +209,8 @@ module window_buffer_tb ();
 
         wait(u_window_buffer.current_state == 0);
 
-        assert(u_window_buffer.write_ptr == 80) else begin
-            $error("Erro: write_ptr não está correto após o terceiro movimento. %d, esperada: %d", u_window_buffer.write_ptr, 80);
+        assert(u_window_buffer.write_ptr == EXPECTED_PTR_3) else begin
+            $error("Erro: write_ptr não está correto após o terceiro movimento. %d, esperada: %d", u_window_buffer.write_ptr, EXPECTED_PTR_3);
             $finish;
         end
 
@@ -222,10 +232,6 @@ module window_buffer_tb ();
                 i           <= i + 1;
             end else begin
                 pcm_ready_i <= 0;
-            end
-
-            if(fifo_full && pcm_ready_i) begin
-                i <= i - 2;
             end
         end
     end
