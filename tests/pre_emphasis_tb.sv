@@ -1,27 +1,27 @@
 `timescale 1ns/1ps
 
 module pre_emphasis_tb ();
-
-    localparam AUDIO_PATH     = "data/seno_440Hz.hex";
-    localparam MAX_AUDIO_SIZE = 1600;
-    localparam ALPHA          = 16'd31785;
-    localparam SAMPLE_WIDTH   = 16; // Largura do sample de áudio
+    localparam N = 16;
+    localparam F = 15;
+    localparam MAX_AUDIO_SIZE = 65530;
+    localparam ALPHA = 16'd31785;
 
     logic clk;
     logic rst_n;
 
-    logic [15:0] samples [0:MAX_AUDIO_SIZE-1];
+    logic [N-1:0] samples [0:MAX_AUDIO_SIZE-1];
 
-    logic [15:0] pcm_in;
+    logic [N-1:0] pcm_in;
     logic pcm_ready_i;
     logic pre_emphasis_valid;
-    logic [15:0] pre_emphasized_signal; //TODO tem que aumentar a largura do sinal
+    logic [2*N-1:0] pre_emphasized_signal; //TODO tem que aumentar a largura do sinal
 
     integer outfile;
 
     pre_emphasis #(
-        .SAMPLE_WIDTH (SAMPLE_WIDTH),
-        .ALPHA        (ALPHA) // Alpha em Q1.15 (0.97 ≈ 31785)
+        .N (N),
+        .F (F),
+        .ALPHA (ALPHA) // Alpha em Q1.15 (0.97 = 31785)
     ) uut (
         .clk          (clk),
         .rst_n        (rst_n),
@@ -36,11 +36,12 @@ module pre_emphasis_tb ();
     integer i;
 
     initial begin
-        $readmemh(AUDIO_PATH, samples);
-        $dumpfile("build/pre_emphasis_tb.vcd");
+        $readmemh({`TESTS_DIR, "/data/samples.hex"}, samples);
+
+        $dumpfile({`TESTS_DIR, "/build/pre_emphasis_tb.vcd"});
         $dumpvars(0, pre_emphasis_tb);
 
-        outfile = $fopen("data/pre_emphasis_output.hex", "w"); //TODO fazer um programa para verificar 
+        outfile = $fopen({`TESTS_DIR, "/data/pre_emphasis_tb.hex"}, "w"); //TODO fazer um programa para verificar 
                                                                 //as saída, comparando elas com o C
 
         if (outfile == 0) begin
