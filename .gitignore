@@ -212,3 +212,4 @@ wav/
 ref_model/c/generate_heatmap.py
 ref_model/c/heatmap_hardware.pdf
 ref_model/c/heatmap_hardware.png
+ref_model/c/tables/
