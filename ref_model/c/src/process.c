@@ -5,32 +5,35 @@
 #include <math.h>
 #include "process.h"
 
-
-#define Q15_SCALE 32768
-
 int ceil_div(int a, int b) {
     return (a + b - 1) / b;
 }
 
 
-// Pré-calcula a janela de Hamming em Q15
-void generate_hamming_window_q15(int32_t *window, int frame_size) {
+// Pré-calcula a janela de Hamming em ponto fixo
+void generate_hamming_window(int32_t *window, int frame_size, int F) {
+    int32_t SCALE = 1 << F;
     for (int i = 0; i < frame_size; i++) {
         float w = 0.54 - 0.46 * cos(2 * M_PI * i / (frame_size - 1));
-        window[i] = (int32_t)(w * Q15_SCALE); // conversão para Q15
+        window[i] = (int32_t)(w * SCALE); // conversão para ponto fixo
     }
 }
 
 // Aplica a janela Hamming com ponto fixo
-void hamming_window_fixed(int32_t *frame, int32_t *window_q15, int frame_size) {
+void hamming_window_fixed(int32_t *frame, int32_t *window, int frame_size, int F) {
+    int32_t SCALE = 1 << F;
     for (int i = 0; i < frame_size; i++) {
-        int64_t temp = (int64_t)frame[i] * (int64_t)window_q15[i];
-        frame[i] = (int32_t)(temp >> 15);  // retorna inteiro
-        frame[i] += 1; //TESTEE
+        int32_t tmp = frame[i];
+        int64_t temp = (int64_t)frame[i] * (int64_t)window[i];
+        frame[i] = (int32_t)(temp >> F);  // retorna inteiro
+        if (i == 279 || i == 157) {
+            printf("%d: %d * %d = %d\n", i, tmp, window[i], frame[i]);
+        }
     }
+    printf("\n");
 }
 
-void save_window_to_file(const char *filename, const int16_t *window, int size) {
+void save_window_to_file(const char *filename, int32_t *window, int size) {
     FILE *file = fopen(filename, "w");
     if (!file) {
         fprintf(stderr, "Erro ao abrir o arquivo %s para escrita.\n", filename);
@@ -38,7 +41,7 @@ void save_window_to_file(const char *filename, const int16_t *window, int size) 
     }
 
     for (int i = 0; i < size; i++) {
-        fprintf(file, "%.4X\n", window[i]);
+        fprintf(file, "%.8X\n", window[i]);
     }
 
     fclose(file);

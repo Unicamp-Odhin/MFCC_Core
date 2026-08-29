@@ -3,7 +3,7 @@
 module window_buffer #(
     parameter WIDTH       = 16,
     parameter FRAME_SIZE  = 306,
-    parameter MOVE_SIZE   = 123
+    parameter FRAME_STEP   = 123
 )(
     input  logic clk,
     input  logic rst_n,
@@ -24,10 +24,18 @@ module window_buffer #(
     output logic                       start_next_state_o,
     output logic                       idle_o
 );
-    logic [WIDTH - 1:0] buffer [0:FRAME_SIZE - 1];
-    integer write_ptr;
-    integer internal_read_ptr;
-    integer read_ptr;
+    logic [WIDTH-1:0] buffer [0:FRAME_SIZE-1];
+    
+    localparam int PTR_WIDTH = $clog2(FRAME_SIZE);
+    logic [PTR_WIDTH-1:0] frame_size, frame_step;
+    logic [PTR_WIDTH-1:0] wr_ptr; // ponteiro de escrita no buffer circular 
+    logic [PTR_WIDTH-1:0] win_rd_idx; // ndice sequencial dentro da janela atual
+    logic [PTR_WIDTH-1:0] win_base_ptr; // endereço base da janela
+    logic [PTR_WIDTH-1:0] rd_phys_addr; // De fato onde a sample está no buffer
+    logic [PTR_WIDTH-1:0] fill_cnt; // Quantas amostras faltam ser lidas para completar a próxima janela
+
+    assign frame_size = FRAME_SIZE;
+    assign frame_step = FRAME_STEP;
 
     typedef enum logic [2:0] {
         IDLE,
@@ -38,7 +46,6 @@ module window_buffer #(
     } state_t;
 
     state_t current_state, next_state;
-    integer move_counter;
 
     // Controle de estados
     always_ff @(posedge clk) begin
@@ -49,8 +56,8 @@ module window_buffer #(
         end
     end
 
-    logic move_counter_is_zero;
-    assign move_counter_is_zero = ~|move_counter;
+    logic fill_cnt_is_zero;
+    assign fill_cnt_is_zero = ~|fill_cnt;
 
     always_comb begin
         next_state = current_state;
@@ -71,7 +78,7 @@ module window_buffer #(
                 end
             end
             FILL: begin
-                if (move_counter_is_zero)
+                if (fill_cnt_is_zero)
                     next_state = IDLE;
                 else if (fifo_empty_i) 
                     next_state = REQUEST_DATA;
@@ -81,9 +88,11 @@ module window_buffer #(
             default: next_state = current_state;
         endcase
     end
+    logic [PTR_WIDTH:0] addr_sum;
+    assign addr_sum = win_base_ptr + win_rd_idx;
 
     logic diff_pointers, next_state_is_valid_to_read;
-    assign diff_pointers = (((read_ptr + internal_read_ptr) % FRAME_SIZE) != write_ptr);
+    assign diff_pointers = ((addr_sum >= frame_size) ? (addr_sum - frame_size) : addr_sum) != {1'b0, wr_ptr};
     assign valid_to_read_o = next_state_is_valid_to_read && diff_pointers;
 
     always_ff @(posedge clk ) begin
@@ -92,57 +101,68 @@ module window_buffer #(
         next_state_is_valid_to_read <= (next_state != MOVE) && (next_state != START) && diff_pointers;
 
         if (!rst_n) begin
-            move_counter      <= 0;
-            internal_read_ptr <= 0;
-            write_ptr         <= 0;
+            fill_cnt      <= 0;
+            win_base_ptr <= 0;
+            wr_ptr         <= 0;
         end else begin
             case (current_state)
                 START: begin
-                    internal_read_ptr  <= 0;
-                    move_counter       <= FRAME_SIZE - 1;
+                    win_base_ptr <= 0;
+                    fill_cnt <= frame_size - 1;
                     start_next_state_o <= 1;
                 end
                 MOVE: begin
-                    internal_read_ptr  <= (internal_read_ptr + MOVE_SIZE) % FRAME_SIZE;
-                    move_counter       <= MOVE_SIZE - 1;
+                    if (win_base_ptr + frame_step >= frame_size) begin
+                        win_base_ptr <= win_base_ptr + frame_step - frame_size;
+                    end else begin
+                        win_base_ptr <= win_base_ptr + frame_step;
+                    end
+                    fill_cnt <= frame_step - 1;
                     start_next_state_o <= 1;
                 end
                 REQUEST_DATA: begin
                     fifo_rd_en_o <= 1;
                 end
                 FILL: begin
-                    buffer[write_ptr] <= fifo_data_i;
-                    write_ptr         <= (write_ptr + 1) % FRAME_SIZE;
-                    move_counter      <= move_counter - 1;
-                    fifo_rd_en_o      <= 1 & ~fifo_empty_i && move_counter != 1;
+                    buffer[wr_ptr] <= fifo_data_i;
+                    if (wr_ptr == frame_size - 1) begin
+                        wr_ptr <= 0;
+                    end else begin
+                        wr_ptr <= wr_ptr + 1;
+                    end
+                    fill_cnt <= fill_cnt - 1;
+                    fifo_rd_en_o <= 1 & ~fifo_empty_i && fill_cnt != 1;
                 end
                 IDLE: begin
                     if (start_move) begin
-                        move_counter <= 0;
+                        fill_cnt <= 0;
                     end 
-                end
-                default: begin
-                    // No operation
                 end
             endcase
         end
     end
 
-    logic [31:0] output_pointer;
-
-    always_ff @( posedge clk ) begin
-        if(!rst_n) begin
-            read_ptr <= 0;
-            output_pointer <= 0;
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            win_rd_idx <= 0;
+            rd_phys_addr <= 0;
         end else begin
-            output_pointer <= (read_ptr + internal_read_ptr) % FRAME_SIZE;
-            if(rd_en_i && valid_to_read_o) begin
-                read_ptr <= (read_ptr + 1) % FRAME_SIZE;
+
+            if (addr_sum >= frame_size)
+                rd_phys_addr <= addr_sum - frame_size;
+            else
+                rd_phys_addr <= addr_sum[PTR_WIDTH-1:0];
+
+            if (rd_en_i && valid_to_read_o) begin
+                if (win_rd_idx == frame_size - 1)
+                    win_rd_idx <= 0;
+                else
+                    win_rd_idx <= win_rd_idx + 1;
             end
         end
     end
 
-    //assign output_pointer = (read_ptr + internal_read_ptr) % FRAME_SIZE;
-    assign read_data_o = buffer[output_pointer];
+
+    assign read_data_o = buffer[rd_phys_addr];
 
 endmodule

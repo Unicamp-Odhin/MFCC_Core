@@ -1,10 +1,11 @@
 `timescale 1ns/1ps
 
 module hamming_window #(
-    parameter SAMPLE_WIDTH     = 16,  // Largura do sample de áudio
+    parameter N = 32,
+    parameter F = 15,
     parameter NUM_COEFFICIENTS = 306, // Número de coeficientes da janela de Hamming
-    parameter NFFT_SIZE        = 512,  // Tamanho do FFT
-    parameter NFFT_LOG2        = $clog2(NFFT_SIZE)
+    parameter NFFT_SIZE = 512,  // Tamanho do FFT
+    parameter NFFT_LOG2 = $clog2(NFFT_SIZE)
 ) (
     input  logic clk,
     input  logic rst_n,
@@ -14,18 +15,17 @@ module hamming_window #(
     input  logic valid_to_read_i,
     output logic rd_en_o,
 
-    output logic [NFFT_LOG2 - 1:0] frame_ptr_o,
+    output logic [NFFT_LOG2-1:0] frame_ptr_o,
 
 
-    //TODO: Como ele já passou da pré enfase devemos aumentar a largura do sinal
-    input  logic signed [SAMPLE_WIDTH - 1:0] frame_sample_i,
-    output logic signed [SAMPLE_WIDTH - 1:0] hamming_sample_o,
+    input  logic signed [N-1:0] frame_sample_i,
+    output logic signed [N-1:0] hamming_sample_o,
     output logic out_valid_o,
     output logic done_o
 );
     localparam NFFT_SIZE_COMPAIR = NFFT_SIZE - 1;
 
-    logic signed [SAMPLE_WIDTH - 1:0] hamming_window_lut [0:NUM_COEFFICIENTS - 1];
+    logic signed [N-1:0] hamming_window_lut [0:NUM_COEFFICIENTS - 1];
 
     initial begin
         $readmemh("tables/hamming_window.hex", hamming_window_lut);
@@ -43,57 +43,47 @@ module hamming_window #(
     integer calc_pointer;
     logic [NFFT_LOG2 - 1:0] frame_ptr;
 
-    logic signed [SAMPLE_WIDTH - 1:0] hamming_coefficient;
+    logic signed [N-1:0] hamming_coefficient;
+    logic signed [2*N-1:0] hamming_sample_temp;
 
-    //TODO: aqui temos que aumentar a largura, pois a pré-enfase faz:
-    // saida = y[i] - 0.97y[i - 1]
-    //isso pode necessitar de mais bit pois imagina um numero o mais positivo possível
-    // antecedido por um o mais positivo possível, o que gera overflow
-    logic signed [2 * SAMPLE_WIDTH - 1:0] hamming_sample_temp;
-    // LEMBRETE ainda estamos trabalhando com inteiros
-
-
-    logic [NFFT_LOG2 - 1:0] temp_ptr;
+    logic [NFFT_LOG2-1:0] temp_ptr;
     logic temp_valid;
     logic done;
 
     logic start_latency;
 
     always_ff @( posedge clk ) begin
-        rd_en_o     <= 0;
-        done        <= 0;
-        done_o      <= done;
+        rd_en_o <= 0;
+        done <= 0;
+        done_o <= done;
 
         if(!rst_n) begin
             hamming_state <= IDLE;
-            frame_ptr     <= 0;
-            temp_ptr      <= 0;
+            frame_ptr <= 0;
+            temp_ptr <= 0;
         end else begin
             start_latency <= rd_en_o;
 
             case (hamming_state)
                 IDLE: begin
                     if(start_i) begin
-                        hamming_state     <= CALC;
-                        calc_pointer      <= 0;
-                        frame_ptr         <= 0;
-                        temp_ptr          <= 0;
-                        temp_valid        <= 0;
-                        rd_en_o           <= 0;
+                        hamming_state <= CALC;
+                        calc_pointer <= 0;
+                        frame_ptr <= 0;
+                        temp_ptr <= 0;
+                        temp_valid <= 0;
+                        rd_en_o <= 0;
                     end
                 end
                 CALC: begin
                     rd_en_o <= 0;
-                    
-
                     if(calc_pointer == NUM_COEFFICIENTS) begin
                         hamming_sample_temp <= -1;
-                        rd_en_o             <= 0;
-                        hamming_state       <= PADDING;
-                        frame_ptr           <= frame_ptr    + 1;
-                        temp_ptr            <= frame_ptr;
+                        rd_en_o <= 0;
+                        hamming_state <= PADDING;
+                        frame_ptr <= frame_ptr + 1;
+                        temp_ptr <= frame_ptr;
                     end else begin
-                        //hamming_coefficient <= hamming_window_lut[calc_pointer];
                         if(valid_to_read_i) begin
                             rd_en_o <= 1;
                         end
@@ -103,7 +93,6 @@ module hamming_window #(
                             calc_pointer        <= calc_pointer + 1;
                             frame_ptr           <= frame_ptr    + 1;
                             temp_ptr            <= frame_ptr;
-                            //rd_en_o <= 1;
                         end
                         hamming_state <= CALC;
                     end
@@ -112,12 +101,12 @@ module hamming_window #(
                     rd_en_o    <= 0;
                     temp_valid <= 1;
 
-                    if(frame_ptr < NFFT_SIZE_COMPAIR[NFFT_LOG2 - 1:0]) begin
+                    if(frame_ptr < NFFT_SIZE_COMPAIR[NFFT_LOG2-1:0]) begin
                         hamming_sample_temp <= -1;
-                        frame_ptr           <= frame_ptr + 1;
-                        temp_ptr            <= frame_ptr;
+                        frame_ptr <= frame_ptr + 1;
+                        temp_ptr <= frame_ptr;
                     end else begin
-                        temp_ptr      <= frame_ptr;
+                        temp_ptr <= frame_ptr;
                         hamming_state <= FINISH;
                     end
                 end
@@ -133,12 +122,11 @@ module hamming_window #(
 
     always_ff @( posedge clk ) begin
         if(!rst_n) begin
-            out_valid_o      <= 0;
+            out_valid_o <= 0;
         end else begin
-            frame_ptr_o      <= temp_ptr;
-            out_valid_o      <= temp_valid;
-            hamming_sample_o <= hamming_sample_temp[2 * SAMPLE_WIDTH - 2 : SAMPLE_WIDTH - 1] + 1;
-            //hamming_sample_o <= (hamming_sample_temp >> 15) + 1;
+            frame_ptr_o <= temp_ptr;
+            out_valid_o <= temp_valid;
+            hamming_sample_o <= (hamming_sample_temp[N+F-1:F]);
         end
     end
 

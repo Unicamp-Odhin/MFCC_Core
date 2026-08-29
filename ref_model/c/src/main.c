@@ -18,7 +18,7 @@
 #include <sys/types.h>
 
 
-#define ALPHA 31785
+#define ALPHA 31785 // 0.97 * 2^15
 #define FRAME_SIZE 0.025 // seconds
 #define FRAME_STEP 0.01 // seconds
 
@@ -157,10 +157,10 @@ int main(int argc, char *argv[]) {
 
 
     int sample_rate = header->sampleRate;
-    int frame_size  = (int)ceil(sample_rate * FRAME_SIZE);
-    int frame_step  = (int)ceil(sample_rate * FRAME_STEP);
+    int frame_size  = (int)(sample_rate * FRAME_SIZE);
+    int frame_step  = (int)(sample_rate * FRAME_STEP);
     int num_samples = header->subchunk2Size / sizeof(uint16_t);
-    int num_frames = (int)ceil((double)(num_samples - frame_size) / frame_step) + 1;
+    int num_frames = (int)((double)(num_samples - frame_size) / frame_step) + 1;
     int32_t *samples_32bit = malloc(sizeof(int32_t) * num_samples);
 
     #ifdef CONFIG_VERBOSE 
@@ -205,19 +205,21 @@ int main(int argc, char *argv[]) {
     #endif
 
     //TERCEIRA ETAPA "janelamento"
-    int32_t window_q15[frame_size];
-    generate_hamming_window_q15(window_q15, frame_size);
+    int32_t window[frame_size];
+    int32_t F_HAMMING = 15; 
+    // Para armaxenar os coeficientes é necessário 1 bit de sinal, 1 bit para a parte inteira
+    // sendo a parte fracionária a sua escolha, mas nessa imprementação F + 1 + 1 <= 32, ou seja,
+    // no máximo F_HAMMING = 30
+    // TODO: Arrumar para usar F = 10 e testar se esse é realmente o melhor valor
+    generate_hamming_window(window, frame_size, F_HAMMING);
 
     for(int i = 0; i < num_frames; i++) {
-        hamming_window_fixed(frames[i], window_q15, frame_size);
+        printf("%d:\n", i + 1);
+        hamming_window_fixed(frames[i], window, frame_size, F_HAMMING);
     }
 
     #ifdef CONFIG_CREATE_DATABANK
-        int16_t window_q15_compressed[frame_size];
-        for(int i = 0; i < frame_size; i++){
-            window_q15_compressed[i] = (int16_t)window_q15[i];
-        }
-        save_window_to_file("tables/hamming_window.hex", window_q15_compressed, frame_size);
+        save_window_to_file("tables/hamming_window.hex", window, frame_size);
     #endif
     
     #ifdef CONFIG_LOG

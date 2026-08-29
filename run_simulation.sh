@@ -1,4 +1,5 @@
-#!/bin/zsh
+#!/usr/bin/env bash
+
 
 mkdir -p build
 
@@ -30,34 +31,28 @@ function run_log_test {
 
 function run_pre_emphasis_test {
    echo "Executando teste Pre emphasis"
-   verilator tests/pre_emphasis_tb.sv rtl/pre_emphasis.sv -Wall --assert --language 1800-2017  \
+   verilator tests/pre_emphasis_tb.sv rtl/pre_emphasis.sv -DTESTS_DIR=\"${TESTS_DIR}\" -Wall --assert --language 1800-2017  \
       --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
-   ./obj_dir/Vpre_emphasis_tb
+   ./obj_dir/Vpre_emphasis_tb 
 }
 
 function run_window_buffer_test {
    echo "Executando teste Window Buffer"
-   #verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module Window_Buffer tests/window_buffer_tb.cpp rtl/window_buffer.sv src/wav.c src/process.c --CFLAGS "-I../lib"
-   verilator tests/window_buffer_tb.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv -Wall --assert --language 1800-2017  \
+   verilator tests/window_buffer_tb.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv -DTESTS_DIR=\"${TESTS_DIR}\" -Wall --assert --language 1800-2017  \
       --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
    ./obj_dir/Vwindow_buffer_tb
-   #./obj_dir/Window_Buffer
 }
 
 function run_hamming_test {
    echo "Executando teste Hamming"
-   #verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module Hamming_Window tests/hamming_tb.cpp rtl/hamming_window.sv src/wav.c src/process.c --CFLAGS "-I../lib"
-   #./obj_dir/Hamming_Window
-   verilator tests/hamming_tb.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv -Wall --assert --language 1800-2017  \
+   verilator tests/hamming_tb.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv -DTESTS_DIR=\"${TESTS_DIR}\" -Wall --assert --language 1800-2017  \
       --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
    ./obj_dir/Vhamming_tb
 }
 
 function run_fft_test {
    echo "Executando teste FFT"
-   #verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module FFT tests/fft_tb.cpp rtl/complex_pkg.sv rtl/fft_radix2.sv src/wav.c src/process.c src/q15.c src/q15_fft.c --CFLAGS "-I../lib"
-   #./obj_dir/VFFT
-   verilator tests/fft_tb.sv rtl/complex_pkg.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/fft_radix2.sv \
+   verilator tests/fft_tb.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/fft_radix2.sv \
       -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
    ./obj_dir/Vfft_tb
 }
@@ -71,20 +66,14 @@ function run_mel_test {
 
 function run_dct_test {
    echo "Executando teste DCT"
-   #verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module DCT tests/dct_tb.cpp rtl/dct.sv src/wav.c src/process.c src/q15.c src/q15_fft.c src/mel.c src/dct.c --CFLAGS "-I../lib"
-   #./obj_dir/VDCT
-   verilator tests/dct_tb.sv rtl/complex_pkg.sv rtl/pre_emphasis.sv rtl/base2log.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/fft_radix2.sv rtl/mel.sv rtl/dct.sv \
+   verilator tests/dct_tb.sv rtl/pre_emphasis.sv rtl/base2log.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/fft_radix2.sv rtl/mel.sv rtl/dct.sv \
       -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
    ./obj_dir/Vdct_tb
 }
 
 function run_mfcc_test {
    echo "Executando teste MFCC"
-   #verilator --cc --exe --build --trace --timing --timescale 1ns/1ps --top-module MFCC_Core tests/mfcc_tb.cpp \
-   #rtl/MFCC_Core.sv rtl/complex_pkg.sv rtl/fft_radix2.sv rtl/dct.sv rtl/mel.sv rtl/base2log.sv rtl/hamming_window.sv rtl/pre_emphasis.sv rtl/window_buffer.sv \
-   #rtl/fifo.sv src/wav.c src/process.c src/q15.c src/q15_fft.c src/mel.c src/dct.c --CFLAGS "-I../lib"
-   #./obj_dir/VMFCC
-   verilator rtl/mfcc_pkg.sv tests/mfcc_tb.sv rtl/complex_pkg.sv rtl/base2log.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/fft_radix2.sv rtl/mel.sv rtl/dct.sv rtl/MFCC_Core.sv \
+   verilator tests/mfcc_tb.sv rtl/base2log.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/fft_radix2.sv rtl/mel.sv rtl/dct.sv rtl/MFCC_Core.sv \
       -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique --top-module mfcc_tb
    ./obj_dir/Vmfcc_tb
 }
