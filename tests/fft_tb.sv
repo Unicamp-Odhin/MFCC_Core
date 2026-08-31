@@ -4,47 +4,53 @@
 //`define DIRECT_FRAME
 
 module fft_tb ();
-
-    localparam AUDIO_PATH     = "data/seno_440Hz.hex";
-    localparam MAX_AUDIO_SIZE = 4000;
-    localparam SAMPLE_WIDTH   = 16;
-    localparam PCM_FIFO_DEPTH = 256;
-    localparam FRAME_SIZE     = 400;
-    localparam FRAME_MOVE     = 160;
-    localparam ALPHA          = 16'd31785;
-    localparam FFT_SIZE       = 512;
-    localparam RFFT_SIZE      = FFT_SIZE / 2;
+    localparam MAX_AUDIO_SIZE = 65530;
+    localparam SAMPLE_RATE = 12207;
+    localparam N = 16;
+    localparam F_PRE_EMPHASIS = 15;
+    localparam F_HAMMING = 15;
+    localparam F_FFT = 32;
+    localparam PCM_FIFO_DEPTH = 2048;
+    localparam FRAME_SIZE_T = 0.025;
+    localparam FRAME_STEP_T = 0.01;
+    localparam FRAME_SIZE = $rtoi(SAMPLE_RATE * FRAME_SIZE_T);
+    localparam FRAME_STEP = $rtoi(SAMPLE_RATE * FRAME_STEP_T);
+    localparam ALPHA = $rtoi(0.97 * (1 << F_PRE_EMPHASIS));
+    localparam FFT_SIZE = 512;
+    localparam RFFT_SIZE = FFT_SIZE / 2;
+    localparam NFFT_LOG2 = $clog2(FFT_SIZE);
 
     logic clk;
     logic rst_n;
 
-    logic [SAMPLE_WIDTH - 1:0] samples [0:MAX_AUDIO_SIZE - 1];
+    logic [N - 1:0] samples [0:MAX_AUDIO_SIZE - 1];
 
-    logic [15:0] pcm_in;
+    logic signed [N-1:0] pcm_in;
+    logic signed [2*N-1:0] pre_emphasized_signal;
     logic pcm_ready_i;
     logic pre_emphasis_valid;
-    logic [15:0] pre_emphasized_signal;
 
     pre_emphasis #(
-        .SAMPLE_WIDTH (SAMPLE_WIDTH),
-        .ALPHA        (ALPHA) // Alpha em Q1.15 (0.97 ≈ 31785)
+        .N (N),
+        .F (F_PRE_EMPHASIS),
+        .ALPHA (ALPHA)
     ) u_pre_emphasis (
-        .clk          (clk),
-        .rst_n        (rst_n),
+        .clk (clk),
+        .rst_n (rst_n),
 
-        .in_valid     (pcm_ready_i),
-        .out_valid    (pre_emphasis_valid),
+        .in_valid (pcm_ready_i),
+        .out_valid (pre_emphasis_valid),
 
-        .x_in         (pcm_in), // Sinal de entrada
-        .y_out        (pre_emphasized_signal) // Sinal de saída
+        .x_in (pcm_in), // Sinal de entrada
+        .y_out (pre_emphasized_signal) // Sinal de saída
     );
 
     logic fifo_empty, fifo_full, fifo_rd_en;
-    logic [SAMPLE_WIDTH - 1:0] fifo_read_data;
+    logic [2*N-1:0] fifo_read_data;
 
     fifo #(
-        .DEPTH        (PCM_FIFO_DEPTH),
-        .WIDTH        (SAMPLE_WIDTH)
+        .DEPTH (PCM_FIFO_DEPTH),
+        .WIDTH (2*N)
     ) tx_fifo (
         .clk          (clk),
         .rst_n        (rst_n),
@@ -58,61 +64,63 @@ module fft_tb ();
         .read_data_o  (fifo_read_data)
     );
 
-    logic [SAMPLE_WIDTH - 1:0] window_buffer_data;
+    logic [2*N-1:0] window_buffer_data;
     logic window_valid_to_read;
     logic window_rd_en;
     logic start_move;
     logic start_hamming;
 
     window_buffer #(
-        .WIDTH                (SAMPLE_WIDTH),
+        .WIDTH                (2*N),
         .FRAME_SIZE           (FRAME_SIZE),
-        .MOVE_SIZE            (FRAME_MOVE)
+        .FRAME_STEP            (FRAME_STEP)
     ) u_window_buffer (
-        .clk                  (clk),                         // 1 bit
-        .rst_n                (rst_n),                       // 1 bit
+        .clk                  (clk),
+        .rst_n                (rst_n),
 
-        .start_move           (start_move),                  // 1 bit
+        .start_move           (start_move),
 
-        .fifo_rd_en_o         (fifo_rd_en),                  // 1 bit
-        .fifo_data_i          (fifo_read_data),              // 16 bits
-        .fifo_empty_i         (fifo_empty),                  // 1 bit
+        .fifo_rd_en_o         (fifo_rd_en),
+        .fifo_data_i          (fifo_read_data),
+        .fifo_empty_i         (fifo_empty),
 
-        .rd_en_i              (window_rd_en),                // 10 bits
-        .read_data_o          (window_buffer_data),          // 16 bits
-        .valid_to_read_o      (window_valid_to_read),        // 1 bit
+        .rd_en_i              (window_rd_en),
+        .read_data_o          (window_buffer_data),
+        .valid_to_read_o      (window_valid_to_read),
 
         .start_next_state_o   (start_hamming)
     );
 
-        logic hamming_done, hamming_out_valid;
-        logic [8:0] frame_ptr;
-        logic signed [SAMPLE_WIDTH - 1:0] hamming_sample;
 
-        hamming_window #(
-            .SAMPLE_WIDTH     (SAMPLE_WIDTH),
-            .NUM_COEFFICIENTS (FRAME_SIZE),
-            .NFFT_SIZE        (FFT_SIZE)
-        ) u_hamming_window (
-            .clk              (clk),
-            .rst_n            (rst_n),
+    logic hamming_done, hamming_out_valid;
+    logic [NFFT_LOG2-1:0] frame_ptr;
+    logic signed [2*N-1:0] hamming_sample;
 
-            .start_i          (start_hamming),
+    hamming_window #(
+        .N(2*N),
+        .F (F_HAMMING),
+        .NUM_COEFFICIENTS (FRAME_SIZE),
+        .NFFT_SIZE        (FFT_SIZE)
+    ) u_hamming_window (
+        .clk              (clk),
+        .rst_n            (rst_n),
 
-            .valid_to_read_i  (window_valid_to_read),
-            .rd_en_o          (window_rd_en),
+        .start_i          (start_hamming),
 
-            .frame_ptr_o      (frame_ptr),
-            .frame_sample_i   (window_buffer_data),  // Sinal de entrada
-            .hamming_sample_o (hamming_sample),        // Sinal de saída
+        .valid_to_read_i  (window_valid_to_read),
+        .rd_en_o          (window_rd_en),
 
-            .out_valid_o      (hamming_out_valid),
-            .done_o           (hamming_done)
-        );
+        .frame_ptr_o      (frame_ptr),
+        .frame_sample_i   (window_buffer_data), // Sinal de entrada
+        .hamming_sample_o (hamming_sample), // Sinal de saída
 
-        logic [8:0] fft_ptr;
-        logic [31:0] fft_power_sample;
-        logic fft_power_valid, fft_done;
+        .out_valid_o      (hamming_out_valid),
+        .done_o           (hamming_done)
+    );
+
+    logic [NFFT_LOG2-1:0] fft_ptr;
+    logic [2*N-1:0] fft_power_sample;
+    logic fft_power_valid, fft_done;
 
     `ifdef DIRECT_FRAME
         logic [15:0] fft_test_buffer [0:FFT_SIZE - 1];
@@ -123,21 +131,22 @@ module fft_tb ();
     `endif
 
     fft_radix2 #(
-        .NFFT           (FFT_SIZE),
-        .INPUT_WIDTH    (SAMPLE_WIDTH),
-        .COMPLEX_WIDTH  (32)
+        .NFFT (FFT_SIZE),
+        .WIDTH (2*N),
+        .F(F_FFT),
+        .NFFT_LOG2 (NFFT_LOG2)
     ) u_fft (
         .clk            (clk),
         .rst_n          (rst_n),
 
         .in_valid       (hamming_out_valid),
         .frame_ptr_i    (frame_ptr),
-        .real_in        (hamming_sample),
+        .frame_sample_i        (hamming_sample),
 
     `ifdef DIRECT_FRAME
         .in_valid       (fft_test_valid),
         .frame_ptr_i    (fft_test_ptr),
-        .real_in        (fft_test_sample),
+        .frame_sample_i        (fft_test_sample),
         .start_i        (start_fft),
     `endif
         .start_i        (hamming_done),
@@ -174,7 +183,7 @@ module fft_tb ();
         integer fd;
         integer i;
         begin
-            fd = $fopen("data/fft_dump.hex", "w");
+            fd = $fopen({`TESTS_DIR, "/data/fft_dump.hex"}, "w");
             for (i = 0; i <= RFFT_SIZE; i = i + 1) begin
                 $fwrite(fd, "%d\n", rfft_power_buffer[i]);
             end
@@ -186,11 +195,12 @@ module fft_tb ();
     integer clock_cycles;
 
     initial begin
-        $readmemh(AUDIO_PATH, samples);
+        $readmemh({`TESTS_DIR, "/data/samples.hex"}, samples);
         `ifdef DIRECT_FRAME
         $readmemh("dumps/hamming_frame_0.hex", fft_test_buffer);
         `endif
-        $dumpfile("build/fft_tb.vcd");
+        $dumpfile({`TESTS_DIR, "/build/fft_tb.vcd"});
+
         $dumpvars(0, fft_tb);
 
         $display("Iniciando teste da FFT");

@@ -92,7 +92,7 @@ module hamming_tb ();
     logic [8:0] frame_ptr;
 
     logic signed [2*N-1:0] hamming_sample;
-    logic signed [2*N-1:0] hamming_frame [0:FFT_SIZE - 1];
+    logic signed [2*N-1:0] hamming_frame [0:FFT_SIZE-1];
 
     hamming_window #(
         .N (2*N),
