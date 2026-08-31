@@ -3,15 +3,20 @@
 #include <math.h>
 #include <stdint.h>
 #include "mel.h"
-#include "q15_16.h"
-#include "q31_32.h"
-#include "q15_fft.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
 
-#define MIN_LOG_ENERGY_Q15_16 FLOAT_TO_Q15_16(-20.0f)
+int16_t log2_int(int32_t num){
+    int16_t result = -1;
 
+    while (num > 0) {
+        num >>= 1;
+        result++;
+    }
+
+    return result;
+}
 
 // Converte frequência em Hz para índice de bin na FFT
 static inline int hz_to_bin(float freq, int sample_rate) {
@@ -59,7 +64,7 @@ void load_filterbank_from_file(float filterbank[NUM_FILTERS][NFFT/2 + 1]) {
 }
 
 // Cria um banco de filtros triangulares lineares na escala Mel
-void create_filterbank(float filterbank[NUM_FILTERS][NFFT/2 + 1], int sample_rate) {
+void create_filterbank_float(float filterbank[NUM_FILTERS][NFFT/2 + 1], int sample_rate) {
     // Inicializa o filterbank com zeros
     memset(filterbank, 0, NUM_FILTERS * (NFFT/2 + 1) * sizeof(float));
 
@@ -94,7 +99,7 @@ void create_filterbank(float filterbank[NUM_FILTERS][NFFT/2 + 1], int sample_rat
 }
 
 // Aplica o banco de filtros a um espectro de potência e calcula as energias em dB
-void apply_filterbank(int32_t power_spectrum_frame[NFFT/2 + 1], float filterbank[NUM_FILTERS][NFFT/2 + 1], float energies[NUM_FILTERS]) {
+void apply_filterbank_float(int32_t power_spectrum_frame[NFFT/2 + 1], float filterbank[NUM_FILTERS][NFFT/2 + 1], float energies[NUM_FILTERS]) {
     for (int m = 0; m < NUM_FILTERS; m++) {
         float sum = 0.0f;
 
@@ -108,39 +113,39 @@ void apply_filterbank(int32_t power_spectrum_frame[NFFT/2 + 1], float filterbank
     }
 }
 
-// Aplica o banco de filtros Q1.15 ao espectro de potência Q1.15
-void apply_filterbank_q15(
-    int32_t power_spectrum_frame[NFFT/2 + 1],
-    int32_t filterbank[NUM_FILTERS][NFFT/2 + 1],
-    int8_t energies_q15[NUM_FILTERS]  // Saída em Q1.15 (log)
-) {
+void apply_filterbank(
+    int32_t power_spectrum_frame[NFFT/2 + 1], int32_t filterbank[NUM_FILTERS][NFFT/2 + 1], int32_t energies[NUM_FILTERS],
+    int sample_rate, int MEL_COEFF_WIDTH_F, int ENERGIES_WIDTH_F) {
+    int32_t SCALE = 1 << ENERGIES_WIDTH_F;
+    int32_t MIN_LOG_ENERGY = (int32_t)(-20.0f * SCALE);
+
     for (int m = 0; m < NUM_FILTERS; m++) {
-        int32_t sum = 0;
+        int64_t sum = 0;
 
         for (int k = 0; k < NFFT/2 + 1; k++) {
-            sum = q15_16_add(sum, q15_16_mul(power_spectrum_frame[k], filterbank[m][k]));  // acumulando em Q31_32_FRAC_BITS
+            sum = sum + power_spectrum_frame[k] * filterbank[m][k];
         }
 
         if (sum <= 0) {
-            //energies_q15[m] = MIN_LOG_ENERGY_Q15;
-            energies_q15[m] = 0x80;
+            energies[m] = MIN_LOG_ENERGY;
         } else {
-            energies_q15[m] = 6 * q15_16_log2(sum);
-
+            int64_t temp = (20.0f * 0.301029996 * log2_int((int32_t)(sum >> MEL_COEFF_WIDTH_F) * SCALE));
+            energies[m] = (int32_t)(temp);
         }
     }
 }
 
-void create_filterbank_q31_32(q31_32_t filterbank[NUM_FILTERS][NFFT/2 + 1], int sample_rate) {
+void create_filterbank(int32_t filterbank[NUM_FILTERS][NFFT/2 + 1], int sample_rate, int F) {
+    int32_t SCALE = 1 << F;
     float filterbank_float[NUM_FILTERS][NFFT/2 + 1];
-    create_filterbank(filterbank_float, sample_rate);
+    create_filterbank_float(filterbank_float, sample_rate);
     for (int i = 0; i < NUM_FILTERS; i++)
         for (int j = 0; j < NFFT/2 +1; j++)
-            filterbank[i][j] = float_to_q31_32(filterbank_float[i][j]);
+            filterbank[i][j] = (int32_t)(filterbank_float[i][j] * SCALE);
 }
 
 
-void create_op_filterbank_q31_32(q31_32_t** filterbank_op, int sample_rate) {
+void create_op_filterbank(int32_t** filterbank_op, int sample_rate, int F) {
     int16_t init_index;
     int16_t end_index;
     int16_t tmp;
@@ -154,8 +159,8 @@ void create_op_filterbank_q31_32(q31_32_t** filterbank_op, int sample_rate) {
     }
 #endif
 
-    q31_32_t filterbank[NUM_FILTERS][NFFT/2 + 1];
-    create_filterbank_q31_32(filterbank, sample_rate);
+    int32_t filterbank[NUM_FILTERS][NFFT/2 + 1];
+    create_filterbank(filterbank, sample_rate, F);
 
     for (int i = 0; i < NUM_FILTERS; i++) {
 
@@ -178,7 +183,7 @@ void create_op_filterbank_q31_32(q31_32_t** filterbank_op, int sample_rate) {
 
     for (int i = 0; i < NUM_FILTERS; i++) {
 
-        filterbank_op[i] = malloc((max_size + 2) * sizeof(q31_32_t));
+        filterbank_op[i] = malloc((max_size + 2) * sizeof(int32_t));
 
         for (init_index = 0; 
              init_index < NFFT / 2 + 1 && !filterbank[i][init_index]; 
@@ -207,16 +212,16 @@ void create_op_filterbank_q31_32(q31_32_t** filterbank_op, int sample_rate) {
 #ifdef CONFIG_CREATE_DATABANK
         k = 2;
 
-        fprintf(fp, "%016" PRIx64 "\n", filterbank_op[i][0]);
-        fprintf(fp, "%016" PRIx64 "\n", filterbank_op[i][1]);
+        fprintf(fp, "%08" PRIx32 "\n", filterbank_op[i][0]);
+        fprintf(fp, "%08" PRIx32 "\n", filterbank_op[i][1]);
 
         for (int j = init_index; j <= end_index; j++) {
-            fprintf(fp, "%016" PRIx64 "\n", filterbank_op[i][k]);
+            fprintf(fp, "%08" PRIx32 "\n", filterbank_op[i][k]);
             k++;
         }
 
         while (k < max_size + 2) {
-            fprintf(fp, "%016" PRIx64 "\n", filterbank_op[i][k]);
+            fprintf(fp, "%08" PRIx32 "\n", filterbank_op[i][k]);
             k++;
         }
 #endif
@@ -227,31 +232,33 @@ void create_op_filterbank_q31_32(q31_32_t** filterbank_op, int sample_rate) {
 #endif
 }
 
+void apply_op_filterbank(int32_t power_spectrum_frame[NFFT/2 + 1], int32_t energies[NUM_FILTERS], 
+                                            int sample_rate, int MEL_COEFF_WIDTH_F, int ENERGIES_WIDTH_F) {
+    int32_t SCALE = 1 << ENERGIES_WIDTH_F;
+    int32_t MIN_LOG_ENERGY = (int32_t)(-20.0f * SCALE);
 
-void optimization_apply_q15(int32_t power_spectrum_frame[NFFT/2 + 1], int32_t energies_q15[NUM_FILTERS], int sample_rate) {
-    q31_32_t **filterbank_q31_32 = malloc(NUM_FILTERS * sizeof(q31_32_t*));
+    int32_t **filterbank = malloc(NUM_FILTERS * sizeof(int32_t*));
 
-    create_op_filterbank_q31_32(filterbank_q31_32, sample_rate);
+    create_op_filterbank(filterbank, sample_rate, MEL_COEFF_WIDTH_F);
 
     for (int i = 0; i < NUM_FILTERS; i++) {
-        q31_32_t sum = 0;
+        int64_t sum = 0;
 
-        int init_index = filterbank_q31_32[i][0];
-        int end_index = filterbank_q31_32[i][1] + 1;
+        int init_index = filterbank[i][0];
+        int end_index = filterbank[i][1] + 1;
 
 
         for (int k = init_index; k < end_index ; k++) {
             // como  power_spectrum_frame é inteiro, posso operar direto sem a necessidade de lib
-            // pois o resultado está naturalmente em q31.32
-            sum = sum + power_spectrum_frame[k] * filterbank_q31_32[i][2 + k - init_index];
+            // pois o resultado está naturalmente em ponto fixo
+            sum = sum + (int64_t)(power_spectrum_frame[k]) * (int64_t)(filterbank[i][2 + k - init_index]);
         }
 
         if (sum <= 0) {
-            energies_q15[i] = MIN_LOG_ENERGY_Q15_16;
+            energies[i] = MIN_LOG_ENERGY;
         } else {
-            int64_t temp = q31_32_mul(float_to_q31_32(20.0f * 0.301029996), q31_32_log2(sum));
-            energies_q15[i] = (q15_16_t)(temp >> 16);
-
+            int32_t temp = (20.0f * 0.301029996 * SCALE) * log2_int((int32_t)(sum >> MEL_COEFF_WIDTH_F));
+            energies[i] = (int32_t)(temp);
         }
     }
 }

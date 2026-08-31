@@ -97,6 +97,31 @@ void dump_buffer_q15_to_float(const char *file_name, int32_t *buffer, int size) 
     fclose(fp);
 }
 
+void dump_buffer_pf_to_float(const char *file_name, int32_t *buffer, int size, int F) {
+    int32_t SCALE = 1 << F;
+    FILE *fp = fopen(file_name, "w");
+    if (!fp) {
+        perror("fopen");
+        return;
+    }
+    for (int i = 0; i < size; i++) {
+        fprintf(fp, "%f\n", (float)buffer[i] / SCALE);
+    }
+    fclose(fp);
+}
+
+void dump_buffer_q15_to_int(const char *file_name, int32_t *buffer, int size) {
+    FILE *fp = fopen(file_name, "w");
+    if (!fp) {
+        perror("fopen");
+        return;
+    }
+    for (int i = 0; i < size; i++) {
+        fprintf(fp, "%02x\n", (int)q15_16_to_float(buffer[i]));
+    }
+    fclose(fp);
+}
+
 void dump_buffer_q31_to_float(const char *file_name, int64_t *buffer, int size) {
     FILE *fp = fopen(file_name, "w");
     if (!fp) {
@@ -246,7 +271,9 @@ int main(int argc, char *argv[]) {
             char filename[128];
             snprintf(filename, sizeof(filename), "dumps/4_power_spectrum/%04d.hex", i);
 
-            dump_buffer_unsigned(filename, power_spectrum[i], NFFT/2 + 1);
+            // dump_buffer_unsigned(filename, power_spectrum[i], NFFT/2 + 1);
+            dump_buffer_to_hex_32(filename, power_spectrum[i], NFFT/2 + 1);
+
         }
  
         // Salvar o primeiro frame em arquivo para plot
@@ -279,15 +306,15 @@ int main(int argc, char *argv[]) {
 
 
     for (int i = 0; i < num_frames; i++) {
-
-        optimization_apply_q15(power_spectrum[i], energies, sample_rate);
-
-
+        int MEL_COEFF_WIDTH_F = 14;
+        int ENERGIES_WIDTH_F = 7;
+        apply_op_filterbank(power_spectrum[i], energies, sample_rate, MEL_COEFF_WIDTH_F, ENERGIES_WIDTH_F);
 
         #ifdef CONFIG_LOG
             char energy_file[64];
             snprintf(energy_file, sizeof(energy_file), "dumps/5_energies/%04d.hex", i);
-            dump_buffer_q15_to_float(energy_file, energies, NUM_FILTERS);
+            dump_buffer_to_hex_32(energy_file, energies, NUM_FILTERS);
+            // dump_buffer_pf_to_float(energy_file, energies, NUM_FILTERS, ENERGIES_WIDTH_F);
 
             if (fp_spec) {
                 for (int j = 0; j < NUM_FILTERS; j++) {
