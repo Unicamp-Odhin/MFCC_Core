@@ -26,11 +26,7 @@ void hamming_window_fixed(int32_t *frame, int32_t *window, int frame_size, int F
         int32_t tmp = frame[i];
         int64_t temp = (int64_t)frame[i] * (int64_t)window[i];
         frame[i] = (int32_t)(temp >> F);  // retorna inteiro
-        if (i == 279 || i == 157) {
-            printf("%d: %d * %d = %d\n", i, tmp, window[i], frame[i]);
-        }
     }
-    printf("\n");
 }
 
 void save_window_to_file(const char *filename, int32_t *window, int size) {

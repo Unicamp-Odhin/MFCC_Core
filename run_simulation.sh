@@ -52,7 +52,7 @@ function run_hamming_test {
 
 function run_fft_test {
    echo "Executando teste FFT"
-   verilator tests/fft_tb.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/fft_radix2.sv \
+   verilator tests/fft_tb.sv rtl/complex_pkg.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/fft_radix2.sv -DTESTS_DIR=\"${TESTS_DIR}\" \
       -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
    ./obj_dir/Vfft_tb
 }

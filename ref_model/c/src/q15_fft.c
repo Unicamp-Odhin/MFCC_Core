@@ -72,8 +72,6 @@ void fft_iterative(complex_q31_32* x, int N, complex_q31_32* twiddles) {
 }
 
 void fft_q15_real_power(int32_t* x_real, int N, int32_t* power_out) {
-    // Aloca vetor complexo de tamanho NFFT
-
     complex_q31_32* x = (complex_q31_32*)malloc(NFFT * sizeof(complex_q31_32));
     if (!x) return;
 
@@ -84,7 +82,6 @@ void fft_q15_real_power(int32_t* x_real, int N, int32_t* power_out) {
         else
             x[i].real = 0;
         x[i].imag = 0;
-        // printf("%d -> %ld %ld\n", x_real[i], x[i].real, x[i].imag);
 
     }
 

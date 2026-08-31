@@ -214,7 +214,6 @@ int main(int argc, char *argv[]) {
     generate_hamming_window(window, frame_size, F_HAMMING);
 
     for(int i = 0; i < num_frames; i++) {
-        printf("%d:\n", i + 1);
         hamming_window_fixed(frames[i], window, frame_size, F_HAMMING);
     }
 

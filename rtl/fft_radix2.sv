@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 
 module long_mul_fixed #(
-    parameter int FIXED_SHIFT = 32
+    parameter F = 32
 ) (
     input  logic signed [63:0]  a,
     input  logic signed [63:0]  b,
@@ -17,39 +17,36 @@ module long_mul_fixed #(
     // Arredondamento
     always_comb begin
         if (mult_result >= 0)
-            rounded_result = mult_result + (128'sd1 <<< (FIXED_SHIFT - 1));
+            rounded_result = mult_result + (128'sd1 <<< (F - 1));
         else
-            rounded_result = mult_result - (128'sd1 <<< (FIXED_SHIFT - 1));
+            rounded_result = mult_result - (128'sd1 <<< (F - 1));
     end
 
-    // Conversão Q-format: divide por 2^FIXED_SHIFT
-    assign result = rounded_result >>> FIXED_SHIFT;
+    assign result = rounded_result >>> F;
 
 endmodule
 
 
 module fft_radix2 #(
-    parameter NFFT          = 512,
-    parameter INPUT_WIDTH   = 16,
-    parameter NFFT_LOG2     = $clog2(NFFT),
-    parameter COMPLEX_WIDTH = 64 // 32
+    parameter NFFT = 512,
+    parameter WIDTH = 32,
+    parameter F = 32,
+    parameter NFFT_LOG2 = $clog2(NFFT)
 ) (
     input  logic clk,
     input  logic rst_n,
 
     input  logic in_valid,
-    input  logic [NFFT_LOG2 - 1:0]   frame_ptr_i, //TODO isso no C chega como inteiro e passo para Q31.32
-    input  logic [INPUT_WIDTH - 1:0] real_in,
+    input  logic [NFFT_LOG2-1:0] frame_ptr_i,
+    input  logic [WIDTH-1:0] frame_sample_i,
 
     input  logic start_i,
 
     output logic fft_done_o,
 
     output logic power_valid_o,
-    output logic [NFFT_LOG2 - 1:0]      power_ptr_o,
-    output logic [COMPLEX_WIDTH / 2 - 1: 0] power_sample_o // TODO cuidado aqui a saída no C é em INT
-                                                       // Pois como a magniture é muito grande a parte 
-                                                       // parte fracionária não importa!
+    output logic [NFFT_LOG2-1:0] power_ptr_o,
+    output logic [WIDTH-1: 0] power_sample_o 
 );
 
     /*
@@ -58,16 +55,23 @@ module fft_radix2 #(
     stage3_addsub: soma e subtração complexas (c_add, c_sub)
     writeback: escrita nos registradores x[]
     */
+    localparam COMPLEX_WIDTH = 2*WIDTH; // TODO: Voltar aqui pois pode ser menor, o mínimo necessário é WIDTH + log2(NFFT)
 
     import complex_pkg::*;
 
-    function automatic logic [1:0] count_ones_and_mask2bit(input logic [NFFT_LOG2 - 1:0] x);
-        integer count = 0;
-        for (int i = 0; i < NFFT_LOG2; i++) begin
-            count += x[i];
+    function automatic logic [1:0] count_ones_and_mask2bit(
+        input logic [NFFT_LOG2-1:0] x
+    );
+        logic [1:0] count;
+        begin
+            count = 2'b00;
+            for (int i = 0; i < NFFT_LOG2; i++) begin
+                count = count + x[i];
+            end
+            return count;
         end
-        return count[1:0];  // equivalente a count & 2'b11
     endfunction
+
 
     function automatic long_complex x_read(input logic [NFFT_LOG2-1:0] addr);
         logic [1:0] bank_id;
@@ -82,7 +86,7 @@ module fft_radix2 #(
         end
     endfunction
 
-    localparam INPUT_DIFF = COMPLEX_WIDTH - INPUT_WIDTH;
+    localparam WIDTH_DIFF = COMPLEX_WIDTH - WIDTH;
     localparam RFFT_SIZE  = NFFT/2;
     localparam NFFT_LOG22  = $clog2(NFFT_LOG2);
 
@@ -90,12 +94,12 @@ module fft_radix2 #(
 
     long_complex twiddles[0 : NFFT / 2];
 
-    long_complex x_bank0 [0 : NFFT - 1];
-    long_complex x_bank1 [0 : NFFT - 1];
-    long_complex x_bank2 [0 : NFFT - 1];
-    long_complex x_bank3 [0 : NFFT - 1];
+    long_complex x_bank0 [0:NFFT-1];
+    long_complex x_bank1 [0:NFFT-1];
+    long_complex x_bank2 [0:NFFT-1];
+    long_complex x_bank3 [0:NFFT-1];
 
-    logic [NFFT_LOG2 - 1:0] frame_ptr_reversal;
+    logic [NFFT_LOG2-1:0] frame_ptr_reversal;
 
     initial begin
         $readmemh("tables/twiddles.hex", twiddles);
@@ -126,10 +130,10 @@ module fft_radix2 #(
     } pipeline_stage_1_t;
 
     typedef struct packed {
-        logic signed [(COMPLEX_WIDTH * 2) - 1:0] arbr; // a.re * b.re
-        logic signed [(COMPLEX_WIDTH * 2) - 1:0] aibi; // a.im * b.im
-        logic signed [(COMPLEX_WIDTH * 2) - 1:0] arbi; // a.re * b.im
-        logic signed [(COMPLEX_WIDTH * 2) - 1:0] aibr; // a.im * b.re
+        logic signed [2*COMPLEX_WIDTH-1:0] arbr; // a.re * b.re
+        logic signed [2*COMPLEX_WIDTH-1:0] aibi; // a.im * b.im
+        logic signed [2*COMPLEX_WIDTH-1:0] arbi; // a.re * b.im
+        logic signed [2*COMPLEX_WIDTH-1:0] aibr; // a.im * b.re
         long_complex even;
         logic [NFFT_LOG2:0] addr_even;
         logic [NFFT_LOG2:0] addr_odd;
@@ -153,28 +157,26 @@ module fft_radix2 #(
     pipeline_stage_2_t  stage3_addsub;
 
     // Power calculation pipeline
-    long_complex                    power_stage1;
-    //logic [COMPLEX_WIDTH * 2 - 1:0] power_stage2_re;
-    //logic [COMPLEX_WIDTH * 2 - 1:0] power_stage2_im;
-    logic [COMPLEX_WIDTH * 1 - 1:0] power_stage2_re;
-    logic [COMPLEX_WIDTH * 1 - 1:0] power_stage2_im;
-    //logic [COMPLEX_WIDTH * 2 - 1:0] power_stage3;
-    logic [COMPLEX_WIDTH * 1 - 1:0] power_stage3;
-    //logic [COMPLEX_WIDTH - 1:0]     power_stage4;
-    logic [COMPLEX_WIDTH / 2 - 1:0]     power_stage4;
-    logic                           power_valid_stage1;
-    logic                           power_valid_stage2;
-    logic                           power_valid_stage3;
-    logic                           power_valid_stage4;
-    logic [NFFT_LOG2:0]             power_ptr_stage1;
-    logic [NFFT_LOG2:0]             power_ptr_stage2;
-    logic [NFFT_LOG2:0]             power_ptr_stage3;
-    logic [NFFT_LOG2:0]             power_ptr_stage4;
-    logic [NFFT_LOG2:0]             power_ptr;
+    long_complex power_stage1;
+    logic [COMPLEX_WIDTH-1:0] power_stage2_re;
+    logic [COMPLEX_WIDTH-1:0] power_stage2_im;
+    logic [COMPLEX_WIDTH-1:0] power_stage3;
+    logic [WIDTH-1:0] power_stage4;
+
+    logic power_valid_stage1;
+    logic power_valid_stage2;
+    logic power_valid_stage3;
+    logic power_valid_stage4;
+
+    logic [NFFT_LOG2-1:0] power_ptr_stage1;
+    logic [NFFT_LOG2-1:0] power_ptr_stage2;
+    logic [NFFT_LOG2-1:0] power_ptr_stage3;
+    logic [NFFT_LOG2-1:0] power_ptr_stage4;
+    logic [NFFT_LOG2-1:0] power_ptr;
 
     // Outputs
     assign power_valid_o  = power_valid_stage4;
-    assign power_ptr_o    = power_ptr_stage4[NFFT_LOG2 - 1:0];
+    assign power_ptr_o = power_ptr_stage4;
     assign power_sample_o = power_stage4;
 
     logic [NFFT_LOG2 - 1:0] even_ptr_sum, odd_ptr_sum;
@@ -225,10 +227,10 @@ module fft_radix2 #(
 
                 PROCESSING: begin
                     // Pipeline Stage 1: Read and schedule
-                    stage1.even <= x_read(even_ptr_sum[NFFT_LOG2 - 1:0]);
-                    stage1.odd  <= x_read(odd_ptr_sum[NFFT_LOG2 - 1:0]);
+                    stage1.even <= x_read(even_ptr_sum[NFFT_LOG2-1:0]);
+                    stage1.odd  <= x_read(odd_ptr_sum[NFFT_LOG2-1:0]);
 
-                    stage1.twiddle   <= twiddles[sched.twiddle_index[NFFT_LOG2 - 1:0]];
+                    stage1.twiddle   <= twiddles[sched.twiddle_index[NFFT_LOG2:0]];
                     stage1.meta      <= sched;
 
                     // Scheduler update
@@ -261,13 +263,15 @@ module fft_radix2 #(
                     end else begin
                         // Power pipeline Stage 1
                         power_ptr          <= power_ptr + 1;
-                        power_stage1       <= x_read(power_ptr[NFFT_LOG2 - 1:0]);
+                        power_stage1       <= x_read(power_ptr);
                         power_ptr_stage1   <= power_ptr;
                         power_valid_stage1 <= 1;
 
                         // Power pipeline Stage 2
-                        power_stage2_re    <= power_stage1.re[63:32] * power_stage1.re[63:32];
-                        power_stage2_im    <= power_stage1.im[63:32] * power_stage1.im[63:32];
+                        power_stage2_re <= $signed(power_stage1.re[WIDTH+F-1:F]) * $signed(power_stage1.re[WIDTH+F-1:F]); //Pego apenas a parte inteira
+                        power_stage2_im <= $signed(power_stage1.im[WIDTH+F-1:F]) * $signed(power_stage1.im[WIDTH+F-1:F]);
+
+
                         power_ptr_stage2   <= power_ptr_stage1;
                         power_valid_stage2 <= power_valid_stage1;
 
@@ -277,7 +281,7 @@ module fft_radix2 #(
                         power_valid_stage3 <= power_valid_stage2;
 
                         // Power pipeline Stage 4
-                        power_stage4       <= power_stage3[32 - 1 + NFFT_LOG2:NFFT_LOG2]; // 64/2 - 1 + 9 : 9
+                        power_stage4       <= power_stage3[WIDTH+NFFT_LOG2-1:NFFT_LOG2]; //Dividir por NFFT
                         power_ptr_stage4   <= power_ptr_stage3;
                         power_valid_stage4 <= power_valid_stage3;
                     end
@@ -299,30 +303,30 @@ module fft_radix2 #(
     end
 
 
-    logic signed [63:0] arbr_result;
-    logic signed [63:0] aibi_result;
-    logic signed [63:0] arbi_result;
-    logic signed [63:0] aibr_result;
+    logic signed [COMPLEX_WIDTH-1:0] arbr_result;
+    logic signed [COMPLEX_WIDTH-1:0] aibi_result;
+    logic signed [COMPLEX_WIDTH-1:0] arbi_result;
+    logic signed [COMPLEX_WIDTH-1:0] aibr_result;
 
-    long_mul_fixed u_mul_arbr (
+    long_mul_fixed #(.F(F)) u_mul_arbr (
         .a      (stage1.twiddle.re),
         .b      (stage1.odd.re),
         .result (arbr_result)
     );
 
-    long_mul_fixed u_mul_aibi (
+    long_mul_fixed #(.F(F)) u_mul_aibi (
         .a      (stage1.twiddle.im),
         .b      (stage1.odd.im),
         .result (aibi_result)
     );
 
-    long_mul_fixed u_mul_arbi (
+    long_mul_fixed #(.F(F)) u_mul_arbi (
         .a      (stage1.twiddle.re),
         .b      (stage1.odd.im),
         .result (arbi_result)
     );
 
-    long_mul_fixed u_mul_aibr (
+    long_mul_fixed #(.F(F)) u_mul_aibr (
         .a      (stage1.twiddle.im),
         .b      (stage1.odd.re),
         .result (aibr_result)
@@ -331,12 +335,12 @@ module fft_radix2 #(
 
     // FFT Pipeline Stage 2: c_mul only
     always_ff @(posedge clk) begin
-        stage2_mul.arbr      <= arbr_result;
-        stage2_mul.aibi      <= aibi_result;
-        stage2_mul.arbi      <= arbi_result;
-        stage2_mul.aibr      <= aibr_result;
+        stage2_mul.arbr <= arbr_result;
+        stage2_mul.aibi <= aibi_result;
+        stage2_mul.arbi <= arbi_result;
+        stage2_mul.aibr <= aibr_result;
 
-        stage2_mul.even      <= stage1.even;
+        stage2_mul.even <= stage1.even;
 
         stage2_mul.addr_even <= stage1.meta.k + stage1.meta.j;
 
@@ -346,19 +350,24 @@ module fft_radix2 #(
 
     // FFT Pipeline Stage 3: c_add and c_sub
     always_ff @(posedge clk) begin
+        //x[k + j] = u + (t)
         stage3_addsub.sum.re         <= stage2_mul.even.re + (stage2_mul.arbr - stage2_mul.aibi);
         stage3_addsub.sum.im         <= stage2_mul.even.im + (stage2_mul.arbi + stage2_mul.aibr);
+
+        //x[k + j + half_m] = u - (t)
         stage3_addsub.diff.re        <= stage2_mul.even.re - (stage2_mul.arbr - stage2_mul.aibi);
         stage3_addsub.diff.im        <= stage2_mul.even.im - (stage2_mul.arbi + stage2_mul.aibr);
+
         stage3_addsub.addr_even      <= stage2_mul.addr_even;
         stage3_addsub.addr_odd       <= stage2_mul.addr_odd;
+
         stage3_addsub.addr_even_bank <= count_ones_and_mask2bit(stage2_mul.addr_even);
         stage3_addsub.addr_odd_bank  <= count_ones_and_mask2bit(stage2_mul.addr_odd);
     end
 
     logic x0_write_en, x1_write_en, x2_write_en, x3_write_en;
     long_complex x0_write_data, x1_write_data, x2_write_data, x3_write_data;
-    logic [NFFT_LOG2 - 1:0] x0_write_addr, x1_write_addr, x2_write_addr, x3_write_addr;
+    logic [NFFT_LOG2-1:0] x0_write_addr, x1_write_addr, x2_write_addr, x3_write_addr;
 
     // FFT Pipeline Stage 4: Writeback
     always_ff @(posedge clk) begin
@@ -372,18 +381,16 @@ module fft_radix2 #(
             x1_write_addr <= frame_ptr_reversal;
             x2_write_addr <= frame_ptr_reversal;
             x3_write_addr <= frame_ptr_reversal;
+
             x0_write_en   <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b00;
             x1_write_en   <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b01;
             x2_write_en   <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b10;
             x3_write_en   <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b11;
-            //x0_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, 32'h0}; // Extensão de sinal
-            //x1_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, 32'h0}; // Extensão de sinal
-            //x2_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, 32'h0}; // Extensão de sinal
-            //x3_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, 32'h0}; // Extensão de sinal
-            x0_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, {32'h0}, 64'h0}; // Extensão de sinal
-            x1_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, {32'h0}, 64'h0}; // Extensão de sinal
-            x2_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, {32'h0}, 64'h0}; // Extensão de sinal
-            x3_write_data <= {{{INPUT_DIFF{real_in[INPUT_WIDTH - 1]}}}, real_in, {32'h0}, 64'h0}; // Extensão de sinal
+            
+            x0_write_data <= {{{WIDTH_DIFF{frame_sample_i[WIDTH - 1]}}}, frame_sample_i, {F'(0)}, COMPLEX_WIDTH'(0)}; // Extensão de sinal
+            x1_write_data <= {{{WIDTH_DIFF{frame_sample_i[WIDTH - 1]}}}, frame_sample_i, {F'(0)}, COMPLEX_WIDTH'(0)}; // Extensão de sinal
+            x2_write_data <= {{{WIDTH_DIFF{frame_sample_i[WIDTH - 1]}}}, frame_sample_i, {F'(0)}, COMPLEX_WIDTH'(0)}; // Extensão de sinal
+            x3_write_data <= {{{WIDTH_DIFF{frame_sample_i[WIDTH - 1]}}}, frame_sample_i, {F'(0)}, COMPLEX_WIDTH'(0)}; // Extensão de sinal
             
         end else if(fft_state == PROCESSING) begin
             case (stage3_addsub.addr_even_bank)
