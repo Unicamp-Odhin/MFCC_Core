@@ -180,7 +180,7 @@ void create_op_filterbank(int32_t** filterbank_op, int sample_rate, int F) {
         if (tmp > max_size)
             max_size = tmp;
     }
-
+    printf("MEL_BANK_SIZE= %d\n", max_size + 2);
     for (int i = 0; i < NUM_FILTERS; i++) {
 
         filterbank_op[i] = malloc((max_size + 2) * sizeof(int32_t));
@@ -251,6 +251,8 @@ void apply_op_filterbank(int32_t power_spectrum_frame[NFFT/2 + 1], int32_t energ
         for (int k = init_index; k < end_index ; k++) {
             // como  power_spectrum_frame é inteiro, posso operar direto sem a necessidade de lib
             // pois o resultado está naturalmente em ponto fixo
+            printf("sum=%lld | filtro=%d | power=%d | mult=%lld | prt_memory=%d\n", (long long)sum, filterbank[i][2 + k - init_index], power_spectrum_frame[k], (long long)power_spectrum_frame[k] * filterbank[i][2 + k - init_index], (2 + k - init_index) + 31 * i);
+
             sum = sum + (int64_t)(power_spectrum_frame[k]) * (int64_t)(filterbank[i][2 + k - init_index]);
         }
 

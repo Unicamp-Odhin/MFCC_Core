@@ -1,18 +1,14 @@
 #include "dct.h"
-#include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
-#include "q15_16.h"
 #include "mel.h"
 
 
-// LUT para cosseno: precompute cos(pi * (n + 0.5) * k / num_filters) em Q15
-static q15_16_t cos_lut[NUM_CEPS][NUM_FILTERS];
+// LUT para cosseno: precompute cos(pi * (n + 0.5) * k / num_filters) em ponto fixo
+static int32_t cos_lut[NUM_CEPS][NUM_FILTERS];
 
-void init_cos_lut() {
-    // Essa parte poderia ser otimizada se usarmos q1.14,
-    // pois sabemos que seno e cos só vão até 1, logo 1 bit 
-    // para a parte inteira seria suficiênte
+void init_cos_lut(int DCT_COEFF_WIDTH_F) {
+    int32_t DCT_SCALE = 1 << DCT_COEFF_WIDTH_F;
 #ifdef CONFIG_CREATE_DATABANK
     FILE *fp = fopen("tables_to_rtl/cos_table.hex", "w");
     if (!fp) {
@@ -24,7 +20,7 @@ void init_cos_lut() {
     for (int k = 0; k < NUM_CEPS; k++) {
         for (int n = 0; n < NUM_FILTERS; n++) {
             float cos_float = cos(M_PI * (n + 0.5f) * k / NUM_FILTERS);
-            cos_lut[k][n] = float_to_q15_16(cos_float);
+            cos_lut[k][n] = (int32_t)(cos_float * DCT_SCALE);
 #ifdef CONFIG_CREATE_DATABANK
             fprintf(fp, "%08" PRIx32 "\n", (uint32_t)cos_lut[k][n]);
 #endif
@@ -59,29 +55,38 @@ void dct(float energies[], int num_filters, float ceps[NUM_CEPS]) {
 }
 
 
-void dct_fixed(int32_t energies_q15[], int num_filters, int32_t ceps_q15[NUM_CEPS]) {
+void dct_fixed(int32_t energies[], int num_filters, int32_t ceps[NUM_CEPS], int  ENERGIES_WIDTH_F, int DCT_COEFF_WIDTH_F) {
+    int32_t MEL_SCALE = 1 << ENERGIES_WIDTH_F;
+    int32_t DCT_SCALE = 1 << DCT_COEFF_WIDTH_F;
 
-    q15_16_t factor0 = float_to_q15_16(sqrt((1.0f / num_filters)));
-    q15_16_t factork = float_to_q15_16(sqrt((2.0f / num_filters)));
+    int32_t factor0 = (int32_t)(sqrt((1.0f / num_filters)) * DCT_SCALE);
+    int32_t factork = (int32_t)(sqrt((2.0f / num_filters)) * DCT_SCALE);
 
+    
+    
     for (int k = 0; k < NUM_CEPS; k++) {
-
+        
         int32_t sum = 0;
-
-
+        
+        
         for (int n = 0; n < num_filters; n++) {
+            int32_t energy = energies[n];
+            if (DCT_COEFF_WIDTH_F > ENERGIES_WIDTH_F)
+                energy = energies[n] << (DCT_COEFF_WIDTH_F - ENERGIES_WIDTH_F);
+            else if (DCT_COEFF_WIDTH_F < ENERGIES_WIDTH_F)
+                energy = energies[n] >> (ENERGIES_WIDTH_F - DCT_COEFF_WIDTH_F);
 
-            q15_16_t tmp = q15_16_mul(energies_q15[n], cos_lut[k][n]);
+            int64_t mul_tmp = (int64_t)(energy) * (int64_t)(cos_lut[k][n]);
+            int32_t mul = (int32_t)(mul_tmp >> DCT_COEFF_WIDTH_F);
 
-
-            sum = q15_16_add(sum, tmp);
+            sum = sum + mul;
 
         }
 
         if (k == 0)
-            ceps_q15[k] = q15_16_mul(sum, factor0);
+            ceps[k] = ((int64_t)sum * (int64_t)factor0) >> DCT_COEFF_WIDTH_F ;
         else
-            ceps_q15[k] = q15_16_mul(sum, factork);
+            ceps[k] = ((int64_t)sum * (int64_t)factork) >> DCT_COEFF_WIDTH_F ;
 
     }
 }

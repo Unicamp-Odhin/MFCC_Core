@@ -97,6 +97,20 @@ void dump_buffer_q15_to_float(const char *file_name, int32_t *buffer, int size) 
     fclose(fp);
 }
 
+
+
+void dump_buffer_pf_to_int(const char *file_name, int32_t *buffer, int size, int F) {
+    FILE *fp = fopen(file_name, "w");
+    if (!fp) {
+        perror("fopen");
+        return;
+    }
+    for (int i = 0; i < size; i++) {
+        fprintf(fp, "%x\n", buffer[i] >> F);
+    }
+    fclose(fp);
+}
+
 void dump_buffer_pf_to_float(const char *file_name, int32_t *buffer, int size, int F) {
     int32_t SCALE = 1 << F;
     FILE *fp = fopen(file_name, "w");
@@ -294,44 +308,45 @@ int main(int argc, char *argv[]) {
     //QUINTA ETAPA Banco de filtros + DCT (cepstrais)
 
     int32_t energies[NUM_FILTERS];
-    init_cos_lut();
-
+    
     #ifdef CONFIG_LOG
-        FILE *fp_ceps = fopen("dumps/plots/ceps_matrix.dat", "w");
-        if (!fp_ceps) perror("Erro ao criar ceps_matrix.dat");
-
-        FILE *fp_spec = fopen("dumps/plots/spectrogram_matrix.dat", "w");
-        if (!fp_spec) perror("Erro ao criar spectrogram_matrix.dat");
+    FILE *fp_ceps = fopen("dumps/plots/ceps_matrix.dat", "w");
+    if (!fp_ceps) perror("Erro ao criar ceps_matrix.dat");
+    
+    FILE *fp_spec = fopen("dumps/plots/spectrogram_matrix.dat", "w");
+    if (!fp_spec) perror("Erro ao criar spectrogram_matrix.dat");
     #endif
-
-
+    
+    
+    int MEL_COEFF_WIDTH_F = 14;
+    int ENERGIES_WIDTH_F = 14;
     for (int i = 0; i < num_frames; i++) {
-        int MEL_COEFF_WIDTH_F = 14;
-        int ENERGIES_WIDTH_F = 7;
         apply_op_filterbank(power_spectrum[i], energies, sample_rate, MEL_COEFF_WIDTH_F, ENERGIES_WIDTH_F);
-
+        
         #ifdef CONFIG_LOG
-            char energy_file[64];
-            snprintf(energy_file, sizeof(energy_file), "dumps/5_energies/%04d.hex", i);
-            dump_buffer_to_hex_32(energy_file, energies, NUM_FILTERS);
-            // dump_buffer_pf_to_float(energy_file, energies, NUM_FILTERS, ENERGIES_WIDTH_F);
-
-            if (fp_spec) {
-                for (int j = 0; j < NUM_FILTERS; j++) {
-                    fprintf(fp_spec, "%2f%c",
-                             q15_16_to_float(energies[j]),
-                            (j == NUM_FILTERS - 1) ? '\n' : ' ');
-                }
+        char energy_file[64];
+        snprintf(energy_file, sizeof(energy_file), "dumps/5_energies/%04d.hex", i);
+        dump_buffer_pf_to_int(energy_file, energies, NUM_FILTERS, ENERGIES_WIDTH_F);
+        // dump_buffer_to_hex_32(energy_file, energies, NUM_FILTERS);
+        // dump_buffer_pf_to_float(energy_file, energies, NUM_FILTERS, ENERGIES_WIDTH_F);
+        
+        if (fp_spec) {
+            for (int j = 0; j < NUM_FILTERS; j++) {
+                fprintf(fp_spec, "%2f%c", q15_16_to_float(energies[j]), (j == NUM_FILTERS - 1) ? '\n' : ' ');
             }
+        }
         #endif
-
+        
+        int DCT_COEFF_WIDTH_F = 14;
         int32_t ceps[NUM_CEPS];
-        dct_fixed(energies, NUM_FILTERS, ceps);
+        if (i == 0)
+            init_cos_lut(DCT_COEFF_WIDTH_F);
+        dct_fixed(energies, NUM_FILTERS, ceps, ENERGIES_WIDTH_F, DCT_COEFF_WIDTH_F);
 
         #ifdef CONFIG_LOG
             char ceps_file[64];
             snprintf(ceps_file, sizeof(ceps_file), "dumps/6_ceps/%04d.hex", i);
-            dump_buffer_q15_to_float(ceps_file, ceps, NUM_CEPS);
+            dump_buffer_pf_to_float(ceps_file, ceps, NUM_CEPS, DCT_COEFF_WIDTH_F);
 
             if (fp_ceps) {
                 for (int j = 0; j < NUM_CEPS; j++) {
