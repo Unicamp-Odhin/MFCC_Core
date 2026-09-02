@@ -1,30 +1,38 @@
 `timescale 1ns/1ps
 module dct_tb ();
+    localparam MAX_AUDIO_SIZE = 65530;
+    localparam SAMPLE_RATE = 12207;
+    localparam N = 16;
+    localparam F_PRE_EMPHASIS = 15;
+    localparam F_HAMMING = 15;
+    localparam F_FFT = 32;
+    localparam PCM_FIFO_DEPTH = 2048;
+    localparam FRAME_SIZE_T = 0.025;
+    localparam FRAME_STEP_T = 0.01;
+    localparam FRAME_SIZE = $rtoi(SAMPLE_RATE * FRAME_SIZE_T);
+    localparam FRAME_STEP = $rtoi(SAMPLE_RATE * FRAME_STEP_T);
+    localparam ALPHA = $rtoi(0.97 * (1 << F_PRE_EMPHASIS));
+    localparam FFT_SIZE = 512;
+    localparam RFFT_SIZE = FFT_SIZE / 2 + 1;
+    localparam NFFT_LOG2 = $clog2(FFT_SIZE);
+    localparam NUM_CEPS = 12;
+    localparam NUM_MEL_FILTERS = 40;
 
-    localparam AUDIO_PATH       = "data/seno_440Hz.hex";
-    localparam MAX_AUDIO_SIZE   = 1600;
-    localparam SAMPLE_WIDTH     = 16;
-    localparam PCM_FIFO_DEPTH   = 256;
-    localparam FRAME_SIZE       = 400;
-    localparam FRAME_MOVE       = 160;
-    localparam ALPHA            = 16'd31785;
-    localparam FFT_SIZE         = 512;
-    localparam NUM_FILTERS      = 40;
-    localparam NUM_COEFFICIENTS = 12;
 
     logic clk;
     logic rst_n;
 
-    logic [SAMPLE_WIDTH - 1:0] samples [0:MAX_AUDIO_SIZE - 1];
+    logic [N-1:0] samples[0:MAX_AUDIO_SIZE-1];
 
-    logic [15:0] pcm_in;
+    logic signed [N-1:0] pcm_in;
+    logic signed [2*N-1:0] pre_emphasized_signal;
     logic pcm_ready_i;
     logic pre_emphasis_valid;
-    logic [15:0] pre_emphasized_signal;
 
     pre_emphasis #(
-        .SAMPLE_WIDTH (SAMPLE_WIDTH),
-        .ALPHA        (ALPHA) // Alpha em Q1.15 (0.97 ≈ 31785)
+        .N (N),
+        .F (F_PRE_EMPHASIS),
+        .ALPHA (ALPHA)
     ) u_pre_emphasis (
         .clk          (clk),
         .rst_n        (rst_n),
@@ -37,11 +45,12 @@ module dct_tb ();
     );
 
     logic fifo_empty, fifo_full, fifo_rd_en;
-    logic [SAMPLE_WIDTH - 1:0] fifo_read_data;
+    logic [2*N-1:0] fifo_read_data;
+
 
     fifo #(
         .DEPTH        (PCM_FIFO_DEPTH),
-        .WIDTH        (SAMPLE_WIDTH)
+        .WIDTH        (2*N)
     ) tx_fifo (
         .clk          (clk),
         .rst_n        (rst_n),
@@ -55,40 +64,41 @@ module dct_tb ();
         .read_data_o  (fifo_read_data)
     );
 
-    logic [SAMPLE_WIDTH - 1:0] window_buffer_data;
+    logic [2*N-1:0] window_buffer_data;
     logic window_valid_to_read;
     logic window_rd_en;
     logic start_move;
     logic start_hamming;
 
     window_buffer #(
-        .WIDTH                (SAMPLE_WIDTH),
+        .WIDTH                (2*N),
         .FRAME_SIZE           (FRAME_SIZE),
-        .MOVE_SIZE            (FRAME_MOVE)
+        .FRAME_STEP            (FRAME_STEP)
     ) u_window_buffer (
-        .clk                  (clk),                         // 1 bit
-        .rst_n                (rst_n),                       // 1 bit
+        .clk                  (clk),
+        .rst_n                (rst_n),
 
-        .start_move           (start_move),                  // 1 bit
+        .start_move           (start_move),
 
-        .fifo_rd_en_o         (fifo_rd_en),                  // 1 bit
-        .fifo_data_i          (fifo_read_data),              // 16 bits
-        .fifo_empty_i         (fifo_empty),                  // 1 bit
+        .fifo_rd_en_o         (fifo_rd_en),
+        .fifo_data_i          (fifo_read_data),
+        .fifo_empty_i         (fifo_empty),
 
-        .rd_en_i              (window_rd_en),                // 10 bits
-        .read_data_o          (window_buffer_data),          // 16 bits
-        .valid_to_read_o      (window_valid_to_read),        // 1 bit
+        .rd_en_i              (window_rd_en),
+        .read_data_o          (window_buffer_data),
+        .valid_to_read_o      (window_valid_to_read),
 
         .start_next_state_o   (start_hamming)
     );
 
     logic hamming_done, hamming_out_valid;
-    logic [8:0] frame_ptr;
-    logic signed [SAMPLE_WIDTH - 1:0] hamming_sample;
-    logic signed [SAMPLE_WIDTH - 1:0] hamming_frame [0:FFT_SIZE - 1];
+    logic [NFFT_LOG2-1:0] frame_ptr;
+    logic signed [2*N-1:0] hamming_sample;
+    logic signed [2*N-1:0] hamming_frame [0:FFT_SIZE-1];
 
     hamming_window #(
-        .SAMPLE_WIDTH     (SAMPLE_WIDTH),
+        .N(2*N),
+        .F (F_HAMMING),
         .NUM_COEFFICIENTS (FRAME_SIZE),
         .NFFT_SIZE        (FFT_SIZE)
     ) u_hamming_window (
@@ -102,7 +112,7 @@ module dct_tb ();
 
         .frame_ptr_o      (frame_ptr),
         .frame_sample_i   (window_buffer_data),  // Sinal de entrada
-        .hamming_sample_o (hamming_sample),        // Sinal de saída
+        .hamming_sample_o (hamming_sample), // Sinal de saída
 
         .out_valid_o      (hamming_out_valid),
         .done_o           (hamming_done)
@@ -119,16 +129,17 @@ module dct_tb ();
     logic fft_power_valid, fft_done;
 
     fft_radix2 #(
-        .NFFT           (FFT_SIZE),
-        .INPUT_WIDTH    (SAMPLE_WIDTH),
-        .COMPLEX_WIDTH  (32)
+        .NFFT (FFT_SIZE),
+        .WIDTH (2*N),
+        .F(F_FFT),
+        .NFFT_LOG2 (NFFT_LOG2)
     ) u_fft (
         .clk            (clk),
         .rst_n          (rst_n),
 
         .in_valid       (hamming_out_valid),
         .frame_ptr_i    (frame_ptr),
-        .real_in        (hamming_sample),
+        .frame_sample_i        (hamming_sample),
 
         .start_i        (hamming_done),
 
@@ -141,14 +152,12 @@ module dct_tb ();
 
     logic mel_done, mel_valid;
     logic [5:0] mel_ptr;
-    logic [7:0] mel_sample;
-    logic [7:0] mel_energies [0:NUM_FILTERS - 1];
+    logic [15:0] mel_sample;
+    logic [15:0] mel_energies [0:NUM_MEL_FILTERS - 1];
 
     mel #(
-        .NUM_FILTERS                (NUM_FILTERS), 
-        .NFFT                       (FFT_SIZE),
-        .INPUT_WIDTH                (32),
-        .OUTPUT_WIDTH               (8)
+		.NUM_MEL_FILTERS (NUM_MEL_FILTERS), 
+		.NUM_RFFT_BINS       (RFFT_SIZE)
     ) u_mel (
         .clk                        (clk),
         .rst_n                      (rst_n),
@@ -172,23 +181,23 @@ module dct_tb ();
         end
     end
 
-    logic [$clog2(NUM_COEFFICIENTS) - 1:0] ceps_ptr;
-    logic [15:0] ceps_sample;
+    logic [$clog2(NUM_CEPS) - 1:0] ceps_ptr;
+    logic [31:0] ceps_sample;
     logic dct_valid, dct_done;
-    logic [15:0] coeficientes [0: NUM_COEFFICIENTS - 1];
+    logic [31:0] coeficientes [0: NUM_CEPS - 1];
 
     dct #(
-        .NUM_CEPS    (NUM_COEFFICIENTS),
-        .NUM_FILTERS (NUM_FILTERS),
-        .INPUT_WIDTH (8),
-        .CEPS_WIDTH  (16)
+        .NUM_CEPS    (NUM_CEPS),
+        .NUM_MEL_FILTERS (NUM_MEL_FILTERS),
+        .ENERGIES_WIDTH (16),
+        .CEPS_WIDTH  (32)
     ) u_dct (
         .clk         (clk),
         .rst_n       (rst_n),
 
         .in_valid    (mel_valid),
         .frame_ptr_i (mel_ptr),
-        .power_in    (mel_sample),
+        .energy_in    (mel_sample),
         
         .start_i     (mel_done),
 
@@ -209,7 +218,7 @@ module dct_tb ();
         integer fd;
         integer i;
         begin
-            fd = $fopen("buffer_dump.hex", "w");
+            fd = $fopen({`TESTS_DIR, "/data/buffer_dump.hex"}, "w");
             for (i = 0; i < FRAME_SIZE; i = i + 1) begin
                 $fwrite(fd, "%h\n", u_window_buffer.buffer[i]);
             end
@@ -221,7 +230,7 @@ module dct_tb ();
         integer fd;
         integer i;
         begin
-            fd = $fopen("hamming_dump.hex", "w");
+            fd = $fopen({`TESTS_DIR, "/data/hamming_dump.hex"}, "w");
             for (i = 0; i < FRAME_SIZE; i = i + 1) begin
                 $fwrite(fd, "%h\n", hamming_frame[i]);
             end
@@ -233,8 +242,8 @@ module dct_tb ();
         integer fd;
         integer i;
         begin
-            fd = $fopen("mel_energies_dump.hex", "w");
-            for (i = 0; i < NUM_FILTERS; i = i + 1) begin
+            fd = $fopen({`TESTS_DIR, "/data/mel_energies_dump.hex"}, "w");
+            for (i = 0; i < NUM_MEL_FILTERS; i = i + 1) begin
                 $fwrite(fd, "%h\n", mel_energies[i]);
             end
             $fclose(fd);
@@ -245,8 +254,8 @@ module dct_tb ();
         integer fd;
         integer i;
         begin
-            fd = $fopen("coeficients_dump.hex", "w");
-            for (i = 0; i < NUM_COEFFICIENTS; i = i + 1) begin
+            fd = $fopen({`TESTS_DIR, "/data/coeficients_dump.hex"}, "w");
+            for (i = 0; i < NUM_CEPS; i = i + 1) begin
                 $fwrite(fd, "%h\n", coeficientes[i]);
             end
             $fclose(fd);
@@ -256,8 +265,9 @@ module dct_tb ();
     integer i;
 
     initial begin
-        $readmemh(AUDIO_PATH, samples);
-        $dumpfile("build/dct_tb.vcd");
+        $readmemh({`TESTS_DIR, "/data/samples.hex"}, samples);
+
+        $dumpfile({`TESTS_DIR, "/build/dct_tb.vcd"});
         $dumpvars(0, dct_tb);
 
         $display("Iniciando teste da DCT");

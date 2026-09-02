@@ -23,7 +23,7 @@ module fft_tb ();
     logic clk;
     logic rst_n;
 
-    logic [N - 1:0] samples [0:MAX_AUDIO_SIZE - 1];
+    logic [N-1:0] samples [0:MAX_AUDIO_SIZE-1];
 
     logic signed [N-1:0] pcm_in;
     logic signed [2*N-1:0] pre_emphasized_signal;

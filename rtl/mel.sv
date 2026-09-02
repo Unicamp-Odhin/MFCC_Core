@@ -8,7 +8,8 @@ module mel #(
     parameter POWER_WIDTH = 32,
     parameter MEL_COEFF_WIDTH_F = 8,
     parameter FRACTIONAL_BITS = 14,
-    parameter MEL_ENERGY_WIDTH = $clog2(($clog2(NUM_RFFT_BINS)+POWER_WIDTH) * 6),
+    parameter MEL_ENERGY_WIDTH = 16,
+    // parameter MEL_ENERGY_WIDTH = $clog2(($clog2(NUM_RFFT_BINS)+POWER_WIDTH) * 6),
     parameter FILTER_INDEX_WIDTH = $clog2(NUM_MEL_FILTERS),
     parameter MEL_BANK_SIZE = 31
 ) (
@@ -135,7 +136,7 @@ module mel #(
                 end
             end
 
-            CALC_SUM: begin
+            CALC_SUM: begin //TODO: Para melhorias futuras testar essa parte usando a parte fracionária na conta
                 mel_valid         = 1'b0;
                 mel_value_energies = '0;
                 mel_prt_energies   = i;

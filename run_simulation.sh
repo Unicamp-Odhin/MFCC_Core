@@ -66,8 +66,8 @@ function run_mel_test {
 
 function run_dct_test {
    echo "Executando teste DCT"
-   verilator tests/dct_tb.sv rtl/pre_emphasis.sv rtl/base2log.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/fft_radix2.sv rtl/mel.sv rtl/dct.sv \
-      -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
+   verilator tests/dct_tb.sv rtl/pre_emphasis.sv rtl/base2log.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/complex_pkg.sv rtl/fft_radix2.sv rtl/mel.sv rtl/dct.sv \
+     -DTESTS_DIR=\"${TESTS_DIR}\" -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
    ./obj_dir/Vdct_tb
 }
 
