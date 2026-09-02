@@ -11,6 +11,8 @@ else
    nome_do_teste=$1
 fi
 
+VERILATOR_FLAGS="-Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique"
+
 function cleanup {
    echo "Limpando arquivos temporários..."
    rm -rf obj_dir
@@ -31,50 +33,55 @@ function run_log_test {
 
 function run_pre_emphasis_test {
    echo "Executando teste Pre emphasis"
-   verilator tests/pre_emphasis_tb.sv rtl/pre_emphasis.sv -DTESTS_DIR=\"${TESTS_DIR}\" -Wall --assert --language 1800-2017  \
-      --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
+   verilator "${TESTS_DIR}/pre_emphasis_tb.sv" \
+             "${RTL_DIR}/pre_emphasis.sv" \
+             -DTESTS_DIR=\"${TESTS_DIR}\"  ${VERILATOR_FLAGS}
    ./obj_dir/Vpre_emphasis_tb 
 }
 
 function run_window_buffer_test {
    echo "Executando teste Window Buffer"
-   verilator tests/window_buffer_tb.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv -DTESTS_DIR=\"${TESTS_DIR}\" -Wall --assert --language 1800-2017  \
-      --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
+   verilator ${TESTS_DIR}/window_buffer_tb.sv  \
+            ${RTL_DIR}/pre_emphasis.sv ${RTL_DIR}/fifo.sv ${RTL_DIR}/window_buffer.sv \
+            -DTESTS_DIR=\"${TESTS_DIR}\"  ${VERILATOR_FLAGS}
    ./obj_dir/Vwindow_buffer_tb
 }
 
 function run_hamming_test {
    echo "Executando teste Hamming"
-   verilator tests/hamming_tb.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv -DTESTS_DIR=\"${TESTS_DIR}\" -Wall --assert --language 1800-2017  \
-      --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
+   verilator ${TESTS_DIR}/hamming_tb.sv \
+             ${RTL_DIR}/pre_emphasis.sv ${RTL_DIR}/fifo.sv ${RTL_DIR}/window_buffer.sv ${RTL_DIR}/hamming_window.sv \
+             -DTESTS_DIR=\"${TESTS_DIR}\"  ${VERILATOR_FLAGS}
    ./obj_dir/Vhamming_tb
 }
 
 function run_fft_test {
    echo "Executando teste FFT"
-   verilator tests/fft_tb.sv rtl/complex_pkg.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/fft_radix2.sv -DTESTS_DIR=\"${TESTS_DIR}\" \
-      -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
+   verilator ${TESTS_DIR}/fft_tb.sv \
+             ${RTL_DIR}/complex_pkg.sv ${RTL_DIR}/pre_emphasis.sv ${RTL_DIR}/fifo.sv ${RTL_DIR}/window_buffer.sv ${RTL_DIR}/hamming_window.sv ${RTL_DIR}/fft_radix2.sv \
+             -DTESTS_DIR=\"${TESTS_DIR}\"  ${VERILATOR_FLAGS}
    ./obj_dir/Vfft_tb
 }
 
 function run_mel_test {
    echo "Executando teste Mel"
-   verilator tests/mel_tb.sv rtl/mel.sv rtl/base2log.sv -DTESTS_DIR=\"${TESTS_DIR}\" \
-      -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
+   verilator ${TESTS_DIR}/mel_tb.sv \
+             ${RTL_DIR}/mel.sv ${RTL_DIR}/base2log.sv \
+             -DTESTS_DIR=\"${TESTS_DIR}\" ${VERILATOR_FLAGS}
    ./obj_dir/Vmel_tb
 }
 
 function run_dct_test {
    echo "Executando teste DCT"
-   verilator tests/dct_tb.sv rtl/pre_emphasis.sv rtl/base2log.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/complex_pkg.sv rtl/fft_radix2.sv rtl/mel.sv rtl/dct.sv \
-     -DTESTS_DIR=\"${TESTS_DIR}\" -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
+   verilator ${TESTS_DIR}/dct_tb.sv ${RTL_DIR}/pre_emphasis.sv ${RTL_DIR}/base2log.sv ${RTL_DIR}/fifo.sv ${RTL_DIR}/window_buffer.sv ${RTL_DIR}/hamming_window.sv ${RTL_DIR}/complex_pkg.sv ${RTL_DIR}/fft_radix2.sv ${RTL_DIR}/mel.sv ${RTL_DIR}/dct.sv \
+             -DTESTS_DIR=\"${TESTS_DIR}\" ${VERILATOR_FLAGS}
    ./obj_dir/Vdct_tb
 }
 
 function run_mfcc_test {
    echo "Executando teste MFCC"
-   verilator tests/mfcc_tb.sv rtl/base2log.sv rtl/pre_emphasis.sv rtl/fifo.sv rtl/window_buffer.sv rtl/hamming_window.sv rtl/fft_radix2.sv rtl/mel.sv rtl/dct.sv rtl/MFCC_Core.sv \
-      -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique --top-module mfcc_tb
+   verilator ${TESTS_DIR}/mfcc_tb.sv ${RTL_DIR}/base2log.sv ${RTL_DIR}/pre_emphasis.sv ${RTL_DIR}/fifo.sv ${RTL_DIR}/window_buffer.sv ${RTL_DIR}/hamming_window.sv ${RTL_DIR}/fft_radix2.sv ${RTL_DIR}/mel.sv ${RTL_DIR}/dct.sv ${RTL_DIR}/MFCC_Core.sv \
+             -DTESTS_DIR=\"${TESTS_DIR}\" ${VERILATOR_FLAGS}
    ./obj_dir/Vmfcc_tb
 }
 
