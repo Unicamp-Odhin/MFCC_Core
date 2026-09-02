@@ -5,8 +5,7 @@
 #include <math.h>
 #include "wav.h"
 #include "process.h"
-#include "q15_fft.h"
-#include "q31_32.h"
+#include "fft_fp.h"
 #include "mel.h"
 #include "dct.h"
 #include <time.h>
@@ -35,7 +34,6 @@ int ensure_dir(const char *path) {
 }
 
 int create_dirs(void) {
-    if (ensure_dir("data") != 0) return -1;
     if (ensure_dir("tables_to_rtl") != 0) return -1;
     if (ensure_dir("dumps") != 0) return -1;
     if (ensure_dir("dumps") != 0) return -1;
@@ -85,20 +83,6 @@ void dump_buffer_to_hex_32(const char *file_name, int32_t *buffer, int size) {
     fclose(fp);
 }
 
-void dump_buffer_q15_to_float(const char *file_name, int32_t *buffer, int size) {
-    FILE *fp = fopen(file_name, "w");
-    if (!fp) {
-        perror("fopen");
-        return;
-    }
-    for (int i = 0; i < size; i++) {
-        fprintf(fp, "%f\n", q15_16_to_float(buffer[i]));
-    }
-    fclose(fp);
-}
-
-
-
 void dump_buffer_pf_to_int(const char *file_name, int32_t *buffer, int size, int F) {
     FILE *fp = fopen(file_name, "w");
     if (!fp) {
@@ -120,43 +104,6 @@ void dump_buffer_pf_to_float(const char *file_name, int32_t *buffer, int size, i
     }
     for (int i = 0; i < size; i++) {
         fprintf(fp, "%f\n", (float)buffer[i] / SCALE);
-    }
-    fclose(fp);
-}
-
-void dump_buffer_q15_to_int(const char *file_name, int32_t *buffer, int size) {
-    FILE *fp = fopen(file_name, "w");
-    if (!fp) {
-        perror("fopen");
-        return;
-    }
-    for (int i = 0; i < size; i++) {
-        fprintf(fp, "%02x\n", (int)q15_16_to_float(buffer[i]));
-    }
-    fclose(fp);
-}
-
-void dump_buffer_q31_to_float(const char *file_name, int64_t *buffer, int size) {
-    FILE *fp = fopen(file_name, "w");
-    if (!fp) {
-        perror("fopen");
-        return;
-    }
-    for (int i = 0; i < size; i++) {
-        fprintf(fp, "%f\n", q31_32_to_float(buffer[i]));
-    }
-    fclose(fp);
-}
-
-void dump_short_int_buffer_to_hex(const char *file_name, int32_t *buffer, int size) {
-    FILE *fp = fopen(file_name, "w");
-    if (!fp) {
-        perror("fopen");
-        return;
-    }
-    for (int i = 0; i < size; i++) {
-        fprintf(fp, "%.6f\n", q15_16_to_float(buffer[i]) * (2 << 15));
-
     }
     fclose(fp);
 }
@@ -257,7 +204,10 @@ int main(int argc, char *argv[]) {
     }
 
     #ifdef CONFIG_CREATE_DATABANK
-        save_window_to_file("tables/hamming_window.hex", window, frame_size);
+        char filepath[512];
+        char *tables_dir = getenv("TABLES_DIR");
+        snprintf(filepath, sizeof(filepath), "%s/hamming_window.hex", tables_dir);
+        save_window_to_file(filepath, window, frame_size);
     #endif
     
     #ifdef CONFIG_LOG
@@ -273,11 +223,23 @@ int main(int argc, char *argv[]) {
     int num_freqs = NFFT; // Frequências DC a Nyquist, NFFT é definido no q15_fft.h
     int32_t power_spectrum[num_frames][num_freqs]; // transposição do espectro de potência
     
+    int32_t F_FFT = 14; 
+    complex_t* twiddles = (complex_t*)malloc((NFFT / 2) * sizeof(complex_t));
+    generate_twiddles(twiddles, NFFT, F_FFT);  
 
     for(int i = 0; i < num_frames; i++) {
         power_spectrum[i][0] = 0; // DC é zero
-        fft_q15_real_power(frames[i], frame_size, power_spectrum[i]);
+        fft_real_power(frames[i], frame_size, power_spectrum[i], twiddles, F_FFT);
     }
+
+    #ifdef CONFIG_CREATE_DATABANK
+        char filepath_twiddles[512];
+        // char *tables_dir = getenv("TABLES_DIR");
+        snprintf(filepath_twiddles, sizeof(filepath_twiddles), "%s/twiddles.hex", tables_dir);
+        save_twiddles_to_file(filepath_twiddles, twiddles, NFFT);
+    #endif  
+    free(twiddles);
+
 
     
     #ifdef CONFIG_LOG
@@ -320,8 +282,12 @@ int main(int argc, char *argv[]) {
     
     int MEL_COEFF_WIDTH_F = 14;
     int ENERGIES_WIDTH_F = 14;
+
+    int32_t **filterbank = malloc(NUM_FILTERS * sizeof(int32_t*));
+    int16_t max_width_mel = create_op_filterbank(filterbank, sample_rate, MEL_COEFF_WIDTH_F);
+
     for (int i = 0; i < num_frames; i++) {
-        apply_op_filterbank(power_spectrum[i], energies, sample_rate, MEL_COEFF_WIDTH_F, ENERGIES_WIDTH_F);
+        apply_op_filterbank(power_spectrum[i], energies, sample_rate, filterbank, MEL_COEFF_WIDTH_F, ENERGIES_WIDTH_F);
         
         #ifdef CONFIG_LOG
         char energy_file[64];
@@ -331,8 +297,9 @@ int main(int argc, char *argv[]) {
         // dump_buffer_pf_to_float(energy_file, energies, NUM_FILTERS, ENERGIES_WIDTH_F);
         
         if (fp_spec) {
+            int SCALE_ENERGIES = 1 << ENERGIES_WIDTH_F;
             for (int j = 0; j < NUM_FILTERS; j++) {
-                fprintf(fp_spec, "%2f%c", q15_16_to_float(energies[j]), (j == NUM_FILTERS - 1) ? '\n' : ' ');
+                fprintf(fp_spec, "%f%c", (float)(energies[j] / SCALE_ENERGIES), (j == NUM_FILTERS - 1) ? '\n' : ' ');
             }
         }
         #endif
@@ -346,7 +313,8 @@ int main(int argc, char *argv[]) {
         #ifdef CONFIG_LOG
             char ceps_file[64];
             snprintf(ceps_file, sizeof(ceps_file), "dumps/6_ceps/%04d.hex", i);
-            dump_buffer_pf_to_float(ceps_file, ceps, NUM_CEPS, DCT_COEFF_WIDTH_F);
+            // dump_buffer_pf_to_float(ceps_file, ceps, NUM_CEPS, DCT_COEFF_WIDTH_F);
+            dump_buffer_to_hex_32(ceps_file, ceps, NUM_CEPS);
 
             if (fp_ceps) {
                 for (int j = 0; j < NUM_CEPS; j++) {
@@ -355,6 +323,17 @@ int main(int argc, char *argv[]) {
             }
         #endif
     }
+
+    #ifdef CONFIG_CREATE_DATABANK
+        char filepath_mel_table[512];
+        snprintf(filepath_mel_table, sizeof(filepath_mel_table), "%s/mel_table.hex", tables_dir);
+        save_op_filterbank(filepath_mel_table, filterbank, max_width_mel);
+        
+        char filepath_cos_lut[512];
+        snprintf(filepath_cos_lut, sizeof(filepath_cos_lut), "%s/cos_lut.hex", tables_dir);
+        save_cos_lut(filepath_cos_lut);
+    #endif  
+    free(filterbank);
 
 
 

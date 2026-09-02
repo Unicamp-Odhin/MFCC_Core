@@ -19,6 +19,10 @@ void generate_hamming_window(int32_t *window, int frame_size, int F) {
     }
 }
 
+void dpi_generate_hamming_window(int frame_size, int F, int window[]) {
+    generate_hamming_window(window, frame_size, F);
+}
+
 // Aplica a janela Hamming com ponto fixo
 void hamming_window_fixed(int32_t *frame, int32_t *window, int frame_size, int F) {
     int32_t SCALE = 1 << F;

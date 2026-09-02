@@ -41,7 +41,6 @@ endif
 
 ifeq ($(VERBOSE),1)
 	CFLAGS += -DCONFIG_VERBOSE
-
 endif
 
 

@@ -11,5 +11,6 @@
 void init_cos_lut(int ENERGIES_WIDTH_F);
 void dct(float energies[], int num_filters, float ceps[NUM_CEPS]);
 void dct_fixed(int32_t energies[], int num_filters, int32_t ceps[NUM_CEPS], int ENERGIES_WIDTH_F, int DCT_COEFF_WIDTH_F);
+void save_cos_lut(const char *filename);
 
 #endif // !__DCT_H__
