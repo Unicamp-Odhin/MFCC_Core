@@ -21,8 +21,8 @@ module mel_tb();
 
 	// Instância do DUT
 	mel #(
-		.NUM_FILTERS (NUM_FILTERS), 
-		.NRFFT       (NRFFT)
+		.NUM_MEL_FILTERS (NUM_FILTERS), 
+		.NUM_RFFT_BINS       (NRFFT)
 	) dut (
 		.clk                        (clk),
 		.rst_n                      (rst_n),
@@ -53,8 +53,8 @@ module mel_tb();
 
 	initial begin
 		$display("---- Iniciando Teste MEL ----");
-		$dumpfile("build/mel_tb.vcd");     // Ou use .fst para arquivos menores: mel_tb.fst
-		$dumpvars(0, mel_tb);        // 'mel_tb' é o nome do seu módulo de testbench
+		$dumpfile("build/mel_tb.vcd"); 
+		$dumpvars(0, mel_tb);
 
 		start_in  = 0;
 		clk       = 0;
@@ -67,9 +67,9 @@ module mel_tb();
 		#10;
 
 		// Teste 1
-		test_with_data("data/power_spectrum_1.hex", "data/energie_1.hex");
+		test_with_data({`TESTS_DIR, "/data/power_spectrum_1.hex"}, {`TESTS_DIR, "/data/energie_1.hex"});
 		// Teste 2
-		test_with_data("data/power_spectrum_2.hex", "data/energie_2.hex");
+		test_with_data({`TESTS_DIR, "/data/power_spectrum_2.hex"}, {`TESTS_DIR, "/data/energie_2.hex"});
 
 		$display("---- Teste Finalizado ----");
 		$finish;

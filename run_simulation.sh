@@ -59,7 +59,7 @@ function run_fft_test {
 
 function run_mel_test {
    echo "Executando teste Mel"
-   verilator tests/mel_tb.sv rtl/mel.sv rtl/base2log.sv \
+   verilator tests/mel_tb.sv rtl/mel.sv rtl/base2log.sv -DTESTS_DIR=\"${TESTS_DIR}\" \
       -Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique
    ./obj_dir/Vmel_tb
 }
