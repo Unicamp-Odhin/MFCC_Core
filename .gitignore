@@ -216,3 +216,7 @@ ref_model/c/tables/*.dat
 ref_model/c/tables/*.hex
 
 samples/
+
+
+*.csv
+*.png
