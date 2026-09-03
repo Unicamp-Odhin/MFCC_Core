@@ -17,7 +17,6 @@
 #include <sys/types.h>
 
 
-#define ALPHA 31785 // 0.97 * 2^15
 #define FRAME_SIZE 0.025 // seconds
 #define FRAME_STEP 0.01 // seconds
 
@@ -46,6 +45,7 @@ int create_dirs(void) {
     
     return 0;
 }
+
 void dump_buffer_unsigned(const char *file_name, int32_t *buffer, int size) {
     FILE *fp = fopen(file_name, "w");
     if (!fp) {
@@ -126,14 +126,19 @@ int main(int argc, char *argv[]) {
     unsigned long long start_cycles = get_cycles();
 
 
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s <filename>.wav\n", argv[0]);
+    if (argc < 6) {
+        fprintf(stderr, "Usage: %s <filename>.wav F_PRE_EMPHASIS F_HAMMING F_FFT MEL_COEFF_WIDTH_F DCT_COEFF_WIDTH_F\n", argv[0]);
         return 1;
     }
 
     int16_t *samples = NULL;
     WavHeader *header = open_wav_file(argv[1], &samples);
-
+    int F_PRE_EMPHASIS = atoi(argv[2]); 
+    int F_HAMMING = atoi(argv[3]); 
+    int F_FFT =  atoi(argv[4]); 
+    int MEL_COEFF_WIDTH_F =  atoi(argv[5]); 
+    int DCT_COEFF_WIDTH_F = atoi(argv[6]);
+    
     if (!header) {
         fprintf(stderr, "Failed to open WAV file: %s\n", argv[1]);
         return 1;
@@ -160,15 +165,22 @@ int main(int argc, char *argv[]) {
     
     #ifdef CONFIG_LOG 
         dump_buffer_to_hex_16("dumps/0_samples_dump.hex", samples, num_samples);
+        
+        char *samples_dir = getenv("SAMPLES_DIR");
+        char filepath_samples[512];
+        snprintf(filepath_samples, sizeof(filepath_samples), "%s/dump.hex", samples_dir);
+        dump_buffer_to_hex_16(filepath_samples, samples, num_samples);
+
     #endif
 
     
     //PRIMEIRA ETAPA "pre enfase"
-    pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), ALPHA, samples_32bit);
+    pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), samples_32bit, F_PRE_EMPHASIS);
     #ifdef CONFIG_LOG 
-        char file_name[50];
-        snprintf(file_name, sizeof(file_name), "dumps/1_pre_emphasis.hex");
-        dump_buffer_to_hex_32(file_name, samples_32bit, num_samples);
+        char *c_dir = getenv("REF_C_DIR");
+        char filepath_pre_emfase[512];
+        snprintf(filepath_pre_emfase, sizeof(filepath_pre_emfase), "%s/dumps/1_pre_emphasis.hex", c_dir);
+        dump_buffer_to_hex_32(filepath_pre_emfase, samples_32bit, num_samples);
     #endif
 
 
@@ -192,7 +204,6 @@ int main(int argc, char *argv[]) {
 
     //TERCEIRA ETAPA "janelamento"
     int32_t window[frame_size];
-    int32_t F_HAMMING = 15; 
     // Para armaxenar os coeficientes é necessário 1 bit de sinal, 1 bit para a parte inteira
     // sendo a parte fracionária a sua escolha, mas nessa imprementação F + 1 + 1 <= 32, ou seja,
     // no máximo F_HAMMING = 30
@@ -223,7 +234,6 @@ int main(int argc, char *argv[]) {
     int num_freqs = NFFT; // Frequências DC a Nyquist, NFFT é definido no q15_fft.h
     int32_t power_spectrum[num_frames][num_freqs]; // transposição do espectro de potência
     
-    int32_t F_FFT = 14; 
     complex_t* twiddles = (complex_t*)malloc((NFFT / 2) * sizeof(complex_t));
     generate_twiddles(twiddles, NFFT, F_FFT);  
 
@@ -280,7 +290,6 @@ int main(int argc, char *argv[]) {
     #endif
     
     
-    int MEL_COEFF_WIDTH_F = 14;
     int ENERGIES_WIDTH_F = 14;
 
     int32_t **filterbank = malloc(NUM_FILTERS * sizeof(int32_t*));
@@ -292,9 +301,9 @@ int main(int argc, char *argv[]) {
         #ifdef CONFIG_LOG
         char energy_file[64];
         snprintf(energy_file, sizeof(energy_file), "dumps/5_energies/%04d.hex", i);
-        dump_buffer_pf_to_int(energy_file, energies, NUM_FILTERS, ENERGIES_WIDTH_F);
+        // dump_buffer_pf_to_int(energy_file, energies, NUM_FILTERS, ENERGIES_WIDTH_F);
         // dump_buffer_to_hex_32(energy_file, energies, NUM_FILTERS);
-        // dump_buffer_pf_to_float(energy_file, energies, NUM_FILTERS, ENERGIES_WIDTH_F);
+        dump_buffer_pf_to_float(energy_file, energies, NUM_FILTERS, ENERGIES_WIDTH_F);
         
         if (fp_spec) {
             int SCALE_ENERGIES = 1 << ENERGIES_WIDTH_F;
@@ -304,7 +313,6 @@ int main(int argc, char *argv[]) {
         }
         #endif
         
-        int DCT_COEFF_WIDTH_F = 14;
         int32_t ceps[NUM_CEPS];
         if (i == 0)
             init_cos_lut(DCT_COEFF_WIDTH_F);
@@ -313,8 +321,8 @@ int main(int argc, char *argv[]) {
         #ifdef CONFIG_LOG
             char ceps_file[64];
             snprintf(ceps_file, sizeof(ceps_file), "dumps/6_ceps/%04d.hex", i);
-            // dump_buffer_pf_to_float(ceps_file, ceps, NUM_CEPS, DCT_COEFF_WIDTH_F);
-            dump_buffer_to_hex_32(ceps_file, ceps, NUM_CEPS);
+            dump_buffer_pf_to_float(ceps_file, ceps, NUM_CEPS, DCT_COEFF_WIDTH_F);
+            // dump_buffer_to_hex_32(ceps_file, ceps, NUM_CEPS);
 
             if (fp_ceps) {
                 for (int j = 0; j < NUM_CEPS; j++) {

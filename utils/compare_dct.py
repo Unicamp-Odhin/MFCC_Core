@@ -1,0 +1,179 @@
+import os
+import sys
+import glob
+import math
+import subprocess
+import csv
+import time
+import matplotlib.pyplot as plt
+
+ROOT_DIR = os.environ.get('PROJECT_ROOT')
+REF_C_DIR = os.environ.get('REF_C_DIR')
+REF_PYTHON_DIR = os.environ.get('REF_PYTHON_DIR')
+WAV_DIR = os.environ.get('WAV_DIR')
+WAV_FILE = os.path.join(WAV_DIR, '16_000_hz', 'sagarana_03.wav')
+C_BINARY = os.path.join(REF_C_DIR, 'build', 'main.elf')
+C_DUMP_DIR = os.path.join(REF_C_DIR, 'dumps', '6_ceps')
+PY_DUMP_DIR = os.path.join(REF_PYTHON_DIR, 'dumps', '6_ceps')
+F_PRE = 12
+F_HAMMING = 14
+F_FFT = 12
+F_MEL = 12
+
+def ler_arquivo_hex(caminho):
+    dados = []
+    with open(caminho, 'r') as f:
+        for linha in f:
+            valor = float(linha)
+            if valor is not None:
+                dados.append(valor)
+    return dados
+
+def ler_dumps(caminho):
+    """Lê todos os .hex de uma pasta e concatena (ordem numérica)."""
+    if not os.path.exists(caminho):
+        return None
+    if os.path.isfile(caminho):
+        return ler_arquivo_hex(caminho)
+    elif os.path.isdir(caminho):
+        hex_files = glob.glob(os.path.join(caminho, '*.hex'))
+        def chave(arq):
+            nome = os.path.basename(arq)
+            nome_sem_ext = os.path.splitext(nome)[0]
+            try:
+                return int(nome_sem_ext)
+            except ValueError:
+                return nome
+        hex_files.sort(key=chave)
+        dados = []
+        for arq in hex_files:
+            dados.extend(ler_arquivo_hex(arq))
+        return dados
+    return None
+
+def calcular_metricas(c, py):
+    n = len(c)
+    if n == 0:
+        return {'mae': 0, 'max_abs': 0, 'mre': 0, 'rmse': 0}
+
+    abs_erros = [abs(c[i] - py[i]) for i in range(n)]
+    quad_erros = [(c[i] - py[i])**2 for i in range(n)]
+
+    rel_erros = []
+    for i in range(n):
+        denom = abs(py[i])
+        if denom < 1e-12:
+            rel_erros.append(0.0 if abs_erros[i] < 1e-12 else float('inf'))
+        else:
+            rel_erros.append(abs_erros[i] / denom)
+
+    mae = sum(abs_erros) / n
+    max_abs = max(abs_erros)
+    rmse = math.sqrt(sum(quad_erros) / n)
+
+    rel_validos = [e for e in rel_erros if e != float('inf')]
+    mre = sum(rel_validos) / len(rel_validos) if rel_validos else float('inf')
+
+    return {'mae': mae, 'max_abs': max_abs, 'mre': mre, 'rmse': rmse}
+
+def main():
+    # Carrega a referência Python (todos os .hex da pasta)
+    py_data = ler_dumps(PY_DUMP_DIR)
+    if py_data is None or len(py_data) == 0:
+        print(f"Erro: Referência Python não encontrada ou vazia em {PY_DUMP_DIR}")
+        sys.exit(1)
+
+    cabecalho = ['F_DCT', 'Erro Absoluto Médio', 'Erro Absoluto Máximo',
+                 'Erro Relativo Médio', 'Erro Quadrático Médio']
+    resultados = []
+
+    # Loop sobre F_DCT (0 a 30)
+    for F_DCT in range(0, 30):
+        print(f"Processando F_DCT = {F_DCT} ...")
+        cmd = [C_BINARY, WAV_FILE, str(F_PRE), str(F_HAMMING), str(F_FFT), str(F_MEL), str(F_DCT)]
+        try:
+            subprocess.run(cmd, cwd=REF_C_DIR, check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except subprocess.CalledProcessError as e:
+            print(f"  Erro ao executar C para F_DCT={F_DCT}: {e}")
+            continue
+
+        time.sleep(0.5)  # pequena pausa para escrita dos arquivos
+
+        # Lê os dumps gerados pelo C (todos os .hex da pasta)
+        c_data = ler_dumps(C_DUMP_DIR)
+        if c_data is None or len(c_data) == 0:
+            print(f"  Nenhum dump encontrado para F_DCT={F_DCT} em {C_DUMP_DIR}")
+            continue
+
+        # Alinha tamanhos (usa o menor)
+        min_len = min(len(c_data), len(py_data))
+        if min_len == 0:
+            print(f"  Dados vazios para F_DCT={F_DCT}")
+            continue
+
+        c_trim = c_data[:min_len]
+        py_trim = py_data[:min_len]
+
+        metricas = calcular_metricas(c_trim, py_trim)
+        resultados.append([
+            F_DCT,
+            metricas['mae'],
+            metricas['max_abs'],
+            metricas['mre'],
+            metricas['rmse']
+        ])
+
+    # Salva CSV
+    with open('metrics_dct.csv', 'w', newline='') as f:
+        writer = csv.writer(f, delimiter=',')
+        writer.writerow(cabecalho)
+        writer.writerows(resultados)
+
+    print("\nResultados salvos em metrics_dct.csv")
+
+    # ===== PLOT =====
+    if not resultados:
+        print("Nenhum dado para plotar.")
+        return
+
+    F_vals = [r[0] for r in resultados]
+    mae_vals = [r[1] for r in resultados]
+    max_vals = [r[2] for r in resultados]
+    mre_vals = [r[3] for r in resultados]
+    rmse_vals = [r[4] for r in resultados]
+
+    fig, axs = plt.subplots(2, 2, figsize=(12, 8))
+    fig.suptitle('Métricas de Erro vs F_DCT', fontsize=14)
+
+    axs[0, 0].plot(F_vals, mae_vals, 'b-o')
+    axs[0, 0].set_title('Erro Absoluto Médio (MAE)')
+    axs[0, 0].set_xlabel('F_DCT')
+    axs[0, 0].set_ylabel('MAE')
+    axs[0, 0].grid(True)
+
+    axs[0, 1].plot(F_vals, max_vals, 'r-o')
+    axs[0, 1].set_title('Erro Absoluto Máximo (MAX)')
+    axs[0, 1].set_xlabel('F_DCT')
+    axs[0, 1].set_ylabel('MAX')
+    axs[0, 1].grid(True)
+
+    axs[1, 0].plot(F_vals, mre_vals, 'g-o')
+    axs[1, 0].set_title('Erro Relativo Médio (MRE)')
+    axs[1, 0].set_xlabel('F_DCT')
+    axs[1, 0].set_ylabel('MRE')
+    axs[1, 0].grid(True)
+
+    axs[1, 1].plot(F_vals, rmse_vals, 'm-o')
+    axs[1, 1].set_title('Erro Quadrático Médio (RMSE)')
+    axs[1, 1].set_xlabel('F_DCT')
+    axs[1, 1].set_ylabel('RMSE')
+    axs[1, 1].grid(True)
+
+    plt.tight_layout()
+    plt.savefig('metrics_dct_plot.png', dpi=150)
+    print("Gráfico salvo em metrics_dct_plot.png")
+    # plt.show()  # descomente se quiser exibir a janela
+
+if __name__ == '__main__':
+    main()

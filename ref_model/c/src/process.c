@@ -84,13 +84,19 @@ int32_t** frame_signal_int(int32_t *samples, int num_samples, int frame_size, in
     return frames;
 }
 
+#include <stdint.h>
+#include <stddef.h>
+#include <math.h> // Se quiser usar round(), mas dá pra fazer sem
 
 
-void pre_emphasis(int16_t *samples, size_t sample_count, int16_t alpha, int32_t *samples_out) {
-    int32_t temp;
+void pre_emphasis(int16_t *samples, size_t sample_count, int32_t *samples_out, int F) {
+    int64_t temp;
+    int32_t SCALE = 1 << F;
+    int32_t ALPHA = (int32_t)(0.97 * SCALE);
+
     for (size_t i = sample_count - 1; i > 0; i--) {
-        temp = (int32_t)alpha * (int32_t)samples[i - 1];
-        temp = temp >> 15; // Ajusta para inteiro
+        temp = (int64_t) ALPHA * (int64_t)samples[i - 1];
+        temp = temp >> F; // Ajusta para inteiro
         samples_out[i] = (int32_t)samples[i] - temp; 
     }
 }

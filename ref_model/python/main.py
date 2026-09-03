@@ -19,13 +19,22 @@ NFILT = 40
 NUM_CEPS = 12
 
 
+def dump_buffer_to_hex_8(file_name, buffer):
+    os.makedirs(os.path.dirname(file_name), exist_ok=True)
+    
+    with open(file_name, 'w') as fp:
+        for value in buffer:
+            int_value = int(value)
+            hex_str = f"{int_value & 0xFF:02x}"
+            fp.write(f"{hex_str}\n")
+
 def dump_buffer_to_hex_16(file_name, buffer):
     os.makedirs(os.path.dirname(file_name), exist_ok=True)
     
     with open(file_name, 'w') as fp:
         for value in buffer:
             int_value = int(value)
-            hex_str = f"{int_value & 0xFFFFFFFF:08x}"
+            hex_str = f"{int_value & 0xFFFF:04x}"
             fp.write(f"{hex_str}\n")
 
 def dump_buffer_to_hex_32(file_name, buffer):
@@ -66,7 +75,7 @@ def load_audio(audio_path):
         n_frames = wav_file.getnframes()
         y = np.frombuffer(wav_file.readframes(n_frames), dtype=np.int16)
     
-    frame_size = int(sample_rate * FRAME_SIZE) + 1
+    frame_size = int(sample_rate * FRAME_SIZE)
     frame_step = int(sample_rate * FRAME_STEP)
     num_samples = len(y)
     num_frames = (num_samples - frame_size + frame_step - 1) // frame_step + 1
@@ -117,8 +126,8 @@ def frame_signal(y_preemphasized, sample_rate, frame_size, frame_step):
     signal_length = len(y_preemphasized)
 
     # Coloque esses "+1" por questão de arredondamento e assim fica igual ao C
-    frame_length = int(round(frame_size * sample_rate)) + 1 
-    frame_step = int(round(frame_step * sample_rate)) + 1
+    frame_length = int(round(frame_size * sample_rate))
+    frame_step = int(round(frame_step * sample_rate))
     num_frames = int(np.ceil(float(np.abs(signal_length - frame_length)) / frame_step)) + 1
     
     # Pad signal to ensure all frames have equal number of samples
@@ -295,7 +304,7 @@ def main():
         file_name = "dumps/0_samples_dump.hex"
         dump_buffer_to_hex_16(file_name, y)
         file_name = "dumps/1_pre_emphasis.hex"
-        dump_buffer_to_hex_16(file_name, y_preemphasized)
+        dump_buffer_to_hex_32(file_name, y_preemphasized)
 
     # Step 3: Frame the signal
     frames, frame_length = frame_signal(y_preemphasized, sample_rate, FRAME_SIZE, FRAME_STEP)
@@ -317,7 +326,7 @@ def main():
         os.makedirs("dumps/3_hamming_frames", exist_ok=True)
         for i in range(len(frames)):
             file_name = f"dumps/3_hamming_frames/{i:04d}.hex"
-            dump_buffer_to_hex_16(file_name, frames[i])
+            dump_buffer_to_hex_32(file_name, frames[i])
 
     # Step 5: Compute spectrum
     mag_frames, pow_frames = compute_spectrum(frames)
@@ -328,7 +337,8 @@ def main():
         os.makedirs("dumps/4_power_spectrum", exist_ok=True)
         for i in range(len(pow_frames)):
             file_name = f"dumps/4_power_spectrum/{i:04d}.hex"
-            dump_buffer(file_name, pow_frames[i])
+            # dump_buffer(file_name, pow_frames[i])
+            dump_buffer_to_hex_32(file_name, pow_frames[i])
 
 
     # Step 6: Apply Mel filterbank
