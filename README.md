@@ -13,6 +13,13 @@ This repository contains a complete implementation of an MFCC (Mel-Frequency Cep
 
 Contributions are welcome! To collaborate on the development, please follow the guidelines outlined in the [CONTRIBUTING.md](https://github.com/Unicamp-Odhin/MFCC_Core/blob/main/CONTRIBUTING.md) file.
 
+
+## Dataset
+
+The audio samples used for testing and validation were extracted from the  
+[fb-audio-corpora/alcaim16k-DVD1de4](https://gitlab.com/fb-audio-corpora/alcaim16k-DVD1de4)  
+repository, which provides a collection of speech signals in 16 kHz format.
+
 ## License
 
 This project is licensed under the **[CERN-OHL-P-2.0](https://github.com/Unicamp-Odhin/MFCC_Core/blob/main/LICENSE)**, granting full freedom to use, modify, and redistribute.

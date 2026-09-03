@@ -214,3 +214,5 @@ ref_model/c/heatmap_hardware.pdf
 ref_model/c/heatmap_hardware.png
 ref_model/c/tables/*.dat
 ref_model/c/tables/*.hex
+
+samples/
