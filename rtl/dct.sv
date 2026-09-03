@@ -36,7 +36,7 @@ module dct #(
 
 
     initial begin
-        $readmemh("tables/cos.hex", cos_lut);
+        $readmemh("tables/cos_lut.hex", cos_lut);
     end
 
     always_ff @( posedge clk ) begin : MEL_BUFFER_INPUT_LOGIC
