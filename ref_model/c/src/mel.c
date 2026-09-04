@@ -7,6 +7,22 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
+int64_t mul_fp_(int64_t a, int64_t b, int F) {
+    __int128 temp = (__int128)a * (__int128)b;
+    
+    if (temp >= 0)
+        temp += (__int128)1 << (F-1);
+    else
+        temp -= (__int128)1 << (F-1);
+    
+    temp >>= F;
+    
+    if (temp > INT64_MAX) return INT64_MAX;
+    if (temp < INT64_MIN) return INT64_MIN;
+    
+    return (int64_t)temp;
+}
+
 int16_t log2_int(int32_t num){
     int16_t result = -1;
 
@@ -17,6 +33,42 @@ int16_t log2_int(int32_t num){
 
     return result;
 }
+
+int64_t log2_fp(int64_t x, int F) {
+    if (x <= 0) return INT64_MIN;
+
+    int64_t result = 0;
+    int int_part = 0;
+
+    const int64_t ONE = (1LL << F);
+    const int64_t TWO = (2LL << F);
+
+    if (x >= ONE) {
+        while (x >= TWO) {
+            x >>= 1;
+            int_part++;
+        }
+    } else {
+        while (x < ONE) {
+            x <<= 1;
+            int_part--;
+        }
+    }
+
+    result = ((int64_t)int_part) << F;
+
+    for (int i = 1; i <= F; i++) {
+        x = (int64_t)(((__int128)x * x) >> F);
+
+        if (x >= TWO) {
+            x >>= 1;
+            result |= (1LL << (F - i));
+        }
+    }
+
+    return result;
+}
+
 
 // Converte frequência em Hz para índice de bin na FFT
 static inline int hz_to_bin(float freq, int sample_rate) {
@@ -240,8 +292,13 @@ void apply_op_filterbank(int32_t power_spectrum_frame[NFFT/2 + 1], int32_t energ
         if (sum <= 0) {
             energies[i] = MIN_LOG_ENERGY;
         } else {
-            int32_t temp = (20.0f * 0.301029996 * SCALE) * log2_int((int32_t)(sum >> MEL_COEFF_WIDTH_F));
-            energies[i] = (int32_t)(temp);
+            // int32_t temp = (20.0 * 0.301029996 * SCALE) * log2_int((int32_t)(sum >> MEL_COEFF_WIDTH_F));
+            int64_t log_sum = log2_fp(sum, MEL_COEFF_WIDTH_F);
+            if (MEL_COEFF_WIDTH_F > ENERGIES_WIDTH_F)
+                log_sum = log_sum >> (MEL_COEFF_WIDTH_F - ENERGIES_WIDTH_F);
+            else if (MEL_COEFF_WIDTH_F < ENERGIES_WIDTH_F)
+                log_sum = log_sum << (ENERGIES_WIDTH_F - MEL_COEFF_WIDTH_F);
+            energies[i] = (int32_t)mul_fp_((20.0 * 0.301029996 * SCALE), log_sum, ENERGIES_WIDTH_F);
         }
     }
 }
