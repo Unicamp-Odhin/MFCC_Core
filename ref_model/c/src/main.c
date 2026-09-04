@@ -276,7 +276,6 @@ int main(int argc, char *argv[]) {
     if (create_dirs()) return -1;
     char filepath[512];
     char *tests_dir = getenv("TESTS_DIR");
-    char *samples_dir = getenv("SAMPLES_DIR");
     char *tables_dir = getenv("TABLES_DIR");
     
 
@@ -303,7 +302,7 @@ int main(int argc, char *argv[]) {
     snprintf(filepath, sizeof(filepath), "%s/dumps/0_samples_dump.hex", c_dir);
     dump_hex(filepath, samples, num_samples, sizeof(int16_t));
     
-    snprintf(filepath, sizeof(filepath), "%s/dump.hex", samples_dir);
+    snprintf(filepath, sizeof(filepath), "%s/ref_vectors/0_samples_dump.hex", tests_dir);
     dump_hex(filepath, samples, num_samples, sizeof(int16_t));
     #endif
     
