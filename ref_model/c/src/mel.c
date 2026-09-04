@@ -69,7 +69,6 @@ int64_t log2_fp(int64_t x, int F) {
     return result;
 }
 
-
 // Converte frequência em Hz para índice de bin na FFT
 static inline int hz_to_bin(float freq, int sample_rate) {
     return (int)((freq / (sample_rate / 2.0f)) * (NFFT / 2));
@@ -270,8 +269,8 @@ void save_op_filterbank(const char *filename, int32_t** filterbank_op, int16_t m
     fclose(fp);
 }
 
-void apply_op_filterbank(int32_t power_spectrum_frame[NFFT/2 + 1], int32_t energies[NUM_FILTERS], 
-                                            int sample_rate, int32_t **filterbank, int MEL_COEFF_WIDTH_F, int ENERGIES_WIDTH_F) {
+void apply_op_filterbank(int64_t power_spectrum_frame[NFFT/2 + 1], int32_t energies[NUM_FILTERS], 
+                                            int sample_rate, int32_t **filterbank, int MEL_COEFF_WIDTH_F, int ENERGIES_WIDTH_F, int F_FFT) {
     int32_t SCALE = 1 << ENERGIES_WIDTH_F;
     int32_t MIN_LOG_ENERGY = (int32_t)(-20.0f * SCALE);
 
@@ -284,9 +283,12 @@ void apply_op_filterbank(int32_t power_spectrum_frame[NFFT/2 + 1], int32_t energ
 
 
         for (int k = init_index; k < end_index ; k++) {
-            // como  power_spectrum_frame é inteiro, posso operar direto sem a necessidade de lib
-            // pois o resultado está naturalmente em ponto fixo
-            sum = sum + (int64_t)(power_spectrum_frame[k]) * (int64_t)(filterbank[i][2 + k - init_index]);
+            int64_t power_spectrum_frame_k = power_spectrum_frame[k];
+            if (F_FFT > MEL_COEFF_WIDTH_F)
+                power_spectrum_frame_k = power_spectrum_frame[k] >> (F_FFT - MEL_COEFF_WIDTH_F);
+            else if (F_FFT < MEL_COEFF_WIDTH_F)
+                power_spectrum_frame_k = power_spectrum_frame[k] << (MEL_COEFF_WIDTH_F - F_FFT);
+            sum = sum + mul_fp_(power_spectrum_frame_k, (int64_t)(filterbank[i][2 + k - init_index]), MEL_COEFF_WIDTH_F);
         }
 
         if (sum <= 0) {

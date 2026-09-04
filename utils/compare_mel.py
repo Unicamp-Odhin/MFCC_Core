@@ -16,7 +16,7 @@ C_BINARY = os.path.join(REF_C_DIR, 'build', 'main.elf')
 C_DUMP_DIR = os.path.join(REF_C_DIR, 'dumps', '5_energies')
 PY_DUMP_DIR = os.path.join(REF_PYTHON_DIR, 'dumps', '5_energies')
 F_PRE = 12
-F_HAMMING = 14
+F_HAMMING = 12
 F_FFT = 12
 F_DCT = 12
 

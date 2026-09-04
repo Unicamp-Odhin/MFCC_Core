@@ -101,27 +101,33 @@ void fft_iterative(complex_t* x, int N, complex_t* twiddles, int F) {
     }
 }
 
-void fft_real_power(int32_t* x_real, int N, int32_t* power_out, complex_t* twiddles, int F) {
+void fft_real_power(int64_t* x_real, int N, int64_t* power_out, complex_t* twiddles, int F_FFT, int F_HAMMING) {
     complex_t* x = (complex_t*)malloc(NFFT * sizeof(complex_t));
     if (!x) return;
 
     // Preenche com zeros até NFFT (zero-padding)
     for (int i = 0; i < NFFT; i++) {
-        if (i < N)
-            x[i].real = (int64_t)x_real[i] << F; // ponto fixo
+        if (i < N){
+            if (F_HAMMING > F_FFT)
+                x[i].real = x_real[i] >> (F_HAMMING - F_FFT);
+            else if (F_HAMMING < F_FFT)
+                x[i].real = x_real[i] << (F_FFT - F_HAMMING);
+            else    
+                x[i].real = x_real[i];
+        }
         else
             x[i].real = 0;
         x[i].imag = 0;
 
     }
 
-    fft_iterative(x, NFFT, twiddles, F); 
+    fft_iterative(x, NFFT, twiddles, F_FFT); 
 
     for (int k = 0; k <= NFFT / 2; k++) {
-        int64_t temp = ((int64_t)(x[k].real >> F) * (int64_t)(x[k].real >> F) +
-                        (int64_t)(x[k].imag >> F) * (int64_t)(x[k].imag >> F));  
 
-        power_out[k] = (int32_t)(temp / 512); // |X[k]|^2 / 512
+        int64_t temp = mul_fp(x[k].real, x[k].real, F_FFT) + mul_fp(x[k].imag, x[k].imag, F_FFT);
+
+        power_out[k] = (int64_t)(temp / 512); // |X[k]|^2 / 512
     }
 
     free(x);

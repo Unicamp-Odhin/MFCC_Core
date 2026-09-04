@@ -16,8 +16,8 @@ void apply_filterbank(int32_t power_spectrum_frame[NFFT/2 + 1], int32_t filterba
     int32_t energies[NUM_FILTERS], int sample_rate, int MEL_COEFF_WIDTH_F, int ENERGIES_WIDTH_F);
 
 int16_t create_op_filterbank(int32_t** filterbank_op, int sample_rate, int F);
-void apply_op_filterbank(int32_t power_spectrum_frame[NFFT/2 + 1], int32_t energies[NUM_FILTERS], 
-        int sample_rate,  int32_t **filterbank, int MEL_COEFF_WIDTH_F, int ENERGIES_WIDTH_F) ;
+void apply_op_filterbank(int64_t power_spectrum_frame[NFFT/2 + 1], int32_t energies[NUM_FILTERS], 
+        int sample_rate,  int32_t **filterbank, int MEL_COEFF_WIDTH_F, int ENERGIES_WIDTH_F, int F_FFT) ;
 
 void save_op_filterbank(const char *filename, int32_t** filterbank_op, int16_t max_size);
 
