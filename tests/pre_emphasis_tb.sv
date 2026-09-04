@@ -1,48 +1,49 @@
 `timescale 1ns/1ps
 
 module pre_emphasis_tb ();
-    localparam N = 16;
-    localparam F = 15;
-    localparam MAX_AUDIO_SIZE = 65530;
+    localparam WIDTH_MIC = 16;
+    localparam WIDTH = 64;
+    localparam F = 16;
+    localparam MAX_AUDIO_SIZE = 4001;
     localparam int ALPHA = $rtoi(0.97 * (1 << F));
 
     logic clk;
     logic rst_n;
 
-    logic [N-1:0] samples [0:MAX_AUDIO_SIZE-1];
+    logic [WIDTH_MIC-1:0] samples [0:MAX_AUDIO_SIZE-1];
 
-    logic [N-1:0] pcm_in;
+    logic [WIDTH_MIC-1:0] pcm_in;
     logic pcm_ready_i;
     logic pre_emphasis_valid;
-    logic [2*N-1:0] pre_emphasized_signal; //TODO tem que aumentar a largura do sinal
+    logic [WIDTH-1:0] pre_emphasized_signal;
 
     integer outfile;
 
     pre_emphasis #(
-        .N (N),
+        .WIDTH_IN (WIDTH_MIC),
+        .WIDTH_OUT (WIDTH),
         .F (F),
-        .ALPHA (ALPHA) // Alpha em Q1.15 (0.97 = 31785)
+        .ALPHA (ALPHA) 
     ) uut (
-        .clk          (clk),
-        .rst_n        (rst_n),
+        .clk (clk),
+        .rst_n (rst_n),
 
-        .in_valid     (pcm_ready_i),
-        .out_valid    (pre_emphasis_valid),
+        .in_valid (pcm_ready_i),
+        .out_valid (pre_emphasis_valid),
 
-        .x_in         (pcm_in), // Sinal de entrada
-        .y_out        (pre_emphasized_signal) // Sinal de saída
+        .x_in (pcm_in), 
+        .y_out (pre_emphasized_signal) 
     );
 
     integer i;
 
     initial begin
-        $readmemh({`TESTS_DIR, "/data/samples.hex"}, samples);
+        $readmemh({`TESTS_DIR, "/ref_vectors/0_samples_dump.hex"}, samples);
 
         $dumpfile({`TESTS_DIR, "/build/pre_emphasis_tb.vcd"});
         $dumpvars(0, pre_emphasis_tb);
 
-        outfile = $fopen({`TESTS_DIR, "/data/pre_emphasis_tb.hex"}, "w"); //TODO fazer um programa para verificar 
-                                                                //as saída, comparando elas com o C
+        outfile = $fopen({`TESTS_DIR, "/data/1_pre_emphasis.hex"}, "w"); 
 
         if (outfile == 0) begin
             $display("Erro ao abrir arquivo!");
