@@ -16,10 +16,32 @@ WAV_FILE = os.path.join(WAV_DIR, '16_000_hz', 'sagarana_03.wav')
 C_BINARY = os.path.join(REF_C_DIR, 'build', 'main.elf')
 C_DUMP_FILE = os.path.join(REF_C_DIR, 'dumps', '1_pre_emphasis.hex')
 PY_DUMP_PATH = os.path.join(REF_PYTHON_DIR, 'dumps', '1_pre_emphasis.hex')
-F_HAMMING = 14
-F_FFT = 12
-F_MEL = 12
-F_DCT = 12
+
+F_PRE=24
+F_HAMMING=12
+F_FFT=12
+F_MEL=12
+F_DCT=12
+
+TRUNCATE_PRE=0
+TRUNCATE_HAMMING=0
+TRUNCATE_FFT=0
+TRUNCATE_MEL=0
+TRUNCATE_DCT=0
+
+def write_config():
+    config_path = os.path.join(REF_C_DIR, 'config.txt')
+    with open(config_path, 'w') as f:
+        f.write(f"F_PRE={F_PRE}\n")
+        f.write(f"F_HAMMING={F_HAMMING}\n")
+        f.write(f"F_FFT={F_FFT}\n")
+        f.write(f"F_MEL={F_MEL}\n")
+        f.write(f"F_DCT={F_DCT}\n")
+        f.write(f"TRUNCATE_PRE={TRUNCATE_PRE}\n")
+        f.write(f"TRUNCATE_HAMMING={TRUNCATE_HAMMING}\n")
+        f.write(f"TRUNCATE_FFT={TRUNCATE_FFT}\n")
+        f.write(f"TRUNCATE_MEL={TRUNCATE_MEL}\n")
+        f.write(f"TRUNCATE_DCT={TRUNCATE_DCT}\n")
 
 def parse_valor(linha):
     linha = linha.strip()
@@ -97,30 +119,31 @@ def main():
         print(f"Erro: Referência Python não encontrada ou vazia em {PY_DUMP_PATH}")
         sys.exit(1)
 
-    cabecalho = ['F', 'Erro Absoluto Médio', 'Erro Absoluto Máximo',
+    cabecalho = ['F_PRE', 'Erro Absoluto Médio', 'Erro Absoluto Máximo',
                  'Erro Relativo Médio', 'Erro Quadrático Médio']
     resultados = []
 
-    for F in range(0, 31):
-        print(f"Processando F = {F} ...")
-        cmd = [C_BINARY, WAV_FILE, str(F), str(F_HAMMING), str(F_FFT), str(F_MEL), str(F_DCT)]
-
+    for F_PRE_local in range(0, 30):
+        global F_PRE
+        F_PRE = F_PRE_local
+        write_config()
+        cmd = [C_BINARY, WAV_FILE]
+        print(f"Processando F_PRE = {F_PRE} ...")
         try:
             subprocess.run(cmd, cwd=REF_C_DIR, check=True,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except subprocess.CalledProcessError as e:
-            print(f"  Erro ao executar C para F={F}: {e}")
+            print(f"  Erro ao executar C para F_PRE={F_PRE}: {e}")
             continue
 
-        time.sleep(0.5)
         c_data = ler_dumps(C_DUMP_FILE)
         if c_data is None or len(c_data) == 0:
-            print(f"  Nenhum dump encontrado para F={F} (em {C_DUMP_FILE})")
+            print(f"  Nenhum dump encontrado para F_PRE={F_PRE} (em {C_DUMP_FILE})")
             continue
 
         min_len = min(len(c_data), len(py_data))
         if min_len == 0:
-            print(f"  Dados vazios para F={F}")
+            print(f"  Dados vazios para F_PRE={F_PRE}")
             continue
 
         c_trim = c_data[:min_len]
@@ -128,7 +151,7 @@ def main():
 
         metricas = calcular_metricas(c_trim, py_trim)
         resultados.append([
-            F,
+            F_PRE,
             metricas['mae'],
             metricas['max_abs'],
             metricas['mre'],
@@ -155,29 +178,29 @@ def main():
     rmse_vals = [r[4] for r in resultados]
 
     fig, axs = plt.subplots(2, 2, figsize=(12, 8))
-    fig.suptitle('Métricas de Erro vs F (pré-ênfase)', fontsize=14)
+    fig.suptitle('Métricas de Erro vs F_PRE (pré-ênfase)', fontsize=14)
 
     axs[0, 0].plot(F_vals, mae_vals, 'b-o')
     axs[0, 0].set_title('Erro Absoluto Médio (MAE)')
-    axs[0, 0].set_xlabel('F')
+    axs[0, 0].set_xlabel('F_PRE')
     axs[0, 0].set_ylabel('MAE')
     axs[0, 0].grid(True)
 
     axs[0, 1].plot(F_vals, max_vals, 'r-o')
     axs[0, 1].set_title('Erro Absoluto Máximo (MAX)')
-    axs[0, 1].set_xlabel('F')
+    axs[0, 1].set_xlabel('F_PRE')
     axs[0, 1].set_ylabel('MAX')
     axs[0, 1].grid(True)
 
     axs[1, 0].plot(F_vals, mre_vals, 'g-o')
     axs[1, 0].set_title('Erro Relativo Médio (MRE)')
-    axs[1, 0].set_xlabel('F')
+    axs[1, 0].set_xlabel('F_PRE')
     axs[1, 0].set_ylabel('MRE')
     axs[1, 0].grid(True)
 
     axs[1, 1].plot(F_vals, rmse_vals, 'm-o')
     axs[1, 1].set_title('Erro Quadrático Médio (RMSE)')
-    axs[1, 1].set_xlabel('F')
+    axs[1, 1].set_xlabel('F_PRE')
     axs[1, 1].set_ylabel('RMSE')
     axs[1, 1].grid(True)
 

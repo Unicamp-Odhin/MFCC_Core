@@ -313,7 +313,7 @@ int main(int argc, char *argv[]) {
     pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), samples_64bit, cfg.F_PRE);
 
     // trucamento
-    if (cfg.TRUNCATE_PRE)659890
+    if (cfg.TRUNCATE_PRE)
      {
     int64_t mask = ~((1LL << cfg.F_PRE) - 1);  // bits fracionários = 0
     for (int i = 0; i < num_samples; i++) {

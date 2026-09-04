@@ -5,21 +5,24 @@ import math
 import subprocess
 import csv
 import matplotlib.pyplot as plt
+import itertools
 
 ROOT_DIR = os.environ.get('PROJECT_ROOT')
 REF_C_DIR = os.environ.get('REF_C_DIR')
 REF_PYTHON_DIR = os.environ.get('REF_PYTHON_DIR')
 WAV_DIR = os.environ.get('WAV_DIR')
-WAV_FILE = os.path.join(WAV_DIR, '16_000_hz', 'sagarana_03.wav')
+# WAV_FILE = os.path.join(WAV_DIR, '16_000_hz', 'sagarana_03.wav')
+WAV_FILE = os.path.join(WAV_DIR, '44_100_hz', 'sagarana_00.wav')
 C_BINARY = os.path.join(REF_C_DIR, 'build', 'main.elf')
-C_DUMP_DIR = os.path.join(REF_C_DIR, 'dumps', '5_energies')
-PY_DUMP_DIR = os.path.join(REF_PYTHON_DIR, 'dumps', '5_energies')
+C_DUMP_DIR = os.path.join(REF_C_DIR, 'dumps', '6_ceps')
+PY_DUMP_DIR = os.path.join(REF_PYTHON_DIR, 'dumps', '6_ceps')
 
-F_PRE=24
-F_HAMMING=24
-F_FFT=24
-F_MEL=24
-F_DCT=24
+
+F_PRE=16
+F_HAMMING=16
+F_FFT=16
+F_MEL=16
+F_DCT=16
 
 TRUNCATE_PRE=0
 TRUNCATE_HAMMING=0
@@ -104,34 +107,39 @@ def main():
         print(f"Erro: Referência Python não encontrada ou vazia em {PY_DUMP_DIR}")
         sys.exit(1)
 
-    cabecalho = ['F_MEL', 'Erro Absoluto Médio', 'Erro Absoluto Máximo',
-                 'Erro Relativo Médio', 'Erro Quadrático Médio']
-    resultados = []
 
-    # Loop sobre F_MEL (0 a 30)
-    for F_MEL_local in range(0, 30):
-        global F_MEL
-        F_MEL = F_MEL_local
+    # Lista dos flags na ordem desejada
+    flag_names = ['TRUNCATE_PRE', 'TRUNCATE_HAMMING', 'TRUNCATE_FFT', 'TRUNCATE_MEL', 'TRUNCATE_DCT']
+
+    # Cabeçalho do CSV: flags + métricas
+    cabecalho = flag_names + ['MAE', 'MAX_ABS', 'MRE', 'RMSE']
+
+    resultados = []  # cada elemento: [flag0, flag1, ..., flag4, mae, max_abs, mre, rmse]
+
+    for valores in itertools.product([0, 1], repeat=5):
+        # Atribui os valores aos flags globais
+        for nome, valor in zip(flag_names, valores):
+            globals()[nome] = valor
         write_config()
+
         cmd = [C_BINARY, WAV_FILE]
-        print(f"Processando F_MEL = {F_MEL} ...")
+        comb_str = ''.join(str(v) for v in valores)
+        print(f"Processando combinação {comb_str} (flags: {valores}) ...")
         try:
             subprocess.run(cmd, cwd=REF_C_DIR, check=True,
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except subprocess.CalledProcessError as e:
-            print(f"  Erro ao executar C para F_MEL={F_MEL}: {e}")
+            print(f"  Erro ao executar C para combinação {comb_str}: {e}")
             continue
 
-        # Lê os dumps gerados pelo C (todos os .hex da pasta)
         c_data = ler_dumps(C_DUMP_DIR)
         if c_data is None or len(c_data) == 0:
-            print(f"  Nenhum dump encontrado para F_MEL={F_MEL} em {C_DUMP_DIR}")
+            print(f"  Nenhum dump encontrado para combinação {comb_str}")
             continue
 
-        # Alinha tamanhos (usa o menor)
         min_len = min(len(c_data), len(py_data))
         if min_len == 0:
-            print(f"  Dados vazios para F_MEL={F_MEL}")
+            print(f"  Dados vazios para combinação {comb_str}")
             continue
 
         c_trim = c_data[:min_len]
@@ -139,7 +147,7 @@ def main():
 
         metricas = calcular_metricas(c_trim, py_trim)
         resultados.append([
-            F_MEL,
+            *valores,
             metricas['mae'],
             metricas['max_abs'],
             metricas['mre'],
@@ -147,54 +155,66 @@ def main():
         ])
 
     # Salva CSV
-    with open('metrics_mel.csv', 'w', newline='') as f:
+    with open('metrics_trunc.csv', 'w', newline='') as f:
         writer = csv.writer(f, delimiter=',')
         writer.writerow(cabecalho)
         writer.writerows(resultados)
 
-    print("\nResultados salvos em metrics_mel.csv")
+    print("\nResultados salvos em metrics_trunc.csv")
 
     
     if not resultados:
         print("Nenhum dado para plotar.")
         return
 
-    F_vals = [r[0] for r in resultados]
-    mae_vals = [r[1] for r in resultados]
-    max_vals = [r[2] for r in resultados]
-    mre_vals = [r[3] for r in resultados]
-    rmse_vals = [r[4] for r in resultados]
+    # Extrai dados para plotagem
+    indices = list(range(len(resultados)))
+    mae_vals = [r[5] for r in resultados]
+    max_vals = [r[6] for r in resultados]
+    mre_vals = [r[7] for r in resultados]
+    rmse_vals = [r[8] for r in resultados]
 
-    fig, axs = plt.subplots(2, 2, figsize=(12, 8))
-    fig.suptitle('Métricas de Erro vs F_MEL', fontsize=14)
+    # Rótulos do eixo X: combinação binária (ex: "01010")
+    labels = [''.join(str(int(v)) for v in r[:5]) for r in resultados]
 
-    axs[0, 0].plot(F_vals, mae_vals, 'b-o')
+    fig, axs = plt.subplots(2, 2, figsize=(14, 10))
+    fig.suptitle('Métricas de Erro vs Combinação de Truncamentos', fontsize=14)
+
+    axs[0, 0].plot(indices, mae_vals, 'b-o')
     axs[0, 0].set_title('Erro Absoluto Médio (MAE)')
-    axs[0, 0].set_xlabel('F_MEL')
+    axs[0, 0].set_xlabel('Combinação (bits: PRE,HAM,FFT,MEL,DCT)')
     axs[0, 0].set_ylabel('MAE')
     axs[0, 0].grid(True)
+    axs[0, 0].set_xticks(indices)
+    axs[0, 0].set_xticklabels(labels, rotation=45, ha='right', fontsize=8)
 
-    axs[0, 1].plot(F_vals, max_vals, 'r-o')
+    axs[0, 1].plot(indices, max_vals, 'r-o')
     axs[0, 1].set_title('Erro Absoluto Máximo (MAX)')
-    axs[0, 1].set_xlabel('F_MEL')
+    axs[0, 1].set_xlabel('Combinação (bits: PRE,HAM,FFT,MEL,DCT)')
     axs[0, 1].set_ylabel('MAX')
     axs[0, 1].grid(True)
+    axs[0, 1].set_xticks(indices)
+    axs[0, 1].set_xticklabels(labels, rotation=45, ha='right', fontsize=8)
 
-    axs[1, 0].plot(F_vals, mre_vals, 'g-o')
+    axs[1, 0].plot(indices, mre_vals, 'g-o')
     axs[1, 0].set_title('Erro Relativo Médio (MRE)')
-    axs[1, 0].set_xlabel('F_MEL')
+    axs[1, 0].set_xlabel('Combinação (bits: PRE,HAM,FFT,MEL,DCT)')
     axs[1, 0].set_ylabel('MRE')
     axs[1, 0].grid(True)
+    axs[1, 0].set_xticks(indices)
+    axs[1, 0].set_xticklabels(labels, rotation=45, ha='right', fontsize=8)
 
-    axs[1, 1].plot(F_vals, rmse_vals, 'm-o')
+    axs[1, 1].plot(indices, rmse_vals, 'm-o')
     axs[1, 1].set_title('Erro Quadrático Médio (RMSE)')
-    axs[1, 1].set_xlabel('F_MEL')
+    axs[1, 1].set_xlabel('Combinação (bits: PRE,HAM,FFT,MEL,DCT)')
     axs[1, 1].set_ylabel('RMSE')
     axs[1, 1].grid(True)
+    axs[1, 1].set_xticks(indices)
+    axs[1, 1].set_xticklabels(labels, rotation=45, ha='right', fontsize=8)
 
     plt.tight_layout()
-    plt.savefig('metrics_mel_plot.png', dpi=150)
-    print("Gráfico salvo em metrics_mel_plot.png")
+    plt.savefig('metrics_trunc_plot.png', dpi=150)
+    print("Gráfico salvo em metrics_trunc_plot.png")
     # plt.show()  # descomente se quiser exibir a janela
 
 if __name__ == '__main__':

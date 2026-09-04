@@ -4,7 +4,6 @@ import glob
 import math
 import subprocess
 import csv
-import time
 import matplotlib.pyplot as plt
 
 ROOT_DIR = os.environ.get('PROJECT_ROOT')
@@ -15,10 +14,33 @@ WAV_FILE = os.path.join(WAV_DIR, '16_000_hz', 'sagarana_03.wav')
 C_BINARY = os.path.join(REF_C_DIR, 'build', 'main.elf')
 C_DUMP_DIR = os.path.join(REF_C_DIR, 'dumps', '6_ceps')
 PY_DUMP_DIR = os.path.join(REF_PYTHON_DIR, 'dumps', '6_ceps')
-F_PRE = 12
-F_HAMMING = 14
-F_FFT = 12
-F_MEL = 12
+
+
+F_PRE=24
+F_HAMMING=24
+F_FFT=24
+F_MEL=24
+F_DCT=20
+
+TRUNCATE_PRE=0
+TRUNCATE_HAMMING=0
+TRUNCATE_FFT=0
+TRUNCATE_MEL=0
+TRUNCATE_DCT=0
+
+def write_config():
+    config_path = os.path.join(REF_C_DIR, 'config.txt')
+    with open(config_path, 'w') as f:
+        f.write(f"F_PRE={F_PRE}\n")
+        f.write(f"F_HAMMING={F_HAMMING}\n")
+        f.write(f"F_FFT={F_FFT}\n")
+        f.write(f"F_MEL={F_MEL}\n")
+        f.write(f"F_DCT={F_DCT}\n")
+        f.write(f"TRUNCATE_PRE={TRUNCATE_PRE}\n")
+        f.write(f"TRUNCATE_HAMMING={TRUNCATE_HAMMING}\n")
+        f.write(f"TRUNCATE_FFT={TRUNCATE_FFT}\n")
+        f.write(f"TRUNCATE_MEL={TRUNCATE_MEL}\n")
+        f.write(f"TRUNCATE_DCT={TRUNCATE_DCT}\n")
 
 def ler_arquivo_hex(caminho):
     dados = []
@@ -88,9 +110,12 @@ def main():
     resultados = []
 
     # Loop sobre F_DCT (0 a 30)
-    for F_DCT in range(0, 30):
+    for F_DCT_local in range(0, 30):
+        global F_DCT
+        F_DCT = F_DCT_local
+        write_config()
+        cmd = [C_BINARY, WAV_FILE]
         print(f"Processando F_DCT = {F_DCT} ...")
-        cmd = [C_BINARY, WAV_FILE, str(F_PRE), str(F_HAMMING), str(F_FFT), str(F_MEL), str(F_DCT)]
         try:
             subprocess.run(cmd, cwd=REF_C_DIR, check=True,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -98,7 +123,6 @@ def main():
             print(f"  Erro ao executar C para F_DCT={F_DCT}: {e}")
             continue
 
-        time.sleep(0.5)  # pequena pausa para escrita dos arquivos
 
         # Lê os dumps gerados pelo C (todos os .hex da pasta)
         c_data = ler_dumps(C_DUMP_DIR)
@@ -132,7 +156,7 @@ def main():
 
     print("\nResultados salvos em metrics_dct.csv")
 
-    # ===== PLOT =====
+    
     if not resultados:
         print("Nenhum dado para plotar.")
         return
