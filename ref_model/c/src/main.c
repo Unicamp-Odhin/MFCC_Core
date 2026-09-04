@@ -185,6 +185,13 @@ int main(int argc, char *argv[]) {
     int F_MEL = parse_int(argv[5], "F_MEL");
     int F_DCT = parse_int(argv[6], "F_DCT");
 
+    // Caso a flag esteja ativa é removido a parte fracionária após o processamento
+    int TRUNCATE_AFTER_PRE_EMPHASIS = 0;
+    int TRUNCATE_AFTER_HAMMING = 0;
+    int TRUNCATE_AFTER_FFT = 0;
+    int TRUNCATE_AFTER_MEL = 0;
+    int TRUNCATE_AFTER_DCT = 1;
+
     int16_t *samples = NULL;
     WavHeader *header = open_wav_file(argv[1], &samples);
     
@@ -232,6 +239,15 @@ int main(int argc, char *argv[]) {
     //PRIMEIRA ETAPA "pre enfase"
     int64_t *samples_64bit = malloc(sizeof(int64_t) * num_samples);
     pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), samples_64bit, F_PRE_EMPHASIS);
+
+    // truc
+    if (TRUNCATE_AFTER_PRE_EMPHASIS) {
+    int64_t mask = ~((1LL << F_PRE_EMPHASIS) - 1);  // bits fracionários = 0
+    for (int i = 0; i < num_samples; i++) {
+        samples_64bit[i] &= mask;
+    }
+}
+
     #ifdef CONFIG_LOG 
         snprintf(filepath, sizeof(filepath), "%s/ref_vectors/1_pre_emphasis.hex", tests_dir);
         dump_hex(filepath, samples_64bit, num_samples, sizeof(int64_t));
@@ -266,17 +282,40 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < num_frames; i++) {
         //TERCEIRA ETAPA "janelamento"
         hamming_window_fixed(frames[i], window, frame_size, F_HAMMING, F_PRE_EMPHASIS);
+        if (TRUNCATE_AFTER_HAMMING){
+            int64_t mask = ~((1LL << F_HAMMING) - 1);
+            for (int j = 0; j < frame_size; j++) {
+                frames[i][j] &= mask;
+            }
+        }
 
         //QUARTA ETAPA FFT
         power_spectrum[0] = 0; // DC é zero
         fft_real_power(frames[i], frame_size, power_spectrum, twiddles, F_FFT, F_HAMMING);
+        if (TRUNCATE_AFTER_FFT){
+            int64_t mask = ~((1LL << F_FFT) - 1);
+            for (int j = 0; j < NFFT; j++) {
+                power_spectrum[j] &= mask;
+            }
+        }
 
         //QUINTA ETAPA MEL
         apply_op_filterbank(power_spectrum, energies, sample_rate, filterbank, F_MEL, ENERGIES_WIDTH_F, F_FFT);
-        
+        if (TRUNCATE_AFTER_MEL){
+            int64_t mask = ~((1LL << ENERGIES_WIDTH_F) - 1);
+            for (int j = 0; j < NUM_FILTERS; j++) {
+                energies[j] &= mask;
+            }
+        }
+
         //SEXTA ETAPA DCT
         dct_fixed(energies, NUM_FILTERS, ceps, ENERGIES_WIDTH_F, F_DCT);
-
+        if (TRUNCATE_AFTER_DCT){
+            int64_t mask = ~((1LL << F_DCT) - 1);
+            for (int j = 0; j < NUM_CEPS; j++) {
+                ceps[j] &= mask;
+            }
+        }
         
         #ifdef CONFIG_LOG
         // log enquadramento
