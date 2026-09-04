@@ -18,6 +18,7 @@ NFFT = 512
 NFILT = 40
 NUM_CEPS = 12
 
+python_dir = os.getenv("REF_PYTHON_DIR")
 
 def dump_buffer_to_hex_8(file_name, buffer):
     os.makedirs(os.path.dirname(file_name), exist_ok=True)
@@ -286,7 +287,7 @@ def main():
     LOG = True
     PLOT = False
 
-    output_dir = "dumps/"
+    output_dir = f"{python_dir}/dumps/"
     os.makedirs(output_dir, exist_ok=True)
     audio_path = sys.argv[1]
     audio_name = os.path.splitext(os.path.basename(audio_path))[0]
@@ -301,9 +302,9 @@ def main():
     if PLOT:
         plot_pre_emphasized(y_preemphasized, output_dir, audio_name)
     if LOG:
-        file_name = "dumps/0_samples_dump.hex"
+        file_name = f"{output_dir}/0_samples_dump.hex"
         dump_buffer_to_hex_16(file_name, y)
-        file_name = "dumps/1_pre_emphasis.hex"
+        file_name = f"{output_dir}/1_pre_emphasis.hex"
         dump_buffer(file_name, y_preemphasized)
 
     # Step 3: Frame the signal
@@ -311,9 +312,9 @@ def main():
     if PLOT:
         plot_frames(frames, output_dir, audio_name)
     if LOG:
-        os.makedirs("dumps/2_frames", exist_ok=True)
+        os.makedirs(f"{output_dir}/2_frames", exist_ok=True)
         for i in range(len(frames)):
-            file_name = f"dumps/2_frames/{i:04d}.hex"
+            file_name = f"{output_dir}/2_frames/{i:04d}.hex"
             dump_buffer(file_name, frames[i])
     
 
@@ -323,9 +324,9 @@ def main():
         plot_windowed_frame(frames, output_dir, audio_name)
 
     if LOG:
-        os.makedirs("dumps/3_hamming_frames", exist_ok=True)
+        os.makedirs(f"{output_dir}3_hamming_frames", exist_ok=True)
         for i in range(len(frames)):
-            file_name = f"dumps/3_hamming_frames/{i:04d}.hex"
+            file_name = f"{output_dir}3_hamming_frames/{i:04d}.hex"
             dump_buffer(file_name, frames[i])
 
     # Step 5: Compute spectrum
@@ -334,9 +335,9 @@ def main():
         plot_spectrum(mag_frames, output_dir, audio_name)
 
     if LOG:
-        os.makedirs("dumps/4_power_spectrum", exist_ok=True)
+        os.makedirs(f"{output_dir}4_power_spectrum", exist_ok=True)
         for i in range(len(pow_frames)):
-            file_name = f"dumps/4_power_spectrum/{i:04d}.hex"
+            file_name = f"{output_dir}4_power_spectrum/{i:04d}.hex"
             dump_buffer(file_name, pow_frames[i])
 
 
@@ -346,35 +347,23 @@ def main():
         save_and_plot_filterbanks(filter_banks, output_dir, audio_name)
     
     if LOG:
-        os.makedirs("dumps/5_energies", exist_ok=True)
+        os.makedirs(f"{output_dir}5_energies", exist_ok=True)
         for i in range(len(filter_banks)):
-            file_name = f"dumps/5_energies/{i:04d}.hex"
+            file_name = f"{output_dir}5_energies/{i:04d}.hex"
             dump_buffer(file_name, filter_banks[i])
             # dump_buffer_to_hex_float(file_name, filter_banks[i])
         
-        os.makedirs("dumps/plot/", exist_ok=True)
-        with open("dumps/plot/spectrogram_matrix.dat", "w") as fp_spec:
-            for frame in filter_banks:
-                fp_spec.write(" ".join(f"{value}" for value in frame))
-                fp_spec.write("\n")
 
     # Step 7: Compute MFCCs
     mfcc = compute_mfcc(filter_banks)
     if PLOT:
         plot_mfcc(mfcc, output_dir, audio_name)
 
-    os.makedirs("dumps/6_ceps", exist_ok=True)
+    os.makedirs(f"{output_dir}6_ceps", exist_ok=True)
     for i, frame in enumerate(mfcc):
-        frame_file = os.path.join("dumps/6_ceps", f"{i:04d}.hex")
+        frame_file = os.path.join(f"{output_dir}6_ceps", f"{i:04d}.hex")
         with open(frame_file, "w") as fp:
             fp.write("\n".join(f"{value}" for value in frame))
-    
-    if LOG:
-        os.makedirs("dumps/plot/", exist_ok=True)
-        with open("dumps/plot/ceps_matrix.dat", "w") as fp_ceps:
-            for frame in mfcc:
-                fp_ceps.write(" ".join(f"{value:.6f}" for value in frame))
-                fp_ceps.write("\n")
 
 if __name__ == "__main__":
     main()
