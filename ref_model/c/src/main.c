@@ -190,7 +190,7 @@ int main(int argc, char *argv[]) {
     int TRUNCATE_AFTER_HAMMING = 0;
     int TRUNCATE_AFTER_FFT = 0;
     int TRUNCATE_AFTER_MEL = 0;
-    int TRUNCATE_AFTER_DCT = 1;
+    int TRUNCATE_AFTER_DCT = 0;
 
     int16_t *samples = NULL;
     WavHeader *header = open_wav_file(argv[1], &samples);

@@ -124,23 +124,20 @@ def plot_pre_emphasized(y_preemphasized, output_dir, audio_name):
 
 def frame_signal(y_preemphasized, sample_rate, frame_size, frame_step):
     """Step 3: Frame the signal into overlapping segments"""
-    signal_length = len(y_preemphasized)
+    num_samples = len(y_preemphasized)
 
-    # Coloque esses "+1" por questão de arredondamento e assim fica igual ao C
-    frame_length = int(round(frame_size * sample_rate))
-    frame_step = int(round(frame_step * sample_rate))
-    num_frames = int(np.ceil(float(np.abs(signal_length - frame_length)) / frame_step)) + 1
+    num_frames = int(np.ceil(float((num_samples - frame_size -1) / frame_step))) + 1
     
     # Pad signal to ensure all frames have equal number of samples
-    pad_signal_length = num_frames * frame_step + frame_length
-    z = np.zeros((pad_signal_length - signal_length))
+    pad_signal_length = num_frames * frame_step + frame_size
+    z = np.zeros((pad_signal_length - num_samples))
     pad_signal = np.append(y_preemphasized, z)
     
     # Slice the signal into frames
-    indices = (np.tile(np.arange(0, frame_length), (num_frames, 1)) + 
-              np.tile(np.arange(0, num_frames * frame_step, frame_step), (frame_length, 1)).T)
+    indices = (np.tile(np.arange(0, frame_size), (num_frames, 1)) + 
+              np.tile(np.arange(0, num_frames * frame_step, frame_step), (frame_size, 1)).T)
     frames = pad_signal[indices.astype(np.int32, copy=False)]
-    return frames, frame_length
+    return frames, frame_size
 
 def plot_frames(frames, output_dir, audio_name):
     """Plot and save sample frames"""
@@ -308,7 +305,7 @@ def main():
         dump_buffer(file_name, y_preemphasized)
 
     # Step 3: Frame the signal
-    frames, frame_length = frame_signal(y_preemphasized, sample_rate, FRAME_SIZE, FRAME_STEP)
+    frames, frame_length = frame_signal(y_preemphasized, sample_rate, frame_size, frame_step)
     if PLOT:
         plot_frames(frames, output_dir, audio_name)
     if LOG:
