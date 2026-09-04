@@ -246,7 +246,6 @@ int main(int argc, char *argv[]) {
     int32_t *ceps = (int32_t*)malloc(NUM_CEPS * sizeof(int32_t)); 
 
     // TABELAS
-    
     int32_t* window = malloc(frame_size * sizeof(int32_t*)); ;
     generate_hamming_window(window, frame_size, F_HAMMING);
 
