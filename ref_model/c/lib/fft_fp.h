@@ -25,7 +25,7 @@ void generate_twiddles(complex_t* twiddles, int N, int F);
 void save_twiddles_to_file(const char *filename, complex_t* twiddles, int N);
 
 void fft_recursive(complex_t* x, int N, complex_t* twiddles, int N_total);
-void fft_real_power(int32_t* x_real, int N, int32_t* power_out, complex_t* twiddles, int F);
+void fft_real_power(int64_t* x_real, int N, int64_t* power_out, complex_t* twiddles, int F_FFT, int F_HAMMING);
 
 
 #endif // !__FFT_PF_H__

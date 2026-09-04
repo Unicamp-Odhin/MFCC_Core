@@ -94,6 +94,18 @@ void dump_buffer_pf_to_int(const char *file_name, int32_t *buffer, int size, int
     }
     fclose(fp);
 }
+void dump_buffer_pf_64_to_float(const char *file_name, int64_t *buffer, int size, int F) {
+    int32_t SCALE = 1 << F;
+    FILE *fp = fopen(file_name, "w");
+    if (!fp) {
+        perror("fopen");
+        return;
+    }
+    for (int i = 0; i < size; i++) {
+        fprintf(fp, "%f\n", (float)buffer[i] / SCALE);
+    }
+    fclose(fp);
+}
 
 void dump_buffer_pf_to_float(const char *file_name, int32_t *buffer, int size, int F) {
     int32_t SCALE = 1 << F;
@@ -126,7 +138,7 @@ int main(int argc, char *argv[]) {
     unsigned long long start_cycles = get_cycles();
 
 
-    if (argc < 6) {
+    if (argc < 7) {
         fprintf(stderr, "Usage: %s <filename>.wav F_PRE_EMPHASIS F_HAMMING F_FFT MEL_COEFF_WIDTH_F DCT_COEFF_WIDTH_F\n", argv[0]);
         return 1;
     }
@@ -152,35 +164,36 @@ int main(int argc, char *argv[]) {
     int frame_step  = (int)(sample_rate * FRAME_STEP);
     int num_samples = header->subchunk2Size / sizeof(uint16_t);
     int num_frames = (int)((double)(num_samples - frame_size) / frame_step) + 1;
-    int32_t *samples_32bit = malloc(sizeof(int32_t) * num_samples);
-
+    
     #ifdef CONFIG_VERBOSE 
-        printf("Número total de frames: %d\n", num_frames);
-        printf("Sample rate: %d Hz\n", sample_rate);
-        printf("Frame size: %d samples\n", frame_size);
-        printf("Frame step: %d samples\n", frame_step);
-        printf("Number of samples: %d\n", num_samples);
+    printf("Número total de frames: %d\n", num_frames);
+    printf("Sample rate: %d Hz\n", sample_rate);
+    printf("Frame size: %d samples\n", frame_size);
+    printf("Frame step: %d samples\n", frame_step);
+    printf("Number of samples: %d\n", num_samples);
     #endif
     
     
     #ifdef CONFIG_LOG 
-        dump_buffer_to_hex_16("dumps/0_samples_dump.hex", samples, num_samples);
-        
-        char *samples_dir = getenv("SAMPLES_DIR");
-        char filepath_samples[512];
-        snprintf(filepath_samples, sizeof(filepath_samples), "%s/dump.hex", samples_dir);
-        dump_buffer_to_hex_16(filepath_samples, samples, num_samples);
-
-    #endif
-
+    dump_buffer_to_hex_16("dumps/0_samples_dump.hex", samples, num_samples);
     
+    char *samples_dir = getenv("SAMPLES_DIR");
+    char filepath_samples[512];
+    snprintf(filepath_samples, sizeof(filepath_samples), "%s/dump.hex", samples_dir);
+    dump_buffer_to_hex_16(filepath_samples, samples, num_samples);
+    
+    #endif
+    
+    
+    int64_t *samples_64bit = malloc(sizeof(int64_t) * num_samples);
     //PRIMEIRA ETAPA "pre enfase"
-    pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), samples_32bit, F_PRE_EMPHASIS);
+    pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), samples_64bit, F_PRE_EMPHASIS);
     #ifdef CONFIG_LOG 
         char *c_dir = getenv("REF_C_DIR");
         char filepath_pre_emfase[512];
         snprintf(filepath_pre_emfase, sizeof(filepath_pre_emfase), "%s/dumps/1_pre_emphasis.hex", c_dir);
-        dump_buffer_to_hex_32(filepath_pre_emfase, samples_32bit, num_samples);
+        dump_buffer_pf_64_to_float(filepath_pre_emfase, samples_64bit, num_samples, F_PRE_EMPHASIS);
+        
     #endif
 
 
@@ -190,28 +203,21 @@ int main(int argc, char *argv[]) {
     // Isso pode levar à geração de frames levemente diferentes ao longo do tempo,
     // acumulando um erro perceptível no resultado final.
 
-                                                                                     // NOTE o "+ 1"
-    int32_t **frames = frame_signal_int(samples_32bit, num_samples, frame_size, frame_step, &num_frames);
+    int64_t **frames = frame_signal_int(samples_64bit, num_samples, frame_size, frame_step, &num_frames);
     #ifdef CONFIG_LOG
         for (int i = 0; i < num_frames; i++) {
             char file_name[64];
             snprintf(file_name, sizeof(file_name), "dumps/2_frames/%04d.hex", i);
-            dump_buffer_to_hex_32(file_name, frames[i], frame_size);
-
+            dump_buffer_pf_64_to_float(file_name, frames[i], frame_size, F_PRE_EMPHASIS);
         }
-
     #endif
 
     //TERCEIRA ETAPA "janelamento"
     int32_t window[frame_size];
-    // Para armaxenar os coeficientes é necessário 1 bit de sinal, 1 bit para a parte inteira
-    // sendo a parte fracionária a sua escolha, mas nessa imprementação F + 1 + 1 <= 32, ou seja,
-    // no máximo F_HAMMING = 30
-    // TODO: Arrumar para usar F = 10 e testar se esse é realmente o melhor valor
     generate_hamming_window(window, frame_size, F_HAMMING);
 
     for(int i = 0; i < num_frames; i++) {
-        hamming_window_fixed(frames[i], window, frame_size, F_HAMMING);
+        hamming_window_fixed(frames[i], window, frame_size, F_HAMMING, F_PRE_EMPHASIS);
     }
 
     #ifdef CONFIG_CREATE_DATABANK
@@ -225,21 +231,23 @@ int main(int argc, char *argv[]) {
         for(int i = 0; i < num_frames; i++) {
             char file_name[50];
             snprintf(file_name, sizeof(file_name), "dumps/3_hamming_frames/%04d.hex", i);
-            dump_buffer_to_hex_32(file_name, frames[i], frame_size);
+            dump_buffer_pf_64_to_float(file_name, frames[i], frame_size, F_HAMMING);
         }
     #endif
 
     //QUARTA ETAPA FFT
 
     int num_freqs = NFFT; // Frequências DC a Nyquist, NFFT é definido no q15_fft.h
-    int32_t power_spectrum[num_frames][num_freqs]; // transposição do espectro de potência
+    // int64_t power_spectrum[num_frames][num_freqs]; // transposição do espectro de potência
+    int64_t **power_spectrum = (int64_t**)malloc(num_frames * sizeof(int64_t*));
     
     complex_t* twiddles = (complex_t*)malloc((NFFT / 2) * sizeof(complex_t));
     generate_twiddles(twiddles, NFFT, F_FFT);  
 
     for(int i = 0; i < num_frames; i++) {
+        power_spectrum[i] = (int64_t*)malloc(num_freqs * sizeof(int64_t));
         power_spectrum[i][0] = 0; // DC é zero
-        fft_real_power(frames[i], frame_size, power_spectrum[i], twiddles, F_FFT);
+        fft_real_power(frames[i], frame_size, power_spectrum[i], twiddles, F_FFT, F_HAMMING);
     }
 
     #ifdef CONFIG_CREATE_DATABANK
@@ -256,22 +264,7 @@ int main(int argc, char *argv[]) {
         for (int i = 0; i < num_frames; i++) {
             char filename[128];
             snprintf(filename, sizeof(filename), "dumps/4_power_spectrum/%04d.hex", i);
-
-            // dump_buffer_unsigned(filename, power_spectrum[i], NFFT/2 + 1);
-            dump_buffer_to_hex_32(filename, power_spectrum[i], NFFT/2 + 1);
-
-        }
- 
-        // Salvar o primeiro frame em arquivo para plot
-        FILE *fp1 = fopen("dumps/plots/frame1.dat", "w");
-        if (!fp1) {
-            perror("Erro ao criar arquivo de dados");
-        } else {
-            for (int i = 0; i < NFFT/2 + 1; i++) {
-                fprintf(fp1, "%d %d\n", i, power_spectrum[1][i]);
-            }
-            fclose(fp1);
-            system("gnuplot -p -e \"plot 'data/frame1.dat' with lines title 'Frame 1 power'\"");
+            dump_buffer_pf_64_to_float(filename, power_spectrum[i], NFFT/2 + 1, F_FFT);
         }
     #endif
 
@@ -290,13 +283,13 @@ int main(int argc, char *argv[]) {
     #endif
     
     
-    int ENERGIES_WIDTH_F = 14;
+    int ENERGIES_WIDTH_F = 13;
 
     int32_t **filterbank = malloc(NUM_FILTERS * sizeof(int32_t*));
     int16_t max_width_mel = create_op_filterbank(filterbank, sample_rate, MEL_COEFF_WIDTH_F);
 
     for (int i = 0; i < num_frames; i++) {
-        apply_op_filterbank(power_spectrum[i], energies, sample_rate, filterbank, MEL_COEFF_WIDTH_F, ENERGIES_WIDTH_F);
+        apply_op_filterbank(power_spectrum[i], energies, sample_rate, filterbank, MEL_COEFF_WIDTH_F, ENERGIES_WIDTH_F, F_FFT);
         
         #ifdef CONFIG_LOG
         char energy_file[64];

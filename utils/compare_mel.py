@@ -16,8 +16,9 @@ C_BINARY = os.path.join(REF_C_DIR, 'build', 'main.elf')
 C_DUMP_DIR = os.path.join(REF_C_DIR, 'dumps', '5_energies')
 PY_DUMP_DIR = os.path.join(REF_PYTHON_DIR, 'dumps', '5_energies')
 F_PRE = 12
-F_HAMMING = 14
+F_HAMMING = 12
 F_FFT = 12
+F_DCT = 12
 
 def ler_arquivo_hex(caminho):
     dados = []
@@ -89,7 +90,7 @@ def main():
     # Loop sobre F_MEL (0 a 30)
     for F_MEL in range(0, 30):
         print(f"Processando F_MEL = {F_MEL} ...")
-        cmd = [C_BINARY, WAV_FILE, str(F_PRE), str(F_HAMMING), str(F_FFT), str(F_MEL)]
+        cmd = [C_BINARY, WAV_FILE, str(F_PRE), str(F_HAMMING), str(F_FFT), str(F_MEL), str(F_DCT)]
         try:
             subprocess.run(cmd, cwd=REF_C_DIR, check=True,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

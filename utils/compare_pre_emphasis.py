@@ -16,6 +16,10 @@ WAV_FILE = os.path.join(WAV_DIR, '16_000_hz', 'sagarana_03.wav')
 C_BINARY = os.path.join(REF_C_DIR, 'build', 'main.elf')
 C_DUMP_FILE = os.path.join(REF_C_DIR, 'dumps', '1_pre_emphasis.hex')
 PY_DUMP_PATH = os.path.join(REF_PYTHON_DIR, 'dumps', '1_pre_emphasis.hex')
+F_HAMMING = 14
+F_FFT = 12
+F_MEL = 12
+F_DCT = 12
 
 def parse_valor(linha):
     linha = linha.strip()
@@ -35,7 +39,8 @@ def ler_arquivo_hex(caminho):
     dados = []
     with open(caminho, 'r') as f:
         for linha in f:
-            valor = parse_valor(linha)
+            # valor = parse_valor(linha)
+            valor = float(linha)
             if valor is not None:
                 dados.append(valor)
     return dados
@@ -98,7 +103,8 @@ def main():
 
     for F in range(0, 31):
         print(f"Processando F = {F} ...")
-        cmd = [C_BINARY, WAV_FILE, str(F)]
+        cmd = [C_BINARY, WAV_FILE, str(F), str(F_HAMMING), str(F_FFT), str(F_MEL), str(F_DCT)]
+
         try:
             subprocess.run(cmd, cwd=REF_C_DIR, check=True,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

@@ -19,17 +19,16 @@ void generate_hamming_window(int32_t *window, int frame_size, int F) {
     }
 }
 
-void dpi_generate_hamming_window(int frame_size, int F, int window[]) {
-    generate_hamming_window(window, frame_size, F);
-}
-
 // Aplica a janela Hamming com ponto fixo
-void hamming_window_fixed(int32_t *frame, int32_t *window, int frame_size, int F) {
-    int32_t SCALE = 1 << F;
+void hamming_window_fixed(int64_t *frame, int32_t *window, int frame_size, int F_HAMMING, int F_PRE_EMPHASIS) {
     for (int i = 0; i < frame_size; i++) {
-        int32_t tmp = frame[i];
-        int64_t temp = (int64_t)frame[i] * (int64_t)window[i];
-        frame[i] = (int32_t)(temp >> F);  // retorna inteiro
+        int64_t frame_i = frame[i];
+        if (F_PRE_EMPHASIS > F_HAMMING)
+            frame_i = frame[i] >> (F_PRE_EMPHASIS - F_HAMMING);
+        else if (F_PRE_EMPHASIS < F_HAMMING)
+            frame_i = frame[i] << (F_HAMMING - F_PRE_EMPHASIS);
+        int64_t temp = frame_i * (int64_t)window[i];
+        frame[i] = (temp >> F_HAMMING);
     }
 }
 
@@ -48,18 +47,18 @@ void save_window_to_file(const char *filename, int32_t *window, int size) {
 }
 
 // Função para criar os frames do sinal
-int32_t** frame_signal_int(int32_t *samples, int num_samples, int frame_size, int frame_step, int *out_num_frames) {
+int64_t** frame_signal_int(int64_t *samples, int num_samples, int frame_size, int frame_step, int *out_num_frames) {
     int num_frames = ceil_div((num_samples - frame_size), frame_step) + 1;
 
     // Aloca matriz de frames (num_frames x frame_size)
-    int32_t **frames = (int32_t **)malloc(num_frames * sizeof(int32_t *));
+    int64_t **frames = (int64_t **)malloc(num_frames * sizeof(int64_t *));
     if (!frames) {
         fprintf(stderr, "Erro ao alocar memória para frames.\n");
         return NULL;
     }
 
     for (int i = 0; i < num_frames; i++) {
-        frames[i] = (int32_t *)calloc(frame_size, sizeof(int32_t));  // Zera para padding automático
+        frames[i] = (int64_t *)calloc(frame_size, sizeof(int64_t));  // Zera para padding automático
         if (!frames[i]) {
             fprintf(stderr, "Erro ao alocar memória para o frame %d.\n", i);
             // Libera frames anteriores se der erro
@@ -84,19 +83,15 @@ int32_t** frame_signal_int(int32_t *samples, int num_samples, int frame_size, in
     return frames;
 }
 
-#include <stdint.h>
-#include <stddef.h>
-#include <math.h> // Se quiser usar round(), mas dá pra fazer sem
-
-
-void pre_emphasis(int16_t *samples, size_t sample_count, int32_t *samples_out, int F) {
+void pre_emphasis(int16_t *samples, size_t sample_count, int64_t *samples_out, int F) {
     int64_t temp;
+    int64_t sample_pf;
     int32_t SCALE = 1 << F;
     int32_t ALPHA = (int32_t)(0.97 * SCALE);
 
     for (size_t i = sample_count - 1; i > 0; i--) {
+        sample_pf = (int64_t)samples[i] << F;
         temp = (int64_t) ALPHA * (int64_t)samples[i - 1];
-        temp = temp >> F; // Ajusta para inteiro
-        samples_out[i] = (int32_t)samples[i] - temp; 
+        samples_out[i] = sample_pf - temp; 
     }
 }

@@ -18,26 +18,13 @@ PY_DUMP_DIR = os.path.join(REF_PYTHON_DIR, 'dumps', '4_power_spectrum')
 F_PRE = 12
 F_HAMMING = 12
 F_MEL = 12
-
-def parse_valor(linha):
-    linha = linha.strip()
-    if not linha:
-        return None
-    raw = linha
-    if linha.lower().startswith('0x'):
-        raw = linha[2:]
-    if any(c in 'abcdefABCDEF' for c in raw):
-        valor = int(raw, 16)
-        if valor >= 0x80000000:
-            valor -= 0x100000000
-        return valor
-    return int(raw, 10)
+F_DCT = 12
 
 def ler_arquivo_hex(caminho):
     dados = []
     with open(caminho, 'r') as f:
         for linha in f:
-            valor = parse_valor(linha)
+            valor = float(linha)
             if valor is not None:
                 dados.append(valor)
     return dados
@@ -103,7 +90,7 @@ def main():
     # Loop sobre F_FFT (0 a 30)
     for F_FFT in range(0, 30):
         print(f"Processando F_FFT = {F_FFT} ...")
-        cmd = [C_BINARY, WAV_FILE, str(F_PRE), str(F_HAMMING), str(F_FFT), str(F_MEL)]
+        cmd = [C_BINARY, WAV_FILE, str(F_PRE), str(F_HAMMING), str(F_FFT), str(F_MEL), str(F_DCT)]
         try:
             subprocess.run(cmd, cwd=REF_C_DIR, check=True,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

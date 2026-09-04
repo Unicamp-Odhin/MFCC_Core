@@ -19,6 +19,7 @@ F_PRE = 12
 F_HAMMING = 14
 F_FFT = 12
 F_MEL = 12
+F_DCT = 12
 
 
 def parse_valor(linha):
@@ -39,7 +40,8 @@ def ler_arquivo_hex(caminho):
     dados = []
     with open(caminho, 'r') as f:
         for linha in f:
-            valor = parse_valor(linha)
+            valor = float(linha)
+            # valor = parse_valor(linha)
             if valor is not None:
                 dados.append(valor)
     return dados
@@ -106,7 +108,7 @@ def main():
     # Loop sobre F_HAMMING (0 a 30)
     for F_HAM in range(0, 30):
         print(f"Processando F_HAMMING = {F_HAM} ...")
-        cmd = [C_BINARY, WAV_FILE, str(F_PRE), str(F_HAM), str(F_FFT), str(F_MEL)]
+        cmd = [C_BINARY, WAV_FILE, str(F_PRE), str(F_HAM), str(F_FFT), str(F_MEL), str(F_DCT)]
 
         try:
             subprocess.run(cmd, cwd=REF_C_DIR, check=True,

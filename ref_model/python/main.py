@@ -304,7 +304,7 @@ def main():
         file_name = "dumps/0_samples_dump.hex"
         dump_buffer_to_hex_16(file_name, y)
         file_name = "dumps/1_pre_emphasis.hex"
-        dump_buffer_to_hex_32(file_name, y_preemphasized)
+        dump_buffer(file_name, y_preemphasized)
 
     # Step 3: Frame the signal
     frames, frame_length = frame_signal(y_preemphasized, sample_rate, FRAME_SIZE, FRAME_STEP)
@@ -314,7 +314,7 @@ def main():
         os.makedirs("dumps/2_frames", exist_ok=True)
         for i in range(len(frames)):
             file_name = f"dumps/2_frames/{i:04d}.hex"
-            dump_buffer_to_hex_32(file_name, frames[i])
+            dump_buffer(file_name, frames[i])
     
 
     # Step 4: Apply window function
@@ -326,7 +326,7 @@ def main():
         os.makedirs("dumps/3_hamming_frames", exist_ok=True)
         for i in range(len(frames)):
             file_name = f"dumps/3_hamming_frames/{i:04d}.hex"
-            dump_buffer_to_hex_32(file_name, frames[i])
+            dump_buffer(file_name, frames[i])
 
     # Step 5: Compute spectrum
     mag_frames, pow_frames = compute_spectrum(frames)
@@ -337,8 +337,7 @@ def main():
         os.makedirs("dumps/4_power_spectrum", exist_ok=True)
         for i in range(len(pow_frames)):
             file_name = f"dumps/4_power_spectrum/{i:04d}.hex"
-            # dump_buffer(file_name, pow_frames[i])
-            dump_buffer_to_hex_32(file_name, pow_frames[i])
+            dump_buffer(file_name, pow_frames[i])
 
 
     # Step 6: Apply Mel filterbank
