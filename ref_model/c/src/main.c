@@ -11,16 +11,31 @@
 #include <time.h>
 #include <errno.h>
 #include <limits.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <ctype.h>
 #ifdef __x86_64__
 	#include <x86intrin.h>
 #endif
 
-#include <sys/stat.h>
-#include <sys/types.h>
 
-
+#define CONFIG_FILE "config.txt"
 #define FRAME_SIZE 0.025 // seconds
 #define FRAME_STEP 0.01 // seconds
+
+typedef struct {
+    int F_PRE;
+    int F_HAMMING;
+    int F_FFT;
+    int F_MEL;
+    int F_DCT;
+    int TRUNCATE_PRE;
+    int TRUNCATE_HAMMING;
+    int TRUNCATE_FFT;
+    int TRUNCATE_MEL;
+    int TRUNCATE_DCT;
+} Config;
+
 
 int ensure_dir(const char *path) {
     struct stat st;
@@ -170,27 +185,85 @@ int parse_int(const char *str, const char *name){
     return (int)value;
 }
 
+
+// remove espaços e comentários (tudo após #)
+static void trim_line(char *line) {
+    char *comment = strchr(line, '#');
+    if (comment) *comment = '\0';
+    char *end = line + strlen(line) - 1;
+    while (end >= line && isspace(*end)) end--;
+    *(end + 1) = '\0';
+    char *start = line;
+    while (*start && isspace(*start)) start++;
+    if (start != line) memmove(line, start, strlen(start) + 1);
+}
+
+int load_config(const char *dir, Config *cfg) {
+    char path[512];
+    snprintf(path, sizeof(path), "%s/%s", dir, CONFIG_FILE);
+    FILE *f = fopen(path, "r");
+    if (!f) {
+        // Se não existir, usa valores padrão
+        printf("Arquivo de configuração não encontrado, usando defaults.\n");
+        cfg->F_PRE = 12;
+        cfg->F_HAMMING = 12;
+        cfg->F_FFT = 12;
+        cfg->F_MEL = 12;
+        cfg->F_DCT = 12;
+        cfg->TRUNCATE_PRE = 0;
+        cfg->TRUNCATE_HAMMING = 0;
+        cfg->TRUNCATE_FFT = 0;
+        cfg->TRUNCATE_MEL = 0;
+        cfg->TRUNCATE_DCT = 0;
+        return 0;
+    }
+
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        trim_line(line);
+        if (strlen(line) == 0) continue;
+
+        char key[64], value[64];
+        if (sscanf(line, "%63[^=]=%63s", key, value) != 2) {
+            fprintf(stderr, "Linha ignorada (formato inválido): %s\n", line);
+            continue;
+        }
+
+        int val = atoi(value);
+
+        if (strcmp(key, "F_PRE") == 0) cfg->F_PRE = val;
+        else if (strcmp(key, "F_HAMMING") == 0) cfg->F_HAMMING = val;
+        else if (strcmp(key, "F_FFT") == 0) cfg->F_FFT = val;
+        else if (strcmp(key, "F_MEL") == 0) cfg->F_MEL = val;
+        else if (strcmp(key, "F_DCT") == 0) cfg->F_DCT = val;
+        else if (strcmp(key, "TRUNCATE_PRE") == 0) cfg->TRUNCATE_PRE = val;
+        else if (strcmp(key, "TRUNCATE_HAMMING") == 0) cfg->TRUNCATE_HAMMING = val;
+        else if (strcmp(key, "TRUNCATE_FFT") == 0) cfg->TRUNCATE_FFT = val;
+        else if (strcmp(key, "TRUNCATE_MEL") == 0) cfg->TRUNCATE_MEL = val;
+        else if (strcmp(key, "TRUNCATE_DCT") == 0) cfg->TRUNCATE_DCT = val;
+        else {
+            fprintf(stderr, "Chave desconhecida: %s\n", key);
+        }
+    }
+    fclose(f);
+    return 1;
+}
+
 int main(int argc, char *argv[]) {
     clock_t start_time = clock();
     unsigned long long start_cycles = get_cycles();
 
-    if (argc != 7) {
-        fprintf(stderr, "Usage: %s <filename>.wav F_PRE_EMPHASIS F_HAMMING F_FFT F_MEL F_DCT\n", argv[0]);
-        return 1;
-    }
+    char *c_dir = getenv("REF_C_DIR");
+    Config cfg;
+    load_config(c_dir, &cfg);
 
-    int F_PRE_EMPHASIS = parse_int(argv[2], "F_PRE_EMPHASIS");
-    int F_HAMMING = parse_int(argv[3], "F_HAMMING");
-    int F_FFT = parse_int(argv[4], "F_FFT");
-    int F_MEL = parse_int(argv[5], "F_MEL");
-    int F_DCT = parse_int(argv[6], "F_DCT");
+    printf("Configurações usadas:\n");
+    printf("F_PRE=%d, F_HAMMING=%d, F_FFT=%d, F_MEL=%d, F_DCT=%d\n",
+           cfg.F_PRE, cfg.F_HAMMING, cfg.F_FFT, cfg.F_MEL, cfg.F_DCT);
+    printf("TRUNCATE_PRE=%d, HAMMING=%d, FFT=%d, MEL=%d, DCT=%d\n",
+           cfg.TRUNCATE_PRE, cfg.TRUNCATE_HAMMING, cfg.TRUNCATE_FFT,
+           cfg.TRUNCATE_MEL, cfg.TRUNCATE_DCT);
 
-    // Caso a flag esteja ativa é removido a parte fracionária após o processamento
-    int TRUNCATE_AFTER_PRE_EMPHASIS = 0;
-    int TRUNCATE_AFTER_HAMMING = 0;
-    int TRUNCATE_AFTER_FFT = 0;
-    int TRUNCATE_AFTER_MEL = 0;
-    int TRUNCATE_AFTER_DCT = 0;
 
     int16_t *samples = NULL;
     WavHeader *header = open_wav_file(argv[1], &samples);
@@ -201,7 +274,6 @@ int main(int argc, char *argv[]) {
     }
 
     if (create_dirs()) return -1;
-    char *c_dir = getenv("REF_C_DIR");
     char filepath[512];
     char *tests_dir = getenv("TESTS_DIR");
     char *samples_dir = getenv("SAMPLES_DIR");
@@ -238,11 +310,12 @@ int main(int argc, char *argv[]) {
     
     //PRIMEIRA ETAPA "pre enfase"
     int64_t *samples_64bit = malloc(sizeof(int64_t) * num_samples);
-    pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), samples_64bit, F_PRE_EMPHASIS);
+    pre_emphasis(samples, header->subchunk2Size / sizeof(int16_t), samples_64bit, cfg.F_PRE);
 
-    // truc
-    if (TRUNCATE_AFTER_PRE_EMPHASIS) {
-    int64_t mask = ~((1LL << F_PRE_EMPHASIS) - 1);  // bits fracionários = 0
+    // trucamento
+    if (cfg.TRUNCATE_PRE)659890
+     {
+    int64_t mask = ~((1LL << cfg.F_PRE) - 1);  // bits fracionários = 0
     for (int i = 0; i < num_samples; i++) {
         samples_64bit[i] &= mask;
     }
@@ -253,7 +326,7 @@ int main(int argc, char *argv[]) {
         dump_hex(filepath, samples_64bit, num_samples, sizeof(int64_t));
 
         snprintf(filepath, sizeof(filepath), "%s/dumps/1_pre_emphasis.hex", c_dir);
-        dump_fixed_point_to_float(filepath, samples_64bit, num_samples, F_PRE_EMPHASIS, sizeof(int64_t));
+        dump_fixed_point_to_float(filepath, samples_64bit, num_samples, cfg.F_PRE, sizeof(int64_t));
     #endif
 
     // VETORES
@@ -263,15 +336,15 @@ int main(int argc, char *argv[]) {
 
     // TABELAS
     int32_t* window = malloc(frame_size * sizeof(int32_t*)); ;
-    generate_hamming_window(window, frame_size, F_HAMMING);
+    generate_hamming_window(window, frame_size, cfg.F_HAMMING);
 
     complex_t* twiddles = (complex_t*)malloc((NFFT / 2) * sizeof(complex_t));
-    generate_twiddles(twiddles, NFFT, F_FFT);  
+    generate_twiddles(twiddles, NFFT, cfg.F_FFT);  
 
     int32_t **filterbank = malloc(NUM_FILTERS * sizeof(int32_t*));
-    int16_t max_width_mel = create_op_filterbank(filterbank, sample_rate, F_MEL);
+    int16_t max_width_mel = create_op_filterbank(filterbank, sample_rate, cfg.F_MEL);
 
-    init_cos_lut(F_DCT);
+    init_cos_lut(cfg.F_DCT);
     
     // PRECISAO
     int ENERGIES_WIDTH_F = 13;
@@ -281,9 +354,9 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < num_frames; i++) {
         //TERCEIRA ETAPA "janelamento"
-        hamming_window_fixed(frames[i], window, frame_size, F_HAMMING, F_PRE_EMPHASIS);
-        if (TRUNCATE_AFTER_HAMMING){
-            int64_t mask = ~((1LL << F_HAMMING) - 1);
+        hamming_window_fixed(frames[i], window, frame_size, cfg.F_HAMMING, cfg.F_PRE);
+        if (cfg.TRUNCATE_HAMMING){
+            int64_t mask = ~((1LL << cfg.F_HAMMING) - 1);
             for (int j = 0; j < frame_size; j++) {
                 frames[i][j] &= mask;
             }
@@ -291,17 +364,17 @@ int main(int argc, char *argv[]) {
 
         //QUARTA ETAPA FFT
         power_spectrum[0] = 0; // DC é zero
-        fft_real_power(frames[i], frame_size, power_spectrum, twiddles, F_FFT, F_HAMMING);
-        if (TRUNCATE_AFTER_FFT){
-            int64_t mask = ~((1LL << F_FFT) - 1);
+        fft_real_power(frames[i], frame_size, power_spectrum, twiddles, cfg.F_FFT, cfg.F_HAMMING);
+        if (cfg.TRUNCATE_FFT){
+            int64_t mask = ~((1LL << cfg.F_FFT) - 1);
             for (int j = 0; j < NFFT; j++) {
                 power_spectrum[j] &= mask;
             }
         }
 
         //QUINTA ETAPA MEL
-        apply_op_filterbank(power_spectrum, energies, sample_rate, filterbank, F_MEL, ENERGIES_WIDTH_F, F_FFT);
-        if (TRUNCATE_AFTER_MEL){
+        apply_op_filterbank(power_spectrum, energies, sample_rate, filterbank, cfg.F_MEL, ENERGIES_WIDTH_F, cfg.F_FFT);
+        if (cfg.TRUNCATE_MEL){
             int64_t mask = ~((1LL << ENERGIES_WIDTH_F) - 1);
             for (int j = 0; j < NUM_FILTERS; j++) {
                 energies[j] &= mask;
@@ -309,9 +382,9 @@ int main(int argc, char *argv[]) {
         }
 
         //SEXTA ETAPA DCT
-        dct_fixed(energies, NUM_FILTERS, ceps, ENERGIES_WIDTH_F, F_DCT);
-        if (TRUNCATE_AFTER_DCT){
-            int64_t mask = ~((1LL << F_DCT) - 1);
+        dct_fixed(energies, NUM_FILTERS, ceps, ENERGIES_WIDTH_F, cfg.F_DCT);
+        if (cfg.TRUNCATE_DCT){
+            int64_t mask = ~((1LL << cfg.F_DCT) - 1);
             for (int j = 0; j < NUM_CEPS; j++) {
                 ceps[j] &= mask;
             }
@@ -323,21 +396,21 @@ int main(int argc, char *argv[]) {
         dump_hex(filepath, frames[i], frame_size, sizeof(int64_t));
 
         snprintf(filepath, sizeof(filepath), "%s/dumps/2_frames/%04d.hex", c_dir, i);
-        dump_fixed_point_to_float(filepath, frames[i], frame_size, F_PRE_EMPHASIS, sizeof(int64_t));
+        dump_fixed_point_to_float(filepath, frames[i], frame_size, cfg.F_PRE, sizeof(int64_t));
 
         //log hamming
         snprintf(filepath, sizeof(filepath), "%s/ref_vectors/3_hamming_frames/%04d.hex", tests_dir, i);
         dump_hex(filepath, frames[i], frame_size, sizeof(int64_t));
 
         snprintf(filepath, sizeof(filepath), "%s/dumps/3_hamming_frames/%04d.hex", c_dir, i);
-        dump_fixed_point_to_float(filepath, frames[i], frame_size, F_HAMMING, sizeof(int64_t));
+        dump_fixed_point_to_float(filepath, frames[i], frame_size, cfg.F_HAMMING, sizeof(int64_t));
 
         //log fft
         snprintf(filepath, sizeof(filepath), "%s/ref_vectors/4_power_spectrum/%04d.hex", tests_dir, i);
         dump_hex(filepath, power_spectrum,  NFFT/2 + 1, sizeof(int64_t));
 
         snprintf(filepath, sizeof(filepath), "%s/dumps/4_power_spectrum/%04d.hex", c_dir, i);
-        dump_fixed_point_to_float(filepath, power_spectrum, NFFT/2 + 1, F_FFT, sizeof(int64_t));
+        dump_fixed_point_to_float(filepath, power_spectrum, NFFT/2 + 1, cfg.F_FFT, sizeof(int64_t));
 
         //log mel
         snprintf(filepath, sizeof(filepath), "%s/ref_vectors/5_energies/%04d.hex", tests_dir, i);
@@ -351,7 +424,7 @@ int main(int argc, char *argv[]) {
         dump_hex(filepath, ceps,  NUM_CEPS, sizeof(int32_t));
         
         snprintf(filepath, sizeof(filepath), "%s/dumps/6_ceps/%04d.hex", c_dir, i);
-        dump_fixed_point_to_float(filepath, ceps, NUM_CEPS, F_DCT, sizeof(int32_t));
+        dump_fixed_point_to_float(filepath, ceps, NUM_CEPS, cfg.F_DCT, sizeof(int32_t));
         #endif
     }
 
