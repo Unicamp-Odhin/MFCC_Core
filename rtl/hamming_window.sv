@@ -78,7 +78,7 @@ module hamming_window #(
                 CALC: begin
                     rd_en_o <= 0;
                     if(calc_pointer == NUM_COEFFICIENTS) begin
-                        hamming_sample_temp <= -1;
+                        hamming_sample_temp <= 0;
                         rd_en_o <= 0;
                         hamming_state <= PADDING;
                         frame_ptr <= frame_ptr + 1;
@@ -102,7 +102,7 @@ module hamming_window #(
                     temp_valid <= 1;
 
                     if(frame_ptr < NFFT_SIZE_COMPAIR[NFFT_LOG2-1:0]) begin
-                        hamming_sample_temp <= -1;
+                        hamming_sample_temp <= 0;
                         frame_ptr <= frame_ptr + 1;
                         temp_ptr <= frame_ptr;
                     end else begin
