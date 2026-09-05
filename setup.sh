@@ -18,3 +18,4 @@ export RTL_DIR TESTS_DIR TABLES_DIR WAV_DIR SAMPLES_DIR REF_C_DIR REF_PYTHON_DIR
 
 
 mkdir -p "$TESTS_DIR/data/3_hamming_frames"
+mkdir -p "$TESTS_DIR/data/4_power_spectrum"
