@@ -1,33 +1,39 @@
 `timescale 1ns/1ps
 module hamming_tb ();
-    localparam MAX_AUDIO_SIZE = 65530;
-    localparam SAMPLE_RATE = 12207;
-    localparam N = 16;
-    localparam F_PRE_EMPHASIS = 15;
-    localparam F_HAMMING = 15;
+    localparam MAX_AUDIO_SIZE = 50177;
+    localparam SAMPLE_RATE = 16000;
+    localparam WIDTH_MIC = 16;
+    localparam WIDTH = 64;
+    localparam F_WIDTH = 16;
     localparam PCM_FIFO_DEPTH = 2048;
     localparam FRAME_SIZE_T = 0.025;
     localparam FRAME_STEP_T = 0.01;
     localparam FRAME_SIZE = $rtoi(SAMPLE_RATE * FRAME_SIZE_T);
     localparam FRAME_STEP = $rtoi(SAMPLE_RATE * FRAME_STEP_T);
-    localparam ALPHA = $rtoi(0.97 * (1 << F_PRE_EMPHASIS));
+    localparam ALPHA = $rtoi(0.97 * (1 << F_WIDTH));
     localparam FFT_SIZE = 512;
 
 
     logic clk;
     logic rst_n;
 
-    logic [N-1:0] samples [0:MAX_AUDIO_SIZE - 1];
+    logic [WIDTH_MIC-1:0] samples [0:MAX_AUDIO_SIZE - 1];
 
-    logic signed [N-1:0] pcm_in;
-    logic signed [2*N-1:0] pre_emphasized_signal;
+    logic signed [WIDTH_MIC-1:0] pcm_in;
+    logic signed [WIDTH-1:0] pre_emphasized_signal;
     logic pcm_ready_i;
-    logic pre_emphasis_valid;
+    logic pre_emphasis_valid, pre_emphasis_valid_prev, pre_emphasis_valid_posedge;
+    assign pre_emphasis_valid_posedge = ~pre_emphasis_valid_prev & pre_emphasis_valid;
+    logic x_prev_valid;
+    integer i, j;
+
+    assign x_prev_valid = ~(pre_emphasis_valid_posedge & (i != 2));
 
     pre_emphasis #(
-        .N (N),
-        .F (F_PRE_EMPHASIS),
-        .ALPHA (ALPHA)
+        .WIDTH_IN (WIDTH_MIC),
+        .WIDTH_OUT (WIDTH),
+        .F (F_WIDTH),
+        .ALPHA (ALPHA) 
     ) u_pre_emphasis (
         .clk (clk),
         .rst_n (rst_n),
@@ -40,16 +46,16 @@ module hamming_tb ();
     );
 
     logic fifo_empty, fifo_full, fifo_rd_en;
-    logic [2*N-1:0] fifo_read_data;
+    logic [WIDTH-1:0] fifo_read_data;
 
     fifo #(
         .DEPTH        (PCM_FIFO_DEPTH),
-        .WIDTH        (2*N)
+        .WIDTH        (WIDTH)
     ) tx_fifo (
         .clk          (clk),
         .rst_n        (rst_n),
 
-        .wr_en_i      (pre_emphasis_valid),
+        .wr_en_i      (pre_emphasis_valid & x_prev_valid),
         .rd_en_i      (fifo_rd_en),
 
         .write_data_i (pre_emphasized_signal),
@@ -58,7 +64,7 @@ module hamming_tb ();
         .read_data_o  (fifo_read_data)
     );
 
-    logic [2*N-1:0] window_buffer_data;
+    logic [WIDTH-1:0] window_buffer_data;
     logic window_valid_to_read;
     logic window_rd_en;
     logic start_move;
@@ -66,7 +72,7 @@ module hamming_tb ();
     logic idle;
 
     window_buffer #(
-        .WIDTH (2*N),
+        .WIDTH (WIDTH),
         .FRAME_SIZE (FRAME_SIZE),
         .FRAME_STEP (FRAME_STEP)
     ) u_window_buffer (
@@ -91,12 +97,12 @@ module hamming_tb ();
     logic hamming_done, hamming_out_valid;
     logic [8:0] frame_ptr;
 
-    logic signed [2*N-1:0] hamming_sample;
-    logic signed [2*N-1:0] hamming_frame [0:FFT_SIZE-1];
+    logic signed [WIDTH-1:0] hamming_sample;
+    logic signed [WIDTH-1:0] hamming_frame [0:FFT_SIZE-1];
 
     hamming_window #(
-        .N (2*N),
-        .F (F_HAMMING),
+        .N (WIDTH),
+        .F (F_WIDTH),
         .NUM_COEFFICIENTS (FRAME_SIZE),
         .NFFT_SIZE (FFT_SIZE)
     ) u_hamming_window (
@@ -140,7 +146,7 @@ module hamming_tb ();
         string filename;
         begin
             // Monta o nome do arquivo com número
-            filename = $sformatf({`TESTS_DIR, "/data/hamming_tb/hamming_%0d.hex"}, frame_id + 1);
+            filename = $sformatf({`TESTS_DIR, "/data/3_hamming_frames/%04d.hex"}, frame_id);
 
             fd = $fopen(filename, "w");
             if (fd) begin
@@ -154,10 +160,10 @@ module hamming_tb ();
         end
     endtask
 
-    integer i, j;
 
     initial begin
-        $readmemh({`TESTS_DIR, "/data/samples.hex"}, samples);
+        $readmemh({`TESTS_DIR, "/ref_vectors/0_samples_dump.hex"}, samples);
+        
         $dumpfile({`TESTS_DIR, "/build/hamming_tb.vcd"});
 
         $dumpvars(0, hamming_tb);
@@ -174,7 +180,7 @@ module hamming_tb ();
         $display("amostra 0 e 1 window: %h %h", u_window_buffer.buffer[0], u_window_buffer.buffer[1]);
 
         for(j = 0; j < 24; j++) begin
-            $display("Processando quadro %0d", j + 1);
+            $display("Processando quadro %0d", j);
 
             wait(hamming_done);
 
@@ -194,10 +200,12 @@ module hamming_tb ();
 
     always #1 clk = ~clk;
 
+
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             pcm_ready_i <= 0;
             pcm_in      <= 0;
+            pre_emphasis_valid_prev <= 0;
         end else begin
             if (i < MAX_AUDIO_SIZE && !fifo_full) begin
                 pcm_in      <= samples[i];
@@ -208,8 +216,9 @@ module hamming_tb ();
             end
 
             if(fifo_full && pcm_ready_i) begin
-                i <= i - 2;
+                i <= i - 3;
             end
+            pre_emphasis_valid_prev <= pre_emphasis_valid;
         end
     end
 
