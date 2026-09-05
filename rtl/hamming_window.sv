@@ -1,9 +1,9 @@
 `timescale 1ns/1ps
 
 module hamming_window #(
-    parameter N = 32,
-    parameter F = 15,
-    parameter NUM_COEFFICIENTS = 306, // Número de coeficientes da janela de Hamming
+    parameter N = 64,
+    parameter F = 16,
+    parameter NUM_COEFFICIENTS = 400, // Número de coeficientes da janela de Hamming
     parameter NFFT_SIZE = 512,  // Tamanho do FFT
     parameter NFFT_LOG2 = $clog2(NFFT_SIZE)
 ) (
