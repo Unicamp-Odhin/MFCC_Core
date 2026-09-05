@@ -47,7 +47,7 @@ module fft_radix2 #(
 
     output logic power_valid_o,
     output logic [NFFT_LOG2-1:0] power_ptr_o,
-    output logic [2*WIDTH-1: 0] power_sample_o 
+    output logic [WIDTH-1: 0] power_sample_o 
 );
 
     /*
@@ -159,10 +159,13 @@ module fft_radix2 #(
 
     // Power calculation pipeline
     long_complex power_stage1;
-    logic [2*WIDTH-1:0] power_stage2_re;
+    logic [2*WIDTH-1:0] power_stage2_re, stage1_mult_re, stage1_mult_im;
     logic [2*WIDTH-1:0] power_stage2_im;
-    logic [2*WIDTH-1:0] power_stage3;
-    logic [2*WIDTH-1:0] power_stage4;
+    logic [WIDTH-1:0] power_stage3;
+    logic [WIDTH-1:0] power_stage4;
+
+    assign teste_1 = power_stage2_re[WIDTH+F-1:F];
+    assign teste_2 = power_stage2_im[WIDTH+F-1:F];
 
     logic power_valid_stage1;
     logic power_valid_stage2;
@@ -175,6 +178,18 @@ module fft_radix2 #(
     logic [NFFT_LOG2-1:0] power_ptr_stage4;
     logic [NFFT_LOG2-1:0] power_ptr;
 
+    long_mul_fixed #(.F(F)) u_mul_stage1_re (
+        .a      (power_stage1.re[WIDTH-1:0]),
+        .b      (power_stage1.re[WIDTH-1:0]),
+        .result (stage1_mult_re)
+    );
+
+    long_mul_fixed #(.F(F)) u_mul_stage1_im (
+        .a      (power_stage1.im[WIDTH-1:0]),
+        .b      (power_stage1.im[WIDTH-1:0]),
+        .result (stage1_mult_im)
+    );
+        
     // Outputs
     assign power_valid_o  = power_valid_stage4;
     assign power_ptr_o = power_ptr_stage4;
@@ -269,22 +284,19 @@ module fft_radix2 #(
                         power_valid_stage1 <= 1;
 
                         // Power pipeline Stage 2
-                        // feita em um always comb
-                        power_stage2_re <= $signed(power_stage1.re) * $signed(power_stage1.re); 
-                        power_stage2_im <= $signed(power_stage1.im) * $signed(power_stage1.im);
-
+                        power_stage2_re <= stage1_mult_re;
+                        power_stage2_im <= stage1_mult_im;
 
                         power_ptr_stage2   <= power_ptr_stage1;
                         power_valid_stage2 <= power_valid_stage1;
 
                         // Power pipeline Stage 3
-                        power_stage3       <= power_stage2_re[WIDTH+F-1:F] + power_stage2_im[WIDTH+F-1:F];
+                        power_stage3       <= power_stage2_re + power_stage2_im;
                         power_ptr_stage3   <= power_ptr_stage2;
                         power_valid_stage3 <= power_valid_stage2;
 
                         // Power pipeline Stage 4
                         power_stage4       <= power_stage3 >> NFFT_LOG2; //Dividir por NFFT
-                        // power_stage4       <= power_stage3[WIDTH+NFFT_LOG2-1:NFFT_LOG2]; //Dividir por NFFT
                         power_ptr_stage4   <= power_ptr_stage3;
                         power_valid_stage4 <= power_valid_stage3;
                     end
