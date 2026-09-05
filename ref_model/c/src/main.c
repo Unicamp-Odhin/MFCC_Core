@@ -353,6 +353,15 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < num_frames; i++) {
         //TERCEIRA ETAPA "janelamento"
+        #ifdef CONFIG_LOG
+        // log enquadramento
+        snprintf(filepath, sizeof(filepath), "%s/ref_vectors/2_frames/%04d.hex", tests_dir, i);
+        dump_hex(filepath, frames[i], frame_size, sizeof(int64_t));
+
+        snprintf(filepath, sizeof(filepath), "%s/dumps/2_frames/%04d.hex", c_dir, i);
+        dump_fixed_point_to_float(filepath, frames[i], frame_size, cfg.F_PRE, sizeof(int64_t));
+        #endif
+        
         hamming_window_fixed(frames[i], window, frame_size, cfg.F_HAMMING, cfg.F_PRE);
         if (cfg.TRUNCATE_HAMMING){
             int64_t mask = ~((1LL << cfg.F_HAMMING) - 1);
@@ -390,13 +399,6 @@ int main(int argc, char *argv[]) {
         }
         
         #ifdef CONFIG_LOG
-        // log enquadramento
-        snprintf(filepath, sizeof(filepath), "%s/ref_vectors/2_frames/%04d.hex", tests_dir, i);
-        dump_hex(filepath, frames[i], frame_size, sizeof(int64_t));
-
-        snprintf(filepath, sizeof(filepath), "%s/dumps/2_frames/%04d.hex", c_dir, i);
-        dump_fixed_point_to_float(filepath, frames[i], frame_size, cfg.F_PRE, sizeof(int64_t));
-
         //log hamming
         snprintf(filepath, sizeof(filepath), "%s/ref_vectors/3_hamming_frames/%04d.hex", tests_dir, i);
         dump_hex(filepath, frames[i], frame_size, sizeof(int64_t));
