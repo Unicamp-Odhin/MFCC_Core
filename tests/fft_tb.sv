@@ -4,18 +4,17 @@
 //`define DIRECT_FRAME
 
 module fft_tb ();
-    localparam MAX_AUDIO_SIZE = 65530;
-    localparam SAMPLE_RATE = 12207;
-    localparam N = 16;
-    localparam F_PRE_EMPHASIS = 15;
-    localparam F_HAMMING = 15;
-    localparam F_FFT = 32;
+    localparam MAX_AUDIO_SIZE = 50177;
+    localparam SAMPLE_RATE = 16000;
+    localparam WIDTH_MIC = 16;
+    localparam WIDTH = 64;
+    localparam F_WIDTH = 16;
     localparam PCM_FIFO_DEPTH = 2048;
     localparam FRAME_SIZE_T = 0.025;
     localparam FRAME_STEP_T = 0.01;
     localparam FRAME_SIZE = $rtoi(SAMPLE_RATE * FRAME_SIZE_T);
     localparam FRAME_STEP = $rtoi(SAMPLE_RATE * FRAME_STEP_T);
-    localparam ALPHA = $rtoi(0.97 * (1 << F_PRE_EMPHASIS));
+    localparam ALPHA = $rtoi(0.97 * (1 << F_WIDTH));
     localparam FFT_SIZE = 512;
     localparam RFFT_SIZE = FFT_SIZE / 2;
     localparam NFFT_LOG2 = $clog2(FFT_SIZE);
@@ -23,17 +22,23 @@ module fft_tb ();
     logic clk;
     logic rst_n;
 
-    logic [N-1:0] samples [0:MAX_AUDIO_SIZE-1];
+    logic [WIDTH_MIC-1:0] samples [0:MAX_AUDIO_SIZE-1];
 
-    logic signed [N-1:0] pcm_in;
-    logic signed [2*N-1:0] pre_emphasized_signal;
+    logic signed [WIDTH_MIC-1:0] pcm_in;
+    logic signed [WIDTH-1:0] pre_emphasized_signal;
     logic pcm_ready_i;
-    logic pre_emphasis_valid;
+    logic pre_emphasis_valid, pre_emphasis_valid_prev, pre_emphasis_valid_posedge;
+    assign pre_emphasis_valid_posedge = ~pre_emphasis_valid_prev & pre_emphasis_valid;
+    logic x_prev_valid;
+    integer i;
+
+    assign x_prev_valid = ~(pre_emphasis_valid_posedge & (i != 2));
 
     pre_emphasis #(
-        .N (N),
-        .F (F_PRE_EMPHASIS),
-        .ALPHA (ALPHA)
+        .WIDTH_IN (WIDTH_MIC),
+        .WIDTH_OUT (WIDTH),
+        .F (F_WIDTH),
+        .ALPHA (ALPHA) 
     ) u_pre_emphasis (
         .clk (clk),
         .rst_n (rst_n),
@@ -46,16 +51,16 @@ module fft_tb ();
     );
 
     logic fifo_empty, fifo_full, fifo_rd_en;
-    logic [2*N-1:0] fifo_read_data;
+    logic [WIDTH-1:0] fifo_read_data;
 
     fifo #(
         .DEPTH (PCM_FIFO_DEPTH),
-        .WIDTH (2*N)
+        .WIDTH (WIDTH)
     ) tx_fifo (
         .clk          (clk),
         .rst_n        (rst_n),
 
-        .wr_en_i      (pre_emphasis_valid),
+        .wr_en_i      (pre_emphasis_valid & x_prev_valid),
         .rd_en_i      (fifo_rd_en),
 
         .write_data_i (pre_emphasized_signal),
@@ -64,14 +69,14 @@ module fft_tb ();
         .read_data_o  (fifo_read_data)
     );
 
-    logic [2*N-1:0] window_buffer_data;
+    logic [WIDTH-1:0] window_buffer_data;
     logic window_valid_to_read;
     logic window_rd_en;
     logic start_move;
     logic start_hamming;
 
     window_buffer #(
-        .WIDTH                (2*N),
+        .WIDTH                (WIDTH),
         .FRAME_SIZE           (FRAME_SIZE),
         .FRAME_STEP            (FRAME_STEP)
     ) u_window_buffer (
@@ -94,11 +99,11 @@ module fft_tb ();
 
     logic hamming_done, hamming_out_valid;
     logic [NFFT_LOG2-1:0] frame_ptr;
-    logic signed [2*N-1:0] hamming_sample;
+    logic signed [WIDTH-1:0] hamming_sample;
 
     hamming_window #(
-        .N(2*N),
-        .F (F_HAMMING),
+        .N(WIDTH),
+        .F (F_WIDTH),
         .NUM_COEFFICIENTS (FRAME_SIZE),
         .NFFT_SIZE        (FFT_SIZE)
     ) u_hamming_window (
@@ -119,7 +124,7 @@ module fft_tb ();
     );
 
     logic [NFFT_LOG2-1:0] fft_ptr;
-    logic [2*N-1:0] fft_power_sample;
+    logic [WIDTH-1:0] fft_power_sample;
     logic fft_power_valid, fft_done;
 
     `ifdef DIRECT_FRAME
@@ -132,8 +137,8 @@ module fft_tb ();
 
     fft_radix2 #(
         .NFFT (FFT_SIZE),
-        .WIDTH (2*N),
-        .F(F_FFT),
+        .WIDTH (WIDTH),
+        .F(F_WIDTH),
         .NFFT_LOG2 (NFFT_LOG2)
     ) u_fft (
         .clk            (clk),
@@ -159,7 +164,7 @@ module fft_tb ();
         .fft_done_o     (fft_done)
     );
 
-    logic [31:0] rfft_power_buffer [0: RFFT_SIZE];
+    logic [WIDTH:0] rfft_power_buffer [0: RFFT_SIZE];
 
     always_ff @( posedge clk ) begin
         if(fft_power_valid) begin
@@ -183,19 +188,18 @@ module fft_tb ();
         integer fd;
         integer i;
         begin
-            fd = $fopen({`TESTS_DIR, "/data/fft_dump.hex"}, "w");
+            fd = $fopen({`TESTS_DIR, "/data/4_power_spectrum/0000.hex"}, "w");
             for (i = 0; i <= RFFT_SIZE; i = i + 1) begin
-                $fwrite(fd, "%d\n", rfft_power_buffer[i]);
+                $fwrite(fd, "%x\n", rfft_power_buffer[i]);
             end
             $fclose(fd);
         end
     endtask
 
-    integer i;
     integer clock_cycles;
 
     initial begin
-        $readmemh({`TESTS_DIR, "/data/samples.hex"}, samples);
+        $readmemh({`TESTS_DIR, "/ref_vectors/0_samples_dump.hex"}, samples);
         `ifdef DIRECT_FRAME
         $readmemh("dumps/hamming_frame_0.hex", fft_test_buffer);
         `endif
@@ -262,6 +266,7 @@ module fft_tb ();
         if (!rst_n) begin
             pcm_ready_i <= 0;
             pcm_in      <= 0;
+            pre_emphasis_valid_prev <= 0;
         end else begin
             if (i < MAX_AUDIO_SIZE && !fifo_full) begin
                 pcm_in      <= samples[i];
@@ -272,8 +277,9 @@ module fft_tb ();
             end
 
             if(fifo_full && pcm_ready_i) begin
-                i <= i - 2;
+                i <= i - 3;
             end
+            pre_emphasis_valid_prev <= pre_emphasis_valid;
         end
     end
 

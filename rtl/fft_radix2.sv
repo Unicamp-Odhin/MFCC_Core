@@ -1,36 +1,37 @@
 `timescale 1ns/1ps
 
 module long_mul_fixed #(
+    parameter WIDTH = 64,
     parameter F = 32
 ) (
-    input  logic signed [63:0]  a,
-    input  logic signed [63:0]  b,
-    output logic signed [63:0]  result
+    input  logic signed [WIDTH-1:0]  a,
+    input  logic signed [WIDTH-1:0]  b,
+    output logic signed [WIDTH-1:0]  result
 );
 
-    logic signed [127:0] mult_result;
-    logic signed [127:0] rounded_result;
+    localparam int TWO_W = 2*WIDTH;
+    logic signed [TWO_W-1:0] mult_result;
+    logic signed [TWO_W-1:0] rounded_result;
 
-    // Multiplicador 64 x 64 -> 128 bits
     assign mult_result = a * b;
 
-    // Arredondamento
+    localparam signed [TWO_W-1:0] ONE = 1;
+
     always_comb begin
         if (mult_result >= 0)
-            rounded_result = mult_result + (128'sd1 <<< (F - 1));
+            rounded_result = mult_result + (ONE <<< (F - 1));
         else
-            rounded_result = mult_result - (128'sd1 <<< (F - 1));
+            rounded_result = mult_result - (ONE <<< (F - 1));
     end
 
     assign result = rounded_result >>> F;
 
 endmodule
 
-
 module fft_radix2 #(
     parameter NFFT = 512,
-    parameter WIDTH = 32,
-    parameter F = 32,
+    parameter WIDTH = 64,
+    parameter F = 16,
     parameter NFFT_LOG2 = $clog2(NFFT)
 ) (
     input  logic clk,
@@ -46,7 +47,7 @@ module fft_radix2 #(
 
     output logic power_valid_o,
     output logic [NFFT_LOG2-1:0] power_ptr_o,
-    output logic [WIDTH-1: 0] power_sample_o 
+    output logic [2*WIDTH-1: 0] power_sample_o 
 );
 
     /*
@@ -55,7 +56,7 @@ module fft_radix2 #(
     stage3_addsub: soma e subtração complexas (c_add, c_sub)
     writeback: escrita nos registradores x[]
     */
-    localparam COMPLEX_WIDTH = 2*WIDTH; // TODO: Voltar aqui pois pode ser menor, o mínimo necessário é WIDTH + log2(NFFT)
+    localparam COMPLEX_WIDTH = WIDTH; // TODO: Voltar aqui pois pode ser menor, o mínimo necessário é WIDTH + log2(NFFT)
 
     import complex_pkg::*;
 
@@ -130,10 +131,10 @@ module fft_radix2 #(
     } pipeline_stage_1_t;
 
     typedef struct packed {
-        logic signed [2*COMPLEX_WIDTH-1:0] arbr; // a.re * b.re
-        logic signed [2*COMPLEX_WIDTH-1:0] aibi; // a.im * b.im
-        logic signed [2*COMPLEX_WIDTH-1:0] arbi; // a.re * b.im
-        logic signed [2*COMPLEX_WIDTH-1:0] aibr; // a.im * b.re
+        logic signed [COMPLEX_WIDTH-1:0] arbr; // a.re * b.re
+        logic signed [COMPLEX_WIDTH-1:0] aibi; // a.im * b.im
+        logic signed [COMPLEX_WIDTH-1:0] arbi; // a.re * b.im
+        logic signed [COMPLEX_WIDTH-1:0] aibr; // a.im * b.re
         long_complex even;
         logic [NFFT_LOG2:0] addr_even;
         logic [NFFT_LOG2:0] addr_odd;
@@ -158,10 +159,10 @@ module fft_radix2 #(
 
     // Power calculation pipeline
     long_complex power_stage1;
-    logic [COMPLEX_WIDTH-1:0] power_stage2_re;
-    logic [COMPLEX_WIDTH-1:0] power_stage2_im;
-    logic [COMPLEX_WIDTH-1:0] power_stage3;
-    logic [WIDTH-1:0] power_stage4;
+    logic [2*WIDTH-1:0] power_stage2_re;
+    logic [2*WIDTH-1:0] power_stage2_im;
+    logic [2*WIDTH-1:0] power_stage3;
+    logic [2*WIDTH-1:0] power_stage4;
 
     logic power_valid_stage1;
     logic power_valid_stage2;
@@ -268,20 +269,22 @@ module fft_radix2 #(
                         power_valid_stage1 <= 1;
 
                         // Power pipeline Stage 2
-                        power_stage2_re <= $signed(power_stage1.re[WIDTH+F-1:F]) * $signed(power_stage1.re[WIDTH+F-1:F]); //Pego apenas a parte inteira
-                        power_stage2_im <= $signed(power_stage1.im[WIDTH+F-1:F]) * $signed(power_stage1.im[WIDTH+F-1:F]);
+                        // feita em um always comb
+                        power_stage2_re <= $signed(power_stage1.re) * $signed(power_stage1.re); 
+                        power_stage2_im <= $signed(power_stage1.im) * $signed(power_stage1.im);
 
 
                         power_ptr_stage2   <= power_ptr_stage1;
                         power_valid_stage2 <= power_valid_stage1;
 
                         // Power pipeline Stage 3
-                        power_stage3       <= power_stage2_re + power_stage2_im;
+                        power_stage3       <= power_stage2_re[WIDTH+F-1:F] + power_stage2_im[WIDTH+F-1:F];
                         power_ptr_stage3   <= power_ptr_stage2;
                         power_valid_stage3 <= power_valid_stage2;
 
                         // Power pipeline Stage 4
-                        power_stage4       <= power_stage3[WIDTH+NFFT_LOG2-1:NFFT_LOG2]; //Dividir por NFFT
+                        power_stage4       <= power_stage3 >> NFFT_LOG2; //Dividir por NFFT
+                        // power_stage4       <= power_stage3[WIDTH+NFFT_LOG2-1:NFFT_LOG2]; //Dividir por NFFT
                         power_ptr_stage4   <= power_ptr_stage3;
                         power_valid_stage4 <= power_valid_stage3;
                     end
@@ -387,10 +390,10 @@ module fft_radix2 #(
             x2_write_en   <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b10;
             x3_write_en   <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b11;
             
-            x0_write_data <= {{{WIDTH_DIFF{frame_sample_i[WIDTH - 1]}}}, frame_sample_i, {F'(0)}, COMPLEX_WIDTH'(0)}; // Extensão de sinal
-            x1_write_data <= {{{WIDTH_DIFF{frame_sample_i[WIDTH - 1]}}}, frame_sample_i, {F'(0)}, COMPLEX_WIDTH'(0)}; // Extensão de sinal
-            x2_write_data <= {{{WIDTH_DIFF{frame_sample_i[WIDTH - 1]}}}, frame_sample_i, {F'(0)}, COMPLEX_WIDTH'(0)}; // Extensão de sinal
-            x3_write_data <= {{{WIDTH_DIFF{frame_sample_i[WIDTH - 1]}}}, frame_sample_i, {F'(0)}, COMPLEX_WIDTH'(0)}; // Extensão de sinal
+            x0_write_data <= {frame_sample_i, COMPLEX_WIDTH'(0)}; // Extensão de sinal
+            x1_write_data <= {frame_sample_i, COMPLEX_WIDTH'(0)}; // Extensão de sinal
+            x2_write_data <= {frame_sample_i, COMPLEX_WIDTH'(0)}; // Extensão de sinal
+            x3_write_data <= {frame_sample_i, COMPLEX_WIDTH'(0)}; // Extensão de sinal
             
         end else if(fft_state == PROCESSING) begin
             case (stage3_addsub.addr_even_bank)
