@@ -74,7 +74,8 @@ buildFolder:
 clean:
 	@printf "$(RED)[CLEAN]$(NC) Removendo arquivos gerados\n"
 	rm -rf $(BUILD_DIR)
-	rm -rf dumps/
+	rm -rf "$(REF_C_DIR)/dumps/"
+	rm -rf "$(TESTS_DIR)/ref_vectors/"
 
 # Paralelização
 MAKEFLAGS += -j$(shell nproc)

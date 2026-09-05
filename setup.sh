@@ -15,3 +15,6 @@ OBJ_DIR="${ROOT_DIR}/obj_dir"
 # Exporta variáveis para uso em outros scripts
 export PROJECT_ROOT="$ROOT_DIR"
 export RTL_DIR TESTS_DIR TABLES_DIR WAV_DIR SAMPLES_DIR REF_C_DIR REF_PYTHON_DIR BUILD_DIR OBJ_DIR
+
+
+mkdir -p "$TESTS_DIR/data/3_hamming_frames"
