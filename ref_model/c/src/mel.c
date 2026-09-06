@@ -264,7 +264,7 @@ void save_op_filterbank(const char *filename, int32_t** filterbank_op, int16_t m
     }
     printf("MEL_BANK_SIZE= %d\n", max_size + 2);
     for (int i = 0; i < NUM_FILTERS; i++) 
-        for (int j = 0; j <= max_size; j++) 
+        for (int j = 0; j < max_size + 2; j++) 
             fprintf(fp, "%08" PRIx32 "\n", filterbank_op[i][j]);
     fclose(fp);
 }

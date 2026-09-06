@@ -346,7 +346,7 @@ int main(int argc, char *argv[]) {
     init_cos_lut(cfg.F_DCT);
     
     // PRECISAO
-    int ENERGIES_WIDTH_F = 13;
+    int ENERGIES_WIDTH_F = 16;
 
     //SEGUNDA ETAPA "enquadramento"
     int64_t **frames = frame_signal_int(samples_64bit, num_samples, frame_size, frame_step, &num_frames);
