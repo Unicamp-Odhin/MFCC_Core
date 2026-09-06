@@ -136,6 +136,7 @@ module fft_radix2 #(
     logic [WIDTH-1:0] power_stage3;
     logic [WIDTH-1:0] power_stage4;
 
+
     logic power_valid_stage1;
     logic power_valid_stage2;
     logic power_valid_stage3;
