@@ -1,14 +1,42 @@
 `timescale 1ns/1ps
 
+module mul_fixed #(
+    parameter WIDTH = 32,
+    parameter F = 16
+) (
+    input  logic signed [WIDTH-1:0]  a,
+    input  logic signed [WIDTH-1:0]  b,
+    output logic signed [WIDTH-1:0]  result
+);
+
+    localparam int TWO_W = 2*WIDTH;
+    logic signed [TWO_W-1:0] mult_result;
+    logic signed [TWO_W-1:0] rounded_result;
+
+    assign mult_result = a * b;
+
+    localparam signed [TWO_W-1:0] ONE = 1;
+
+    always_comb begin
+        if (mult_result >= 0)
+            rounded_result = mult_result + (ONE <<< (F - 1));
+        else
+            rounded_result = mult_result - (ONE <<< (F - 1));
+    end
+
+    assign result = rounded_result >>> F;
+
+endmodule
+
 module dct #(
     parameter NUM_CEPS    = 12,
     parameter NUM_MEL_FILTERS = 40,
-    parameter ENERGIES_WIDTH = 16,
+    parameter ENERGIES_WIDTH = 32,
     parameter CEPS_WIDTH  = 32,
-    parameter DCT_COEFF_WIDTH = 16,
-    parameter DCT_COEFF_WIDTH_F = 14,
-    parameter NF_LOG2     = $clog2(NUM_MEL_FILTERS),
-    parameter NC_LOG2     = $clog2(NUM_CEPS)
+    parameter DCT_COEFF_WIDTH = 32,
+    parameter F = 16,
+    parameter NF_LOG2 = $clog2(NUM_MEL_FILTERS),
+    parameter NC_LOG2 = $clog2(NUM_CEPS)
 ) (
     input  logic clk,
     input  logic rst_n,
@@ -27,8 +55,8 @@ module dct #(
 );
 
     // TODO parametrizar no futuro
-    localparam int FACTOR0 = 2590;
-    localparam int FACTORK = 3663;
+    localparam int FACTOR0 = 10362;
+    localparam int FACTORK = 14654;
 
 
     logic signed [DCT_COEFF_WIDTH-1:0] cos_lut[NUM_CEPS][NUM_MEL_FILTERS]; // LUT para os cossenos
@@ -56,7 +84,7 @@ module dct #(
     logic [NC_LOG2-1:0] k_ptr;
     logic [NF_LOG2-1:0] n_ptr;
 
-    logic signed [2*CEPS_WIDTH-1:0] mul_result;
+    logic signed [2*CEPS_WIDTH-1:0] mul_result, mul_result_temp;
     logic signed [2*CEPS_WIDTH-1:0] acc, temp_ceps_out;
     logic signed [ENERGIES_WIDTH-1:0] signed_filter;
     logic signed [DCT_COEFF_WIDTH-1:0] cos;
@@ -66,6 +94,13 @@ module dct #(
     assign cos = cos_lut[k_ptr][n_ptr];
 
     dct_state_t dct_current_state, dct_next_state;
+
+    long_mul_fixed #(.F(F)) u_mul (
+        .a (signed_filter),
+        .b (cos),
+        .result (mul_result_temp)
+    );
+
 
     always_ff @(posedge clk) begin
         if (!rst_n) begin
@@ -100,7 +135,7 @@ module dct #(
                 end
 
                 PROCESSING: begin
-                    mul_result <= (signed_filter * cos) + (1 << (DCT_COEFF_WIDTH_F-1));
+                    mul_result <= mul_result_temp;
                     acc <= acc + mul_result;
                     n_ptr <= n_ptr + 1'b1;
                 end
@@ -174,7 +209,7 @@ module dct #(
 
     always_comb begin
         if (temp_ceps_out != '0) begin
-            ceps_out = temp_ceps_out[CEPS_WIDTH+DCT_COEFF_WIDTH_F-1:DCT_COEFF_WIDTH_F];
+            ceps_out = temp_ceps_out[CEPS_WIDTH+F-1:F];
         end else begin
             ceps_out = '0;
         end

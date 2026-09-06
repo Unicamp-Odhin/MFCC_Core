@@ -71,7 +71,7 @@ module mel #(
 
     logic [POWER_WIDTH-1:0] sum, sum_next, sum_finish;
     logic [FILTER_INDEX_WIDTH-1:0] i, i_next;
-    logic [RFFT_BIN_ADDR_WIDTH-1:0] k, k_next, k_init;
+    logic [RFFT_BIN_ADDR_WIDTH:0] k, k_next, k_init;
     logic [MEL_MEMORY_ADDR_WIDTH-1:0] i_total, i_total_next, prt_memory;
 
     logic [POWER_WIDTH-1:0] temp_mul_next;
