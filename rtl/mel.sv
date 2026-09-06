@@ -1,17 +1,43 @@
 `timescale 1ns/1ps
 
+module long_mul_fixed #(
+    parameter WIDTH = 64,
+    parameter F = 16
+) (
+    input  logic signed [WIDTH-1:0]  a,
+    input  logic signed [WIDTH-1:0]  b,
+    output logic signed [WIDTH-1:0]  result
+);
+
+    localparam int TWO_W = 2*WIDTH;
+    logic signed [TWO_W-1:0] mult_result;
+    logic signed [TWO_W-1:0] rounded_result;
+
+    assign mult_result = a * b;
+
+    localparam signed [TWO_W-1:0] ONE = 1;
+
+    always_comb begin
+        if (mult_result >= 0)
+            rounded_result = mult_result + (ONE <<< (F - 1));
+        else
+            rounded_result = mult_result - (ONE <<< (F - 1));
+    end
+
+    assign result = rounded_result >>> F;
+
+endmodule
+
 module mel #(
     parameter NUM_MEL_FILTERS = 40,
     parameter FFT_SIZE = 512,
     parameter NUM_RFFT_BINS = FFT_SIZE/2 + 1,
     parameter RFFT_BIN_ADDR_WIDTH = $clog2(NUM_RFFT_BINS),
-    parameter POWER_WIDTH = 32,
-    parameter MEL_COEFF_WIDTH_F = 8,
-    parameter FRACTIONAL_BITS = 14,
-    parameter MEL_ENERGY_WIDTH = 16,
-    // parameter MEL_ENERGY_WIDTH = $clog2(($clog2(NUM_RFFT_BINS)+POWER_WIDTH) * 6),
+    parameter POWER_WIDTH = 64,
+    parameter F = 16,
+    parameter MEL_ENERGY_WIDTH = 32,
     parameter FILTER_INDEX_WIDTH = $clog2(NUM_MEL_FILTERS),
-    parameter MEL_BANK_SIZE = 31
+    parameter MEL_BANK_SIZE = 33
 ) (
     input  logic clk,
     input  logic rst_n,
@@ -29,10 +55,11 @@ module mel #(
     output logic mel_valid
 
 );
-    localparam ACCUMULATOR_WIDTH = $clog2(NUM_RFFT_BINS)+POWER_WIDTH;
+    // localparam ACCUMULATOR_WIDTH = $clog2(NUM_RFFT_BINS)+POWER_WIDTH;
     localparam MEL_MEMORY_DEPTH = MEL_BANK_SIZE * NUM_MEL_FILTERS;
     localparam MEL_BANK_ADDR_WIDTH=$clog2(MEL_BANK_SIZE) + 1;
     localparam MEL_MEMORY_ADDR_WIDTH=$clog2(MEL_MEMORY_DEPTH);
+    localparam LOG10_CONST = $rtoi(6.02059992 * (1 << F));
 
     logic [POWER_WIDTH-1:0] power_spectrum_mem [0:NUM_RFFT_BINS-1];
 
@@ -42,13 +69,13 @@ module mel #(
         end
     end
 
-    logic [ACCUMULATOR_WIDTH:0] sum, sum_next;
+    logic [POWER_WIDTH-1:0] sum, sum_next, sum_finish;
     logic [FILTER_INDEX_WIDTH-1:0] i, i_next;
     logic [RFFT_BIN_ADDR_WIDTH-1:0] k, k_next, k_init;
     logic [MEL_MEMORY_ADDR_WIDTH-1:0] i_total, i_total_next, prt_memory;
 
-    logic [POWER_WIDTH+MEL_COEFF_WIDTH_F-1:0] temp_mul_next;
-    logic [MEL_ENERGY_WIDTH-1:0] temp_log2;
+    logic [POWER_WIDTH-1:0] temp_mul_next;
+    logic [MEL_ENERGY_WIDTH-1:0] temp_log2, temp_log10;
 
     logic [POWER_WIDTH-1:0] power_spectrum;
     assign power_spectrum = power_spectrum_mem[k];
@@ -73,6 +100,17 @@ module mel #(
 
     state_t state, next_state;
 
+    long_mul_fixed #(.F(F)) u_mul (
+        .a      (power_spectrum),
+        .b      (filter),
+        .result (temp_mul_next)
+    );
+
+    long_mul_fixed #(.F(F)) u_mul_out (
+        .a      (temp_log2),
+        .b      (LOG10_CONST),
+        .result (temp_log10)
+    );
 
     always_ff @(posedge clk ) begin
         if (!rst_n) begin
@@ -82,13 +120,15 @@ module mel #(
             k          <= 0;
             i_total    <= 0;
             mel_done_o <= 0;
+            sum_finish <= 0;
         end else begin
             state   <= next_state;
             sum     <= sum_next;
             i       <= i_next;
             k       <= k_next;
             i_total <= i_total_next;
-
+            if (next_state == CALC_ENERGY) 
+                sum_finish <= sum_next;
             if (i == NUM_MEL_FILTERS) begin
                 state      <= IDLE;
                 mel_done_o <= 1;
@@ -109,7 +149,6 @@ module mel #(
         sum_next      = sum;
         i_next        = i;
         k_next        = k;
-        temp_mul_next = 0;
         i_total_next  = i_total;
 
         case (state)
@@ -136,14 +175,13 @@ module mel #(
                 end
             end
 
-            CALC_SUM: begin //TODO: Para melhorias futuras testar essa parte usando a parte fracionária na conta
+            CALC_SUM: begin
                 mel_valid         = 1'b0;
                 mel_value_energies = '0;
                 mel_prt_energies   = i;
 
                 if (k <= mel_memory[i_total + 1]) begin
-                    temp_mul_next = ((power_spectrum * filter) + (1 << (FRACTIONAL_BITS-1)));
-                    sum_next      = sum + temp_mul_next[POWER_WIDTH+FRACTIONAL_BITS-1:FRACTIONAL_BITS];
+                    sum_next      = sum + temp_mul_next;
                     k_next        = k + 1;
                     next_state    = CALC_SUM;
                 end else begin
@@ -162,7 +200,7 @@ module mel #(
                 if (sum <= 0) begin
                     mel_value_energies = '0; // Pode ajustar para saturar em 0
                 end else begin
-                    mel_value_energies = temp_log2;
+                    mel_value_energies = temp_log10;
                 end
 
                 next_state = LOAD;
@@ -181,12 +219,11 @@ module mel #(
         endcase
     end
 
-    base2log #(
-        .WIDTH(ACCUMULATOR_WIDTH),
-        .OUTPUT_WIDTH(MEL_ENERGY_WIDTH)
+    baselog2_fp #(
+        .F(F)
     ) u_base2log (
-        .number_i(sum),
-        .log_o(temp_log2)
+        .x(sum_finish),
+        .result(temp_log2)
     );
 
 endmodule

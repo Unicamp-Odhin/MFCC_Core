@@ -3,20 +3,21 @@
 module mel_tb();
 
 	localparam NUM_FILTERS = 40;
-	localparam NFFT        = 512;
-	localparam NRFFT       = NFFT/2 + 1;
+	localparam NFFT = 512;
+	localparam NRFFT = NFFT/2 + 1;
+	localparam F = 16;
 
 	logic clk;
 	logic rst_n;
 	logic mel_start;
 	logic mel_done;
-	logic [7:0] mel_value_energies;
+	logic [31:0] mel_value_energies;
 	logic [5:0] mel_prt_energies;
 	logic mel_valid;
 	logic finished, start_in;
 
 	logic mel_in_valid;
-	logic [31:0] mel_test_sample_in;
+	logic [63:0] mel_test_sample_in;
 	logic [8:0] mel_test_ptr;
 
 	// Instância do DUT
@@ -45,11 +46,11 @@ module mel_tb();
 
 	// Memória para simular a entrada
 	//   logic [31:0] power_spectrum_mem [0:NRFFT-1];
-	logic [31:0] power_spectrum_mem [0:NRFFT-1];
-	logic [7:0]  energie_expected   [0:NUM_FILTERS-1];
+	logic [64:0] power_spectrum_mem [0:NRFFT-1];
+	logic [31:0]  energie_expected   [0:NUM_FILTERS-1];
 
 	// Para armazenar resultados
-	logic [7:0] energie_out [0:NUM_FILTERS-1];
+	logic [31:0] energie_out [0:NUM_FILTERS-1];
 
 	initial begin
 		$display("---- Iniciando Teste MEL ----");
@@ -67,9 +68,9 @@ module mel_tb();
 		#10;
 
 		// Teste 1
-		test_with_data({`TESTS_DIR, "/data/power_spectrum_1.hex"}, {`TESTS_DIR, "/data/energie_1.hex"});
+		test_with_data({`TESTS_DIR, "/ref_vectors/4_power_spectrum/0000.hex"}, {`TESTS_DIR, "/ref_vectors/5_energies/0000.hex"});
 		// Teste 2
-		test_with_data({`TESTS_DIR, "/data/power_spectrum_2.hex"}, {`TESTS_DIR, "/data/energie_2.hex"});
+		test_with_data({`TESTS_DIR, "/ref_vectors/4_power_spectrum/0001.hex"}, {`TESTS_DIR, "/ref_vectors/5_energies/0001.hex"});
 
 		$display("---- Teste Finalizado ----");
 		$finish;
@@ -77,6 +78,7 @@ module mel_tb();
 
 	task test_with_data(string power_file, string energy_file);
 		integer idx;
+		integer ok;
 		begin
 		$display("Carregando %s e %s", power_file, energy_file);
 
@@ -96,7 +98,7 @@ module mel_tb();
 
 		// Limpa as saídas anteriores
 		for (idx = 0; idx < NUM_FILTERS; idx++)
-			energie_out[idx] = 8'd0;
+			energie_out[idx] = '0;
 
 		// Inicia processamento
 		mel_start = 1;
@@ -106,12 +108,17 @@ module mel_tb();
 		wait (mel_done); // Espera terminar
 
 		// Verifica resultados
+		ok = 1;
+		$display("\n");
 		for (idx = 0; idx < NUM_FILTERS; idx++) begin
 			if (energie_out[idx] !== energie_expected[idx]) begin
-			$display("Erro: idx %0d, esperado = %0d, obtido = %0d", 
-						idx, energie_expected[idx], energie_out[idx]);
+				ok = 0;
+				$display("ERRO: idx %0d, esperado = %f, obtido = %f", idx, real'(energie_expected[idx]) / real'(1 << F), real'(energie_out[idx]) / real'(1 << F));
 			end
 		end
+		if (ok == 1)
+			$display("PASSOU NO TESTE\n");
+
 		#50;
 		end
 	endtask
