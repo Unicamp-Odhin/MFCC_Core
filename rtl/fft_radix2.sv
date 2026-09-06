@@ -407,7 +407,7 @@ module fft_radix2 #(
             x2_write_data <= {frame_sample_i, COMPLEX_WIDTH'(0)}; // Extensão de sinal
             x3_write_data <= {frame_sample_i, COMPLEX_WIDTH'(0)}; // Extensão de sinal
             
-        end else if(fft_state == PROCESSING) begin
+        end else if(fft_state == PROCESSING || power_ptr < 3) begin  // TODO analisar melhor isso, mas é para esperar o pipeline terminar e não perder os dados
             case (stage3_addsub.addr_even_bank)
                 0: begin
                     x0_write_en <= 1;

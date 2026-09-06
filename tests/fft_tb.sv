@@ -4,7 +4,7 @@
 //`define DIRECT_FRAME
 
 module fft_tb ();
-    localparam MAX_AUDIO_SIZE = 50177;
+    localparam MAX_AUDIO_SIZE = 4001;
     localparam SAMPLE_RATE = 16000;
     localparam WIDTH_MIC = 16;
     localparam WIDTH = 64;
@@ -164,7 +164,7 @@ module fft_tb ();
         .fft_done_o     (fft_done)
     );
 
-    logic [WIDTH:0] rfft_power_buffer [0: RFFT_SIZE];
+    logic [WIDTH-1:0] rfft_power_buffer [0: RFFT_SIZE];
 
     always_ff @( posedge clk ) begin
         if(fft_power_valid) begin
