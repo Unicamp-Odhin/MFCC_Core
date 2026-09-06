@@ -63,6 +63,7 @@ module hamming_window #(
             temp_ptr <= 0;
         end else begin
             start_latency <= rd_en_o;
+            temp_valid <= 0;
 
             case (hamming_state)
                 IDLE: begin

@@ -188,9 +188,9 @@ module dct_tb ();
     end
 
     logic [$clog2(NUM_CEPS) - 1:0] ceps_ptr;
-    logic [WIDTH_OUT:0] ceps_sample;
+    logic [WIDTH_OUT-1:0] ceps_sample;
     logic dct_valid, dct_done;
-    logic [WIDTH_OUT:0] coeficientes [0: NUM_CEPS-1];
+    logic [WIDTH_OUT-1:0] coeficientes [0: NUM_CEPS-1];
 
     dct #(
         .NUM_CEPS    (NUM_CEPS),

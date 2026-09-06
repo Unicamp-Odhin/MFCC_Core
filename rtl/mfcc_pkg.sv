@@ -5,7 +5,7 @@
 package mfcc_pkg;
 
     typedef struct packed {
-        logic [15:0] mfcc_sample;
+        logic [31:0] mfcc_sample;
     } mfcc_data_t;
 
 endpackage

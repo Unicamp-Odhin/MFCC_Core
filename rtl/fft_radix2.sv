@@ -1,33 +1,5 @@
 `timescale 1ns/1ps
 
-module long_mul_fixed #(
-    parameter WIDTH = 64,
-    parameter F = 32
-) (
-    input  logic signed [WIDTH-1:0]  a,
-    input  logic signed [WIDTH-1:0]  b,
-    output logic signed [WIDTH-1:0]  result
-);
-
-    localparam int TWO_W = 2*WIDTH;
-    logic signed [TWO_W-1:0] mult_result;
-    logic signed [TWO_W-1:0] rounded_result;
-
-    assign mult_result = a * b;
-
-    localparam signed [TWO_W-1:0] ONE = 1;
-
-    always_comb begin
-        if (mult_result >= 0)
-            rounded_result = mult_result + (ONE <<< (F - 1));
-        else
-            rounded_result = mult_result - (ONE <<< (F - 1));
-    end
-
-    assign result = rounded_result >>> F;
-
-endmodule
-
 module fft_radix2 #(
     parameter NFFT = 512,
     parameter WIDTH = 64,
@@ -163,9 +135,6 @@ module fft_radix2 #(
     logic [2*WIDTH-1:0] power_stage2_im;
     logic [WIDTH-1:0] power_stage3;
     logic [WIDTH-1:0] power_stage4;
-
-    assign teste_1 = power_stage2_re[WIDTH+F-1:F];
-    assign teste_2 = power_stage2_im[WIDTH+F-1:F];
 
     logic power_valid_stage1;
     logic power_valid_stage2;
