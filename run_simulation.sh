@@ -66,7 +66,7 @@ function run_fft_test {
 function run_mel_test {
    echo "Executando teste Mel"
    verilator ${TESTS_DIR}/mel_tb.sv \
-             ${RTL_DIR}/mel.sv ${RTL_DIR}/base2log.sv \
+             ${RTL_DIR}/mel.sv ${RTL_DIR}/base2log_fp.sv ${RTL_DIR}/base2log.sv \
              -DTESTS_DIR=\"${TESTS_DIR}\" ${VERILATOR_FLAGS}
    ./obj_dir/Vmel_tb
 }
