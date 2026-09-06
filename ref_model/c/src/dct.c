@@ -6,6 +6,22 @@
 
 static int32_t cos_lut[NUM_CEPS][NUM_FILTERS];
 
+int64_t mul_fp__(int64_t a, int64_t b, int F) {
+    __int128 temp = (__int128)a * (__int128)b;
+    
+    if (temp >= 0)
+        temp += (__int128)1 << (F-1);
+    else
+        temp -= (__int128)1 << (F-1);
+    
+    temp >>= F;
+    
+    if (temp > INT64_MAX) return INT64_MAX;
+    if (temp < INT64_MIN) return INT64_MIN;
+    
+    return (int64_t)temp;
+}
+
 void save_cos_lut(const char *filename) {
     FILE *fp = fopen(filename, "w");
     if (!fp) {
@@ -55,6 +71,7 @@ void dct(float energies[], int num_filters, float ceps[NUM_CEPS]) {
     }
 }
 
+int PRINT_FACTOR = 1;
 
 void dct_fixed(int32_t energies[], int num_filters, int32_t ceps[NUM_CEPS], int  ENERGIES_WIDTH_F, int DCT_COEFF_WIDTH_F) {
     int32_t MEL_SCALE = 1 << ENERGIES_WIDTH_F;
@@ -63,7 +80,12 @@ void dct_fixed(int32_t energies[], int num_filters, int32_t ceps[NUM_CEPS], int 
     int32_t factor0 = (int32_t)(sqrt((1.0f / num_filters)) * DCT_SCALE);
     int32_t factork = (int32_t)(sqrt((2.0f / num_filters)) * DCT_SCALE);
 
-    
+    if (PRINT_FACTOR){
+        printf("FACTOR0: %d\n", factor0);
+        printf("FACTORk: %d\n", factork);
+        PRINT_FACTOR = 0;
+    }
+
     for (int k = 0; k < NUM_CEPS; k++) {
         
         int64_t sum = 0;
@@ -77,8 +99,7 @@ void dct_fixed(int32_t energies[], int num_filters, int32_t ceps[NUM_CEPS], int 
                 energy = energies[n] >> (ENERGIES_WIDTH_F - DCT_COEFF_WIDTH_F);
 
             
-            int64_t mul_tmp = (int64_t)(energy) * (int64_t)(cos_lut[k][n]);
-            int64_t mul = (mul_tmp >> DCT_COEFF_WIDTH_F);
+            int64_t mul = mul_fp__((int64_t)(energy), (int64_t)(cos_lut[k][n]), DCT_COEFF_WIDTH_F);
             
             sum = sum + mul;
 
