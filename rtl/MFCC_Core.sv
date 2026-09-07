@@ -12,7 +12,7 @@ module MFCC_Core #(
     parameter FRAME_STEP      = 160,
     parameter FFT_SIZE        = 512,                           // Tamanho da FFT
     parameter NFFT_LOG2       = $clog2(FFT_SIZE),
-    parameter PCM_FIFO_DEPTH  = 256                            // Profundidade do FIFO de PCM
+    parameter PCM_FIFO_DEPTH  = 2048                           // Profundidade do FIFO de PCM
 ) (
     input logic clk,
     input logic rst_n,
@@ -50,8 +50,8 @@ module MFCC_Core #(
       .in_valid (pcm_ready_i),
       .out_valid(pre_emphasis_valid),
 
-      .x_in (pcm_in),                // Sinal de entrada
-      .y_out(pre_emphasized_signal)  // Sinal de saída
+      .x_in (pcm_in),
+      .y_out(pre_emphasized_signal)
   );
 
   fifo #(
@@ -94,12 +94,12 @@ module MFCC_Core #(
       .read_data_o    (window_buffer_data_o),
       .valid_to_read_o(window_valid_to_read),
 
-      .start_next_state_o(start_hamming),
-      .idle_o            (idle)
+      .start_next_state_o(start_hamming)
+      //   .idle_o            (idle)
   );
 
   logic hamming_done, hamming_out_valid;
-  logic [8:0] frame_ptr;
+  logic [NFFT_LOG2-1:0] frame_ptr;
   logic signed [WIDTH - 1:0] hamming_sample;
 
   hamming_window #(
@@ -152,7 +152,7 @@ module MFCC_Core #(
 
   logic mel_done, mel_valid;
   logic [5:0] mel_ptr;
-  logic [WIDTH-1:0] mel_sample;
+  logic [WIDTH_OUT-1:0] mel_sample;
 
   mel #(
       .NUM_MEL_FILTERS(NUM_MEL_FILTERS),
@@ -213,7 +213,8 @@ module MFCC_Core #(
   logic start_move_auto;
 
   always_ff @(posedge clk) begin : RESTARTIG_LOGIC
-    start_move <= start_i || (auto_restart_i && start_move_auto);
+    // start_move <= start_i || (auto_restart_i && start_move_auto);
+    start_move <= 0;
 
     if (!rst_n) begin
       start_move_auto  <= 0;

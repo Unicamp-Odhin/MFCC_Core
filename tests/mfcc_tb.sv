@@ -45,7 +45,7 @@ module mfcc_tb ();
       .FRAME_STEP     (FRAME_STEP),
       .FFT_SIZE       (FFT_SIZE),
       .PCM_FIFO_DEPTH (PCM_FIFO_DEPTH),
-      .ALPHA          (ALPHA)             // Alpha em Q1.15 (0.97 ≈ 31785)
+      .ALPHA          (ALPHA)
   ) uut (
       .clk  (clk),
       .rst_n(rst_n),
@@ -57,27 +57,6 @@ module mfcc_tb ();
       .mfcc_done_o(mfcc_done),
       .mfcc_data_o(coeficientes)
   );
-
-  task dump_mel_in_data(input int frame_id);
-    integer fd;
-    integer i;
-    string  filename;
-    begin
-      // Monta o nome do arquivo com número
-      filename = $sformatf("data/mel_in_data_%0d.hex", frame_id);
-
-      fd = $fopen(filename, "w");
-      if (fd) begin
-        for (i = 0; i < 257; i = i + 1) begin
-          //$fwrite(fd, "%h\n", uut.u_mel.power_spectrum_mem[i]);
-        end
-        $fclose(fd);
-      end else begin
-        $display("Erro: não foi possível abrir o arquivo %s", filename);
-      end
-    end
-
-  endtask
 
   task dump_mfcc_data();
     integer k;
@@ -190,6 +169,7 @@ module mfcc_tb ();
 
 
       wait (uut.hamming_done);
+
       wait (uut.fft_done);
 
       wait (mfcc_done);
@@ -215,6 +195,8 @@ module mfcc_tb ();
   localparam SAMPLE_INTERVAL = 6250;  // ciclos de clock (100MHz / 16kHz)
 
   integer sample_timer;
+  logic   mic_read;
+  assign mic_read = sample_timer == 0;
 
   always_ff @(posedge clk) begin
     if (!rst_n) begin
@@ -224,7 +206,7 @@ module mfcc_tb ();
       sample_timer <= 0;
     end else begin
       if (i < MAX_AUDIO_SIZE) begin
-        if (sample_timer == 0) begin
+        if (mic_read) begin
           pcm_in       <= samples[i];
           pcm_ready    <= 1;
           i            <= i + 1;

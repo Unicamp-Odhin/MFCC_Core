@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: verible-verilog-format
+        name: Format SystemVerilog with Verible
+        entry: verible-verilog-format --inplace
+        language: system
+        files: \.sv$

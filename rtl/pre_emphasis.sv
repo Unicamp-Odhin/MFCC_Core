@@ -16,7 +16,7 @@ module pre_emphasis #(
     output logic signed [WIDTH_OUT-1:0] y_out  // Sinal de saída (y[n])
 );
   localparam WIDTH_DIFF = WIDTH_OUT - WIDTH_IN;
-  logic signed [WIDTH_OUT-1:0] x_prev;  // Resultado da multiplicação temporária (32 bits para evitar overflow)
+  logic signed [WIDTH_OUT-1:0] x_prev;
   logic signed [WIDTH_OUT-1:0] x_in_extend;
   assign x_in_extend = {{WIDTH_DIFF{x_in[WIDTH_IN-1]}}, x_in} << F;
 

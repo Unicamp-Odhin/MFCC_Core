@@ -60,8 +60,7 @@ module window_buffer #(
   assign fill_cnt_is_zero = ~|fill_cnt;
 
   always_comb begin
-    next_state = current_state;
-    idle_o     = 0;
+    idle_o = 0;
 
     unique case (current_state)
       IDLE: begin
@@ -85,17 +84,36 @@ module window_buffer #(
       default: next_state = current_state;
     endcase
   end
-  logic [PTR_WIDTH:0] addr_sum;
+  logic [PTR_WIDTH:0] addr_sum, next_addr_sum;
+  logic diff_pointers, diff_pointers_test, next_state_is_valid_to_read, valid_to_read;
   assign addr_sum = win_base_ptr + win_rd_idx;
+  assign next_addr_sum = ((rd_en_i && valid_to_read) == 1) ? addr_sum + 1 : addr_sum;
+  assign diff_pointers = (((addr_sum) >= frame_size) ? ((addr_sum) - frame_size) : (addr_sum)) != {1'b0, wr_ptr};
+  assign diff_pointers_test = (((next_addr_sum) >= frame_size) ? ((next_addr_sum) - frame_size) : (next_addr_sum)) != {1'b0, wr_ptr};
+  assign valid_to_read = (current_state != MOVE) && (current_state != START) && diff_pointers;
+  assign valid_to_read_o = (current_state != MOVE) &&  (current_state != START) &&  diff_pointers_test;
 
-  logic diff_pointers, next_state_is_valid_to_read;
-  assign diff_pointers = ((addr_sum >= frame_size) ? (addr_sum - frame_size) : addr_sum) != {1'b0, wr_ptr};
-  assign valid_to_read_o = next_state_is_valid_to_read && diff_pointers;
+
+  always_ff @(posedge clk) begin
+    if (!rst_n) begin
+      win_rd_idx   <= 0;
+      rd_phys_addr <= 0;
+    end else begin
+
+      if (addr_sum >= frame_size) rd_phys_addr <= addr_sum - frame_size;
+      else rd_phys_addr <= addr_sum[PTR_WIDTH-1:0];
+
+      if (rd_en_i && valid_to_read) begin
+        if (win_rd_idx == frame_size - 1) win_rd_idx <= 0;
+        else win_rd_idx <= win_rd_idx + 1;
+      end
+    end
+  end
 
   always_ff @(posedge clk) begin
     start_next_state_o          <= 0;
     fifo_rd_en_o                <= 0;
-    next_state_is_valid_to_read <= (next_state != MOVE) && (next_state != START) && diff_pointers;
+    next_state_is_valid_to_read <= (next_state != MOVE) && diff_pointers;
 
     if (!rst_n) begin
       fill_cnt     <= 0;
@@ -138,23 +156,6 @@ module window_buffer #(
       endcase
     end
   end
-
-  always_ff @(posedge clk) begin
-    if (!rst_n) begin
-      win_rd_idx   <= 0;
-      rd_phys_addr <= 0;
-    end else begin
-
-      if (addr_sum >= frame_size) rd_phys_addr <= addr_sum - frame_size;
-      else rd_phys_addr <= addr_sum[PTR_WIDTH-1:0];
-
-      if (rd_en_i && valid_to_read_o) begin
-        if (win_rd_idx == frame_size - 1) win_rd_idx <= 0;
-        else win_rd_idx <= win_rd_idx + 1;
-      end
-    end
-  end
-
 
   assign read_data_o = buffer[rd_phys_addr];
 

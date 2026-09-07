@@ -34,6 +34,9 @@ module dct_tb ();
 
   assign x_prev_valid = ~(pre_emphasis_valid_posedge & (i != 2));
 
+  logic fifo_empty, fifo_rd_en, fifo_full;
+  logic [WIDTH - 1:0] fifo_read_data;
+
   pre_emphasis #(
       .WIDTH_IN(WIDTH_MIC),
       .WIDTH_OUT(WIDTH),
@@ -46,12 +49,10 @@ module dct_tb ();
       .in_valid (pcm_ready_i),
       .out_valid(pre_emphasis_valid),
 
-      .x_in(pcm_in),  // Sinal de entrada
-      .y_out(pre_emphasized_signal)  // Sinal de saída
+      .x_in (pcm_in),
+      .y_out(pre_emphasized_signal)
   );
 
-  logic fifo_empty, fifo_full, fifo_rd_en;
-  logic [WIDTH-1:0] fifo_read_data;
 
   fifo #(
       .DEPTH(PCM_FIFO_DEPTH),
@@ -116,8 +117,8 @@ module dct_tb ();
       .rd_en_o        (window_rd_en),
 
       .frame_ptr_o     (frame_ptr),
-      .frame_sample_i  (window_buffer_data),  // Sinal de entrada
-      .hamming_sample_o(hamming_sample),      // Sinal de saída
+      .frame_sample_i  (window_buffer_data),
+      .hamming_sample_o(hamming_sample),
 
       .out_valid_o(hamming_out_valid),
       .done_o     (hamming_done)
