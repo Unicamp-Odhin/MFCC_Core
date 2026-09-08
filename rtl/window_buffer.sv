@@ -1,9 +1,9 @@
 `timescale 1ns / 1ps
 
 module window_buffer #(
-    parameter WIDTH      = 16,
-    parameter FRAME_SIZE = 306,
-    parameter FRAME_STEP = 123
+    parameter WIDTH      = 64,
+    parameter FRAME_SIZE = 400,
+    parameter FRAME_STEP = 160
 ) (
     input logic clk,
     input logic rst_n,
@@ -20,6 +20,7 @@ module window_buffer #(
     input  logic             rd_en_i,
     output logic [WIDTH-1:0] read_data_o,
     output logic             valid_to_read_o,
+    output logic             done_o,
 
     output logic start_next_state_o,
     output logic idle_o
@@ -29,7 +30,7 @@ module window_buffer #(
   localparam int PTR_WIDTH = $clog2(FRAME_SIZE);
   logic [PTR_WIDTH-1:0] frame_size, frame_step;
   logic [PTR_WIDTH-1:0] wr_ptr;  // ponteiro de escrita no buffer circular 
-  logic [PTR_WIDTH-1:0] win_rd_idx;  // ndice sequencial dentro da janela atual
+  logic [PTR_WIDTH-1:0] win_rd_idx;  // indice sequencial dentro da janela atual
   logic [PTR_WIDTH-1:0] win_base_ptr;  // endereço base da janela
   logic [PTR_WIDTH-1:0] rd_phys_addr;  // De fato onde a sample está no buffer
   logic [PTR_WIDTH-1:0] fill_cnt; // Quantas amostras faltam ser lidas para completar a próxima janela
@@ -61,7 +62,7 @@ module window_buffer #(
 
   always_comb begin
     idle_o = 0;
-
+    done_o = 0;
     unique case (current_state)
       IDLE: begin
         idle_o = 1;
@@ -77,7 +78,10 @@ module window_buffer #(
         end
       end
       FILL: begin
-        if (fill_cnt_is_zero) next_state = IDLE;
+        if (fill_cnt_is_zero) begin
+          next_state = IDLE;
+          done_o = 1;
+        end
         else if (fifo_empty_i) next_state = REQUEST_DATA;
         else next_state = FILL;
       end
@@ -132,7 +136,7 @@ module window_buffer #(
           end else begin
             win_base_ptr <= win_base_ptr + frame_step;
           end
-          fill_cnt <= frame_step - 1;
+          fill_cnt <= frame_size - 1;
           start_next_state_o <= 1;
         end
         REQUEST_DATA: begin

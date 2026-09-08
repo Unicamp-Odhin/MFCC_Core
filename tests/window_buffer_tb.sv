@@ -68,6 +68,7 @@ module window_buffer_tb ();
   logic window_rd_en;
   logic start_move;
   logic start_hamming;
+  logic window_done;
 
   window_buffer #(
       .WIDTH(WIDTH),
@@ -86,24 +87,95 @@ module window_buffer_tb ();
       .rd_en_i(window_rd_en),
       .read_data_o(window_buffer_data),
       .valid_to_read_o(window_valid_to_read),
+      .done_o(window_done),
 
       .start_next_state_o(start_hamming)
   );
 
-  task dump_buffer_to_hex;
+  task dump_buffer_to_hex(integer frame_id);
     integer fd;
-    integer i;
+    integer i, addr, base_addr;
+    string  filename;
+    base_addr = (frame_id * FRAME_STEP) % FRAME_SIZE;
+
     begin
-      fd = $fopen("buffer_dump.hex", "w");
-      for (i = 0; i < FRAME_SIZE; i = i + 1) begin
-        $fwrite(fd, "%H\n", u_window_buffer.buffer[i]);
+      filename = $sformatf({`TESTS_DIR, "/data/2_frames/%04d.hex"}, frame_id);
+      
+      fd = $fopen(filename, "w");
+
+      for (i = base_addr; i < FRAME_SIZE + base_addr; i = i + 1) begin
+        addr = i % FRAME_SIZE;
+        $fwrite(fd, "%H\n", u_window_buffer.buffer[addr]);
       end
       $fclose(fd);
     end
   endtask
 
+  task automatic check_frames(input int frame_id, output logic pass);
+      integer fd_test, fd_ref;
+      integer i;
+      integer test_val, ref_val;
+      string  test_filename, ref_filename;
+      string  line;
+      begin
+          pass = 1; 
 
-  integer i;
+          test_filename = $sformatf({`TESTS_DIR, "/data/2_frames/%04d.hex"}, frame_id);
+          ref_filename  = $sformatf({`TESTS_DIR, "/ref_vectors/2_frames/%04d.hex"}, frame_id);
+
+          fd_test = $fopen(test_filename, "r");
+          fd_ref  = $fopen(ref_filename, "r");
+
+          if (fd_test == 0) begin
+              $display("Erro: não foi possível abrir arquivo de teste %s", test_filename);
+              pass = 0;
+              return;
+          end
+          if (fd_ref == 0) begin
+              $display("Erro: não foi possível abrir arquivo de referência %s", ref_filename);
+              $fclose(fd_test);
+              pass = 0;
+              return;
+          end
+
+          for (i = 0; i < FRAME_SIZE; i++) begin
+              // teste
+              if ($fgets(line, fd_test) == 0) begin
+                  $display("Erro: EOF inesperado no arquivo de teste na linha %0d", i);
+                  pass = 0;
+                  break;
+              end
+              if ($sscanf(line, "%h", test_val) != 1) begin
+                  $display("Erro: formato inválido no arquivo de teste na linha %0d: %s", i, line);
+                  pass = 0;
+                  break;
+              end
+
+              //referência
+              if ($fgets(line, fd_ref) == 0) begin
+                  $display("Erro: EOF inesperado no arquivo de referência na linha %0d", i);
+                  pass = 0;
+                  break;
+              end
+              if ($sscanf(line, "%h", ref_val) != 1) begin
+                  $display("Erro: formato inválido no arquivo de referência na linha %0d: %s", i, line);
+                  pass = 0;
+                  break;
+              end
+
+              if (test_val !== ref_val) begin
+                  $display("Mismatch no frame %0d, índice %0d: teste=%h, referência=%h", frame_id, i, test_val, ref_val);
+                  pass = 0;
+              end
+          end
+
+          $fclose(fd_test);
+          $fclose(fd_ref);
+      end
+  endtask
+
+  integer frame_id, expected_ptr;
+  logic ok;
 
   initial begin
     $readmemh({`TESTS_DIR, "/ref_vectors/0_samples_dump.hex"}, samples);
@@ -124,120 +196,67 @@ module window_buffer_tb ();
 
     wait (u_window_buffer.current_state == 0);
 
-    assert (u_window_buffer.rd_phys_addr == 0)
+    if (u_window_buffer.rd_phys_addr == 0)
+      $display("\tPonteiro win_base_ptr: OK");
     else begin
-      $error("Erro: rd_phys_addr está na posição errada. %d, esperada: %d",
-             u_window_buffer.rd_phys_addr, 0);
+      $error("Erro: rd_phys_addr está na posição errada. %d, esperada: %d", u_window_buffer.rd_phys_addr, 0);
       $finish;
     end
 
-    assert (u_window_buffer.wr_ptr == 0)
+    if (u_window_buffer.wr_ptr == 0)
+      $display("\tPonteiro wr_ptr: OK");
     else begin
-      $error("Erro: wr_ptr não está zerado após o encher o buffer pela primeira vez. %d",
-             u_window_buffer.wr_ptr);
+      $error("Erro: wr_ptr não está zerado após o encher o buffer pela primeira vez. %d", u_window_buffer.wr_ptr);
       $finish;
     end
 
-    $display("Segunda sample: %X", u_window_buffer.buffer[2]);
-    dump_buffer_to_hex;
+    dump_buffer_to_hex(0);
 
-    #(20);  // Espera 10 ciclos de clock
+    for (frame_id= 1; frame_id <= 22; frame_id++) begin
+      $display("Iniciando movimento numero %d do buffer", frame_id);
+      expected_ptr = (frame_id * FRAME_STEP) % FRAME_SIZE;
+      #20;
 
-    $display("Iniciando o primeiro movimento do buffer");
+      start_move = 1;
+      #2
+      start_move = 0;
 
-    start_move = 1;  // Inicia o movimento do buffer
-    #2  // espera 1 ciclo de clock
+      wait(window_done);
 
-    start_move = 0;  // Desativa o sinal de início
+      if (u_window_buffer.win_base_ptr == expected_ptr)
+        $display("\tPonteiro win_base_ptr: OK");
+      else begin
+        $error("Erro: win_base_ptr está na posição errada. %d, esperada: %d", u_window_buffer.win_base_ptr, expected_ptr);
+        $finish;
+      end
 
-    @(negedge clk);  // Espera o próximo ciclo de clock
+      #20;
 
-    assert (u_window_buffer.rd_phys_addr == EXPECTED_PTR_1)
-    else begin
-      $error("Erro: rd_phys_addr está na posição errada. %d, esperada: %d",
-             u_window_buffer.rd_phys_addr, EXPECTED_PTR_1);
-      $finish;
+      wait (u_window_buffer.current_state == 0);
+
+      if (u_window_buffer.wr_ptr == expected_ptr)
+        $display("\tPonteiro wr_ptr: OK");
+      else begin
+        $error("Erro: wr_ptr não está correto após o segundo movimento. %d, esperada: %d", u_window_buffer.wr_ptr, expected_ptr);
+        $finish;
+      end
+
+      dump_buffer_to_hex(frame_id);
+      check_frames(frame_id, ok);
+      if (!ok) 
+        $display("Comparação dos dumps: FALHA");
+      else
+        $display("\tComparação dos dumps: OK");
+      #20;
+
     end
 
-    #(20);
-
-    wait (u_window_buffer.current_state == 0);
-
-    assert (u_window_buffer.wr_ptr == EXPECTED_PTR_1)
-    else begin
-      $error("Erro: wr_ptr não está correto após o segundo movimento. %d, esperada: %d",
-             u_window_buffer.wr_ptr, EXPECTED_PTR_1);
-      $finish;
-    end
-
-    #20  // Espera 10 ciclos de clock
-
-    $display(
-        "Iniciando o segundo movimento do buffer"
-    );
-
-    start_move = 1;  // Inicia o movimento do buffer
-
-    #2  // espera 1 ciclo de clock
-
-    start_move = 0;  // Desativa o sinal de início
-
-    @(negedge clk);  // Espera o próximo ciclo de clock
-
-    assert (u_window_buffer.rd_phys_addr == EXPECTED_PTR_2)
-    else begin
-      $error("Erro: rd_phys_addr não está correto após o segundo movimento. %d, esperada: %d",
-             u_window_buffer.rd_phys_addr, EXPECTED_PTR_2);
-      $finish;
-    end
-
-    #(20);
-
-    wait (u_window_buffer.current_state == 0);
-
-    assert (u_window_buffer.wr_ptr == EXPECTED_PTR_2)
-    else begin
-      $error("Erro: wr_ptr não está correto após o terceiro movimento. %d, esperada: %d",
-             u_window_buffer.wr_ptr, EXPECTED_PTR_2);
-      $finish;
-    end
-
-    #20  // Espera 10 ciclos de clock
-
-    $display(
-        "Iniciando o terceiro movimento do buffer"
-    );
-
-    start_move = 1;  // Inicia o movimento do buffer
-
-    #2  // espera 1 ciclo de clock
-
-    start_move = 0;  // Desativa o sinal de início
-
-    @(negedge clk);  // Espera o próximo ciclo de clock
-
-    assert (u_window_buffer.rd_phys_addr == EXPECTED_PTR_3)
-    else begin
-      $error("Erro: rd_phys_addr não está correto após o terceiro movimento. %d, esperada: %d",
-             u_window_buffer.rd_phys_addr, EXPECTED_PTR_3);
-      $finish;
-    end
-
-    #(20);
-
-    wait (u_window_buffer.current_state == 0);
-
-    assert (u_window_buffer.wr_ptr == EXPECTED_PTR_3)
-    else begin
-      $error("Erro: wr_ptr não está correto após o terceiro movimento. %d, esperada: %d",
-             u_window_buffer.wr_ptr, EXPECTED_PTR_3);
-      $finish;
-    end
-
-    #20  // Espera 10 ciclos de clock
+    #20;
 
     $finish;
   end
+
+  integer i;
 
   always #1 clk = ~clk;
 
