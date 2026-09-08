@@ -1,34 +1,9 @@
 `timescale 1ns / 1ps
 
-module long_mul_fixed #(
-    parameter WIDTH = 64,
-    parameter F = 16
-) (
-    input  logic signed [WIDTH-1:0] a,
-    input  logic signed [WIDTH-1:0] b,
-    output logic signed [WIDTH-1:0] result
-);
-
-  localparam int TWO_W = 2 * WIDTH;
-  logic signed [TWO_W-1:0] mult_result;
-  logic signed [TWO_W-1:0] rounded_result;
-
-  assign mult_result = a * b;
-
-  localparam signed [TWO_W-1:0] ONE = 1;
-
-  always_comb begin
-    if (mult_result >= 0) rounded_result = mult_result + (ONE <<< (F - 1));
-    else rounded_result = mult_result - (ONE <<< (F - 1));
-  end
-
-  assign result = rounded_result >>> F;
-
-endmodule
-
 module mel #(
     parameter NUM_MEL_FILTERS = 40,
     parameter FFT_SIZE = 512,
+    parameter NFFT_LOG2 = $clog2(FFT_SIZE),
     parameter NUM_RFFT_BINS = FFT_SIZE / 2 + 1,
     parameter RFFT_BIN_ADDR_WIDTH = $clog2(NUM_RFFT_BINS),
     parameter POWER_WIDTH = 64,
@@ -41,7 +16,7 @@ module mel #(
     input logic rst_n,
 
     input logic in_valid,
-    input logic [RFFT_BIN_ADDR_WIDTH-1:0] power_spectrum_frame_ptr,
+    input logic [NFFT_LOG2-1:0] power_spectrum_frame_ptr,
     input logic [POWER_WIDTH-1:0] power_spectrum_frame_in,
 
     input logic mel_start_i,
@@ -59,6 +34,8 @@ module mel #(
   localparam MEL_MEMORY_ADDR_WIDTH = $clog2(MEL_MEMORY_DEPTH);
   localparam LOG10_CONST = $rtoi(6.02059992 * (1 << F));
 
+  logic signed [POWER_WIDTH-1:0] log10_const_signal;
+  assign log10_const_signal = LOG10_CONST;
   logic [POWER_WIDTH-1:0] power_spectrum_mem[0:NUM_RFFT_BINS-1];
 
   always_ff @(posedge clk) begin : POWER_SPECTRUM_BUFFER_INPUT_LOGIC
@@ -73,7 +50,7 @@ module mel #(
   logic [MEL_MEMORY_ADDR_WIDTH-1:0] i_total, i_total_next, prt_memory;
 
   logic [POWER_WIDTH-1:0] temp_mul_next;
-  logic [MEL_ENERGY_WIDTH-1:0] temp_log2, temp_log10;
+  logic [POWER_WIDTH-1:0] temp_log2, temp_log10;
 
   logic [POWER_WIDTH-1:0] power_spectrum;
   assign power_spectrum = power_spectrum_mem[k];
@@ -110,7 +87,7 @@ module mel #(
       .F(F)
   ) u_mul_out (
       .a     (temp_log2),
-      .b     (LOG10_CONST),
+      .b     (log10_const_signal),
       .result(temp_log10)
   );
 
@@ -200,7 +177,7 @@ module mel #(
         if (sum <= 0) begin
           mel_value_energies = '0;  // Pode ajustar para saturar em 0
         end else begin
-          mel_value_energies = temp_log10;
+          mel_value_energies = temp_log10[MEL_ENERGY_WIDTH-1:0];
         end
 
         next_state = LOAD;

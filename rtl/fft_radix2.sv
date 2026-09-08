@@ -46,6 +46,11 @@ module fft_radix2 #(
     endfunction
 
 
+    long_complex x_bank0 [0:NFFT-1];
+    long_complex x_bank1 [0:NFFT-1];
+    long_complex x_bank2 [0:NFFT-1];
+    long_complex x_bank3 [0:NFFT-1];
+    
     function automatic long_complex x_read(input logic [NFFT_LOG2-1:0] addr);
         logic [1:0] bank_id;
         begin
@@ -67,13 +72,9 @@ module fft_radix2 #(
 
     long_complex twiddles[0 : NFFT / 2];
 
-    long_complex x_bank0 [0:NFFT-1];
-    long_complex x_bank1 [0:NFFT-1];
-    long_complex x_bank2 [0:NFFT-1];
-    long_complex x_bank3 [0:NFFT-1];
 
     logic [NFFT_LOG2-1:0] frame_ptr_reversal;
-
+z
     initial begin
         $readmemh("tables/twiddles.hex", twiddles);
     end
@@ -131,8 +132,8 @@ module fft_radix2 #(
 
     // Power calculation pipeline
     long_complex power_stage1;
-    logic [2*WIDTH-1:0] power_stage2_re, stage1_mult_re, stage1_mult_im;
-    logic [2*WIDTH-1:0] power_stage2_im;
+    logic [WIDTH-1:0] power_stage2_re, stage1_mult_re, stage1_mult_im;
+    logic [WIDTH-1:0] power_stage2_im;
     logic [WIDTH-1:0] power_stage3;
     logic [WIDTH-1:0] power_stage4;
 

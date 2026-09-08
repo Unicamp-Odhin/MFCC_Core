@@ -14,7 +14,7 @@ module MFCC_Core #(
     parameter NFFT_LOG2       = $clog2(FFT_SIZE),
     parameter PCM_FIFO_DEPTH  = 2048                           // Profundidade do FIFO de PCM
 ) (
-    input logic clk,
+    input logic clock,
     input logic rst_n,
 
     // audio input
@@ -31,6 +31,8 @@ module MFCC_Core #(
 );
   localparam RFFT_SIZE = FFT_SIZE / 2;
 
+  logic clk;
+  assign clk = clock;
 
   logic pre_emphasis_valid;
   logic [WIDTH-1:0] pre_emphasized_signal;
@@ -151,7 +153,8 @@ module MFCC_Core #(
   );
 
   logic mel_done, mel_valid;
-  logic [5:0] mel_ptr;
+  localparam FILTER_INDEX_WIDTH = $clog2(NUM_MEL_FILTERS);
+  logic [FILTER_INDEX_WIDTH-1:0] mel_ptr;
   logic [WIDTH_OUT-1:0] mel_sample;
 
   mel #(

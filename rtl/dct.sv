@@ -34,7 +34,8 @@ module dct #(
     parameter DCT_COEFF_WIDTH = 32,
     parameter F = 16,
     parameter NF_LOG2 = $clog2(NUM_MEL_FILTERS),
-    parameter NC_LOG2 = $clog2(NUM_CEPS)
+    parameter NC_LOG2 = $clog2(NUM_CEPS),
+    parameter ADDR_WIDTH_COS = 9
 ) (
     input logic clk,
     input logic rst_n,
@@ -82,18 +83,27 @@ module dct #(
   logic [NC_LOG2-1:0] k_ptr;
   logic [NF_LOG2-1:0] n_ptr;
 
-  logic signed [2*CEPS_WIDTH-1:0] mul_result, mul_result_temp;
-  logic signed [2*CEPS_WIDTH-1:0] acc, temp_ceps_out;
-  logic signed [ ENERGIES_WIDTH-1:0] signed_filter;
+  logic signed [ENERGIES_WIDTH-1:0] mul_result, mul_result_temp;
+  logic signed [ENERGIES_WIDTH-1:0] acc, temp_ceps_out;
+  logic signed [ENERGIES_WIDTH-1:0] signed_filter;
   logic signed [DCT_COEFF_WIDTH-1:0] cos;
 
 
   assign signed_filter = energies[n_ptr];
-  assign cos = cos_lut[k_ptr][n_ptr];
+  // assign cos = cos_lut[k_ptr][n_ptr];
+
+  logic [ADDR_WIDTH_COS-1:0] cos_addr;  // largura calculada (ex.: 9 bits para 480)
+  assign cos_addr = {k_ptr, n_ptr}; 
+
+  cos_lut_rom u_cos_lut (
+      .addr(cos_addr),
+      .dout(cos)
+  );
+
 
   dct_state_t dct_current_state, dct_next_state;
 
-  long_mul_fixed #(
+  mul_fixed #(
       .F(F)
   ) u_mul (
       .a(signed_filter),
@@ -203,7 +213,7 @@ module dct #(
 
   always_comb begin
     if (temp_ceps_out != '0) begin
-      ceps_out = temp_ceps_out[CEPS_WIDTH+F-1:F];
+      ceps_out = temp_ceps_out;
     end else begin
       ceps_out = '0;
     end
