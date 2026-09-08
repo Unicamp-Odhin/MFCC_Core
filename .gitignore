@@ -209,3 +209,49 @@ ref_vectors/
 *.csv
 *.png
 *.hex
+
+# synopsys dir
+work/
+runs/
+out/
+sim/
+dc_work/
+vcs_work/
+verdiLog/
+csrc/
+simv.daidir/
+simv.vdb/
+alib-*/
+moduleparamid
+
+
+# sim
+*.vcd
+*.vpd
+*.fsdb
+*.wlf
+simv
+simv.daidir/
+*.vvp
+*.o
+
+# timing and backend
+*.sdf
+*.spef
+*.svf
+
+# logs and reports
+*.log
+*.rpt
+*.lis
+*.mr
+command.log
+compile.log
+vcs.log
+synopsys_*.log
+*.syn
+*.pvl
+log/
+logs/
+report/
+reports/
