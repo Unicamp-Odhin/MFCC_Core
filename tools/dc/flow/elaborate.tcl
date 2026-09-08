@@ -6,4 +6,4 @@ link
 
 check_design
 
-write_file -format verilog -hierarchy -output $DC_DIR/ANC_elaborated.v
+write_file -format verilog -hierarchy -output $DC_DIR/MFCC_elaborated.v

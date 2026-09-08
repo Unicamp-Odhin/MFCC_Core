@@ -1,12 +1,12 @@
 #####################################################################
 # PDK SETUP
-source "${ANC_DIGITAL_ROOT}/common/pdks/saed32/hvt.tcl"
+source "${PROJECT_ROOT}/pdks/saed32/rvt_sram.tcl"
 
 set LIBRARY_FILES "${NDM_REFERENCE_LIB_DIRS}"
 
 lappend search_path "${DB_PATH}"
 lappend search_path "${RTL_DIR}"
-lappend search_path "${TARGET_LIBRARY}"
+# lappend search_path "${TARGET_LIBRARY}"
 
 set_app_var target_library $TARGET_LIBRARY
 set_app_var synthetic_library dw_foundation.sldb
@@ -15,18 +15,18 @@ set_app_var designer "MFCC_Core"
 
 set ndm_design_library "$NDM_DESIGN_LIB"
 
-if {![file isdirectory $NDM_DESIGN_LIB]} {
-    create_lib \
-        -technology $TECH_FILE \
-        -ref_libs   $NDM_REFERENCE_LIB_DIRS \
-        $NDM_DESIGN_LIB
-} else {
-    open_lib $NDM_DESIGN_LIB
-}
+# if {![file isdirectory $NDM_DESIGN_LIB]} {
+#     create_lib \
+#         -technology $TECH_FILE \
+#         -ref_libs   $NDM_REFERENCE_LIB_DIRS \
+#         $NDM_DESIGN_LIB
+# } else {
+#     open_lib $NDM_DESIGN_LIB
+# }
 
-set_tlu_plus_files \
-    -max_tluplus  $TLUPLUS_MAX_FILE \
-    -tech2itf_map $MAP_FILE
+# set_tlu_plus_files \
+#     -max_tluplus  $TLUPLUS_MAX_FILE \
+#     -tech2itf_map $MAP_FILE
 
 #####################################################################
 # PATH SETUP
@@ -52,17 +52,14 @@ if {![file exists $work_path]} {
     file mkdir $work_path
 }
 
-set files_to_backup {
-    rtl
-    scripts
-}
+set files_to_backup [list $RTL_DIR $TESTS_DIR];
 
-foreach file $files_to_backup {
-    set src "${DC_DIR}/${file}"
+foreach src $files_to_backup {
     if {[file exists $src]} {
         file copy -force $src $SNAPSHOT_DIR/
+        puts "Copiado: $src -> $SNAPSHOT_DIR/"
     } else {
-        puts "WARNING: Arquivo nao encontrado: $src"
+        puts "WARNING: Arquivo/diretório não encontrado: $src"
     }
 }
 
