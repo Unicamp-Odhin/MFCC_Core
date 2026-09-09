@@ -1,5 +1,5 @@
 // ROM gerada automaticamente a partir de hamming_window.hex
-module hamming_window_rom (
+module hamming_rom (
     input  logic [8:0] addr,
     output logic [31:0] dout
 );

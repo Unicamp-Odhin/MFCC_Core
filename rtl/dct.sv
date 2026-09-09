@@ -34,8 +34,7 @@ module dct #(
     parameter DCT_COEFF_WIDTH = 32,
     parameter F = 16,
     parameter NF_LOG2 = $clog2(NUM_MEL_FILTERS),
-    parameter NC_LOG2 = $clog2(NUM_CEPS),
-    parameter ADDR_WIDTH_COS = 9
+    parameter NC_LOG2 = $clog2(NUM_CEPS)
 ) (
     input logic clk,
     input logic rst_n,
@@ -52,19 +51,14 @@ module dct #(
     output logic [CEPS_WIDTH - 1:0] ceps_out,
     output logic [NC_LOG2 - 1:0] ceps_ptr_o
 );
-
-  // TODO parametrizar no futuro
+  // TODO parametrizar no futuro:
+  // int32_t factor0 = (int32_t)(sqrt((1.0f / num_filters)) * DCT_SCALE);
+  // int32_t factork = (int32_t)(sqrt((2.0f / num_filters)) * DCT_SCALE);
   localparam int FACTOR0 = 10362;
   localparam int FACTORK = 14654;
 
 
-  logic signed [DCT_COEFF_WIDTH-1:0] cos_lut[NUM_CEPS][NUM_MEL_FILTERS];  // LUT para os cossenos
-  logic signed [ENERGIES_WIDTH-1:0] energies[NUM_MEL_FILTERS];  // Buffer de entrada
-
-
-  initial begin
-    $readmemh("tables/cos_lut.hex", cos_lut);
-  end
+  logic signed [ENERGIES_WIDTH-1:0] energies[NUM_MEL_FILTERS];
 
   always_ff @(posedge clk) begin : MEL_BUFFER_INPUT_LOGIC
     if (in_valid) begin
@@ -83,17 +77,17 @@ module dct #(
   logic [NC_LOG2-1:0] k_ptr;
   logic [NF_LOG2-1:0] n_ptr;
 
-  logic signed [ENERGIES_WIDTH-1:0] mul_result, mul_result_temp;
-  logic signed [ENERGIES_WIDTH-1:0] acc, temp_ceps_out;
+  logic signed [2*CEPS_WIDTH-1:0] mul_result, mul_result_temp;
+  logic signed [2*CEPS_WIDTH-1:0] acc, temp_ceps_out;
   logic signed [ENERGIES_WIDTH-1:0] signed_filter;
   logic signed [DCT_COEFF_WIDTH-1:0] cos;
 
 
   assign signed_filter = energies[n_ptr];
-  // assign cos = cos_lut[k_ptr][n_ptr];
 
-  logic [ADDR_WIDTH_COS-1:0] cos_addr;  // largura calculada (ex.: 9 bits para 480)
-  assign cos_addr = {k_ptr, n_ptr}; 
+  // TODO arrumar a paremetrizacao
+  localparam ADDR_WIDTH_COS = NF_LOG2 + NC_LOG2;
+  logic [ADDR_WIDTH_COS-1:0] cos_addr;
 
   cos_lut_rom u_cos_lut (
       .addr(cos_addr),
@@ -103,7 +97,7 @@ module dct #(
 
   dct_state_t dct_current_state, dct_next_state;
 
-  mul_fixed #(
+  long_mul_fixed #(
       .F(F)
   ) u_mul (
       .a(signed_filter),
@@ -119,6 +113,7 @@ module dct #(
       k_ptr <= '0;
       n_ptr <= '0;
       ceps_ptr_o <= '0;
+      cos_addr <= '0;
 
       acc <= '0;
       mul_result <= '0;
@@ -141,6 +136,8 @@ module dct #(
             k_ptr <= '0;
             n_ptr <= '0;
             acc   <= '0;
+            cos_addr <= '0;
+
           end
         end
 
@@ -148,10 +145,12 @@ module dct #(
           mul_result <= mul_result_temp;
           acc <= acc + mul_result;
           n_ptr <= n_ptr + 1'b1;
+          cos_addr <= cos_addr + 1'b1;
         end
 
         UPDATE_K: begin
           ceps_ptr_o <= k_ptr;
+          cos_addr <= cos_addr - 1'b1;
 
           if (k_ptr == 0) temp_ceps_out <= FACTOR0 * acc;
           else temp_ceps_out <= FACTORK * acc;
@@ -213,7 +212,7 @@ module dct #(
 
   always_comb begin
     if (temp_ceps_out != '0) begin
-      ceps_out = temp_ceps_out;
+      ceps_out = temp_ceps_out[CEPS_WIDTH+F-1:F];
     end else begin
       ceps_out = '0;
     end
