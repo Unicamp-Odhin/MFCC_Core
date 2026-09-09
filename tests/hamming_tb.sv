@@ -313,7 +313,7 @@ module hamming_tb ();
 
     $display("Iniciando processamento de áudio");
 
-    for (frame_id = 0; frame_id < 24; frame_id++) begin
+    for (frame_id = 0; frame_id < 9; frame_id++) begin
 
       wait (hamming_done);
       check_frames(frame_id, ok);

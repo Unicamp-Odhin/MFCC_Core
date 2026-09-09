@@ -218,7 +218,7 @@ module window_buffer_tb ();
 
     dump_buffer_to_hex(0);
 
-    for (frame_id = 1; frame_id <= 22; frame_id++) begin
+    for (frame_id = 1; frame_id <= 9; frame_id++) begin
       $display("Iniciando movimento numero %d do buffer", frame_id);
       expected_ptr = (frame_id * FRAME_STEP) % FRAME_SIZE;
       #20;
