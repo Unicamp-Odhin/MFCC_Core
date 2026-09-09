@@ -13,7 +13,6 @@ module hamming_tb ();
   localparam ALPHA = $rtoi(0.97 * (1 << F_WIDTH));
   localparam FFT_SIZE = 512;
 
-
   logic clk;
   logic rst_n;
 
@@ -25,7 +24,7 @@ module hamming_tb ();
   logic pre_emphasis_valid, pre_emphasis_valid_prev, pre_emphasis_valid_posedge;
   assign pre_emphasis_valid_posedge = ~pre_emphasis_valid_prev & pre_emphasis_valid;
   logic x_prev_valid;
-  integer i, j;
+  integer i, frame_id;
 
   assign x_prev_valid = ~(pre_emphasis_valid_posedge & (i != 2));
 
@@ -41,8 +40,8 @@ module hamming_tb ();
       .in_valid (pcm_ready_i),
       .out_valid(pre_emphasis_valid),
 
-      .x_in(pcm_in),  // Sinal de entrada
-      .y_out(pre_emphasized_signal)  // Sinal de saída
+      .x_in(pcm_in),  
+      .y_out(pre_emphasized_signal)
   );
 
   logic fifo_empty, fifo_full, fifo_rd_en;
@@ -70,6 +69,7 @@ module hamming_tb ();
   logic start_move;
   logic start_hamming;
   logic idle;
+  logic window_done;
 
   window_buffer #(
       .WIDTH(WIDTH),
@@ -88,12 +88,14 @@ module hamming_tb ();
       .rd_en_i(window_rd_en),
       .read_data_o(window_buffer_data),
       .valid_to_read_o(window_valid_to_read),
+      .done_o(window_done),
 
       .start_next_state_o(start_hamming),
       .idle_o(idle)
 
   );
 
+  logic ok;
   logic hamming_done, hamming_out_valid;
   logic [8:0] frame_ptr;
 
@@ -115,8 +117,8 @@ module hamming_tb ();
       .rd_en_o(window_rd_en),
 
       .frame_ptr_o(frame_ptr),
-      .frame_sample_i(window_buffer_data),  // Sinal de entrada
-      .hamming_sample_o(hamming_sample),  // Sinal de saída
+      .frame_sample_i(window_buffer_data),
+      .hamming_sample_o(hamming_sample),
 
       .out_valid_o(hamming_out_valid),
       .done_o(hamming_done)
@@ -128,15 +130,87 @@ module hamming_tb ();
     end
   end
 
-  task dump_buffer_to_hex;
+  task dump_buffer_to_hex(integer frame_id);
     integer fd;
-    integer i;
+    integer i, addr, base_addr;
+    string filename;
+    base_addr = (frame_id * FRAME_STEP) % FRAME_SIZE;
+
     begin
-      fd = $fopen("buffer_dump.hex", "w");
-      for (i = 0; i < FRAME_SIZE; i = i + 1) begin
-        $fwrite(fd, "%h\n", u_window_buffer.buffer[i]);
+      filename = $sformatf({`TESTS_DIR, "/data/2_frames/%04d.hex"}, frame_id);
+
+      fd = $fopen(filename, "w");
+
+      for (i = base_addr; i < FRAME_SIZE + base_addr; i = i + 1) begin
+        addr = i % FRAME_SIZE;
+        $fwrite(fd, "%H\n", u_window_buffer.buffer[addr]);
       end
       $fclose(fd);
+    end
+  endtask
+
+  task automatic check_frames(input int frame_id, output logic pass);
+    integer fd_test, fd_ref;
+    integer i;
+    integer test_val, ref_val;
+    string test_filename, ref_filename;
+    string line;
+    begin
+      pass = 1;
+      dump_buffer_to_hex(frame_id);
+
+      test_filename = $sformatf({`TESTS_DIR, "/data/2_frames/%04d.hex"}, frame_id);
+      ref_filename = $sformatf({`TESTS_DIR, "/ref_vectors/2_frames/%04d.hex"}, frame_id);
+
+      fd_test = $fopen(test_filename, "r");
+      fd_ref = $fopen(ref_filename, "r");
+
+      if (fd_test == 0) begin
+        $display("Erro: não foi possível abrir arquivo de teste %s", test_filename);
+        pass = 0;
+        return;
+      end
+      if (fd_ref == 0) begin
+        $display("Erro: não foi possível abrir arquivo de referência %s", ref_filename);
+        $fclose(fd_test);
+        pass = 0;
+        return;
+      end
+
+      for (i = 0; i < FRAME_SIZE; i++) begin
+        // teste
+        if ($fgets(line, fd_test) == 0) begin
+          $display("Erro: EOF inesperado no arquivo de teste na linha %0d", i);
+          pass = 0;
+          break;
+        end
+        if ($sscanf(line, "%h", test_val) != 1) begin
+          $display("Erro: formato inválido no arquivo de teste na linha %0d: %s", i, line);
+          pass = 0;
+          break;
+        end
+
+        //referência
+        if ($fgets(line, fd_ref) == 0) begin
+          $display("Erro: EOF inesperado no arquivo de referência na linha %0d", i);
+          pass = 0;
+          break;
+        end
+        if ($sscanf(line, "%h", ref_val) != 1) begin
+          $display("Erro: formato inválido no arquivo de referência na linha %0d: %s", i, line);
+          pass = 0;
+          break;
+        end
+
+        if (test_val !== ref_val) begin
+          $display("Mismatch Window no frame %0d, índice %0d: teste=%h, referência=%h", frame_id, i,
+                   test_val, ref_val);
+          pass = 0;
+        end
+      end
+
+      $fclose(fd_test);
+      $fclose(fd_ref);
     end
   endtask
 
@@ -145,7 +219,6 @@ module hamming_tb ();
     integer i;
     string  filename;
     begin
-      // Monta o nome do arquivo com número
       filename = $sformatf({`TESTS_DIR, "/data/3_hamming_frames/%04d.hex"}, frame_id);
 
       fd = $fopen(filename, "w");
@@ -158,6 +231,69 @@ module hamming_tb ();
         $display("Erro: não foi possível abrir o arquivo %s", filename);
       end
     end
+  endtask
+
+  task automatic check_hamming_frames(input int frame_id, output logic pass);
+      integer fd_test, fd_ref;
+      integer i;
+      integer test_val, ref_val;
+      string  test_filename, ref_filename;
+      string  line;
+      begin
+          pass = 1; 
+
+          test_filename = $sformatf({`TESTS_DIR, "/data/3_hamming_frames/%04d.hex"}, frame_id);
+          ref_filename  = $sformatf({`TESTS_DIR, "/ref_vectors/3_hamming_frames/%04d.hex"}, frame_id);
+
+          fd_test = $fopen(test_filename, "r");
+          fd_ref  = $fopen(ref_filename, "r");
+
+          if (fd_test == 0) begin
+              $display("Erro: não foi possível abrir arquivo de teste %s", test_filename);
+              pass = 0;
+              return;
+          end
+          if (fd_ref == 0) begin
+              $display("Erro: não foi possível abrir arquivo de referência %s", ref_filename);
+              $fclose(fd_test);
+              pass = 0;
+              return;
+          end
+
+          for (i = 0; i < FRAME_SIZE; i++) begin
+              // teste
+              if ($fgets(line, fd_test) == 0) begin
+                  $display("Erro: EOF inesperado no arquivo de teste na linha %0d", i);
+                  pass = 0;
+                  break;
+              end
+              if ($sscanf(line, "%h", test_val) != 1) begin
+                  $display("Erro: formato inválido no arquivo de teste na linha %0d: %s", i, line);
+                  pass = 0;
+                  break;
+              end
+
+              //referência
+              if ($fgets(line, fd_ref) == 0) begin
+                  $display("Erro: EOF inesperado no arquivo de referência na linha %0d", i);
+                  pass = 0;
+                  break;
+              end
+              if ($sscanf(line, "%h", ref_val) != 1) begin
+                  $display("Erro: formato inválido no arquivo de referência na linha %0d: %s", i, line);
+                  pass = 0;
+                  break;
+              end
+
+              if (test_val !== ref_val) begin
+                  $display("Mismatch no frame %0d, índice %0d: teste=%h, referência=%h", frame_id, i, test_val, ref_val);
+                  pass = 0;
+              end
+          end
+
+          $fclose(fd_test);
+          $fclose(fd_ref);
+      end
   endtask
 
 
@@ -177,21 +313,24 @@ module hamming_tb ();
 
     $display("Iniciando processamento de áudio");
 
-    $display("amostra 0 e 1 window: %h %h", u_window_buffer.buffer[0], u_window_buffer.buffer[1]);
-
-    for (j = 0; j < 24; j++) begin
-      $display("Processando quadro %0d", j);
+    for (frame_id = 0; frame_id < 24; frame_id++) begin
 
       wait (hamming_done);
+      check_frames(frame_id, ok);
+      wait (hamming_done);
+      if (!ok)  $display("Falha na janela %0d", frame_id);
 
-      dump_hamming_to_hex(j);
+      dump_hamming_to_hex(frame_id);
+      check_hamming_frames(frame_id, ok);
+      if (!ok) 
+        $display("Falha na comparação do frame %0d", frame_id);
+      else
+        $display("Sucesso na comparação do frame %0d", frame_id);
 
       #20;
     end
 
     #20;
-
-    //wait(idle);
 
     #2000;
 

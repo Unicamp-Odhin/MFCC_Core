@@ -3,8 +3,8 @@
 module hamming_window #(
     parameter N = 64,
     parameter F = 16,
-    parameter NUM_COEFFICIENTS = 400,  // Número de coeficientes da janela de Hamming
-    parameter NFFT_SIZE = 512,  // Tamanho do FFT
+    parameter NUM_COEFFICIENTS = 400,
+    parameter NFFT_SIZE = 512,
     parameter NFFT_LOG2 = $clog2(NFFT_SIZE)
 ) (
     input logic clk,
@@ -23,13 +23,8 @@ module hamming_window #(
     output logic out_valid_o,
     output logic done_o
 );
+  localparam NUM_COEFFICIENTS_LOG2 = $clog2(NUM_COEFFICIENTS);
   localparam NFFT_SIZE_COMPAIR = NFFT_SIZE - 1;
-
-  logic signed [N-1:0] hamming_window_lut[0:NUM_COEFFICIENTS - 1];
-
-  initial begin
-    $readmemh("tables/hamming_window.hex", hamming_window_lut);
-  end
 
   typedef enum logic [1:0] {
     IDLE,
@@ -40,11 +35,17 @@ module hamming_window #(
 
   hamming_state_t hamming_state;
 
-  integer calc_pointer;
+  logic [NUM_COEFFICIENTS_LOG2-1:0] calc_pointer;
+  
   logic [NFFT_LOG2 - 1:0] frame_ptr;
 
   logic signed [N-1:0] hamming_coefficient;
   logic signed [2*N-1:0] hamming_sample_temp;
+
+  hamming_rom hamming_rom_uut (
+      .addr(calc_pointer),
+      .dout(hamming_coefficient)
+  );
 
   logic [NFFT_LOG2-1:0] temp_ptr;
   logic temp_valid;
@@ -80,6 +81,7 @@ module hamming_window #(
           rd_en_o <= 0;
           if (calc_pointer == NUM_COEFFICIENTS) begin
             hamming_sample_temp <= 0;
+            temp_valid          <= 1;
             rd_en_o <= 0;
             hamming_state <= PADDING;
             frame_ptr <= frame_ptr + 1;
@@ -131,6 +133,5 @@ module hamming_window #(
     end
   end
 
-  assign hamming_coefficient = hamming_window_lut[calc_pointer];
 
 endmodule
