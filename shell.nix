@@ -74,8 +74,6 @@ pkgs.mkShell {
     iverilog
     gtkwave
     pythonPackages
-    pre-commit
-    verible
   ];
 
   C_INCLUDE_PATH = "${pkgs.zlib}/include";

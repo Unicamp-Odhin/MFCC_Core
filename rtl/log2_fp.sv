@@ -1,4 +1,4 @@
-module baselog2_fp #(
+module log2_fp #(
     parameter F = 16
 ) (
     input  logic signed [63:0] x,

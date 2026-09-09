@@ -217,7 +217,7 @@ module MFCC_Core #(
 
   always_ff @(posedge clk) begin : RESTARTIG_LOGIC
     // start_move <= start_i || (auto_restart_i && start_move_auto);
-    start_move <= 0;
+    // start_move <= 0;
 
     if (!rst_n) begin
       start_move_auto  <= 0;
@@ -233,7 +233,7 @@ module MFCC_Core #(
     end
   end
 
-  //assign start_move  = start_i || (auto_restart_i && start_move_auto);
+  assign start_move  = start_i || (auto_restart_i && start_move_auto);
   assign mfcc_done_o = dct_done;
   assign mfcc_data_o = coeficientes;
 

@@ -22,6 +22,6 @@ module long_mul_fixed #(
     else rounded_result = mult_result - (ONE <<< (F - 1));
   end
 
-  assign result = rounded_result >>> F;
+  assign result = rounded_result[WIDTH+F-1:F];
 
 endmodule

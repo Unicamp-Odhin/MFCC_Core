@@ -88,6 +88,7 @@ module window_buffer #(
       default: next_state = current_state;
     endcase
   end
+  
   logic [PTR_WIDTH:0] addr_sum;
   logic diff_pointers, valid_to_read;
   assign addr_sum = win_base_ptr + win_rd_idx;
@@ -105,7 +106,7 @@ module window_buffer #(
       else rd_phys_addr <= addr_sum[PTR_WIDTH-1:0];
 
       if (start_move) win_rd_idx <= 0;
-      else if (rd_en_i && valid_to_read_o) begin
+      else if (valid_to_read_o) begin
         if (win_rd_idx == frame_size - 1) win_rd_idx <= 0;
         else win_rd_idx <= win_rd_idx + 1;
       end

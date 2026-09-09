@@ -47,7 +47,7 @@ module mfcc_tb ();
       .PCM_FIFO_DEPTH (PCM_FIFO_DEPTH),
       .ALPHA          (ALPHA)
   ) uut (
-      .clk  (clk),
+      .clock  (clk),
       .rst_n(rst_n),
 
       .pcm_in     (pcm_in),
@@ -158,13 +158,15 @@ module mfcc_tb ();
     clk   = 0;
     #20;
     rst_n = 1;
+    start_mfcc = 1;
+    #20;
     start_mfcc = 0;
 
     $display("Iniciando processamento de áudio");
 
     #20
 
-    for (j = 0; j < 1; j++) begin
+    for (j = 0; j < 2; j++) begin
       $display("Processando quadro %0d", j + 1);
 
 

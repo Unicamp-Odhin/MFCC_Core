@@ -74,7 +74,7 @@ module fft_radix2 #(
 
 
     logic [NFFT_LOG2-1:0] frame_ptr_reversal;
-z
+
     initial begin
         $readmemh("tables/twiddles.hex", twiddles);
     end

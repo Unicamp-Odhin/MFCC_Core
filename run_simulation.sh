@@ -73,14 +73,14 @@ function run_mel_test {
 
 function run_dct_test {
    echo "Executando teste DCT"
-   verilator ${TESTS_DIR}/dct_tb.sv ${RTL_DIR}/pre_emphasis.sv ${RTL_DIR}/fifo.sv ${RTL_DIR}/window_buffer.sv ${RTL_DIR}/hamming_window.sv ${RTL_DIR}/complex_pkg.sv ${RTL_DIR}/long_mul_fixed.sv ${RTL_DIR}/fft_radix2.sv ${RTL_DIR}/log2_fp.sv ${RTL_DIR}/mel.sv ${RTL_DIR}/dct.sv \
+   verilator ${TESTS_DIR}/dct_tb.sv ${RTL_DIR}/cos_lut_rom.sv ${RTL_DIR}/pre_emphasis.sv ${RTL_DIR}/fifo.sv ${RTL_DIR}/window_buffer.sv ${RTL_DIR}/hamming_window.sv ${RTL_DIR}/hamming_rom.sv ${RTL_DIR}/complex_pkg.sv ${RTL_DIR}/long_mul_fixed.sv ${RTL_DIR}/fft_radix2.sv ${RTL_DIR}/log2_fp.sv ${RTL_DIR}/mel.sv  ${RTL_DIR}/mel_table_rom.sv ${RTL_DIR}/dct.sv \
              -DTESTS_DIR=\"${TESTS_DIR}\" ${VERILATOR_FLAGS}
    ./obj_dir/Vdct_tb
 }
 
 function run_mfcc_test {
    echo "Executando teste MFCC"
-   verilator --top-module mfcc_tb ${RTL_DIR}/mfcc_pkg.sv ${TESTS_DIR}/mfcc_tb.sv ${RTL_DIR}/pre_emphasis.sv ${RTL_DIR}/fifo.sv ${RTL_DIR}/window_buffer.sv ${RTL_DIR}/hamming_window.sv ${RTL_DIR}/complex_pkg.sv ${RTL_DIR}/fft_radix2.sv ${RTL_DIR}/log2_fp.sv ${RTL_DIR}/mel.sv ${RTL_DIR}/dct.sv ${RTL_DIR}/MFCC_Core.sv \
+   verilator --top-module mfcc_tb ${RTL_DIR}/mfcc_pkg.sv ${TESTS_DIR}/mfcc_tb.sv ${RTL_DIR}/pre_emphasis.sv ${RTL_DIR}/fifo.sv ${RTL_DIR}/window_buffer.sv ${RTL_DIR}/hamming_rom.sv ${RTL_DIR}/hamming_window.sv ${RTL_DIR}/complex_pkg.sv ${RTL_DIR}/long_mul_fixed.sv ${RTL_DIR}/fft_radix2.sv ${RTL_DIR}/log2_fp.sv ${RTL_DIR}/mel_table_rom.sv ${RTL_DIR}/mel.sv ${RTL_DIR}/cos_lut_rom.sv ${RTL_DIR}/dct.sv ${RTL_DIR}/MFCC_Core.sv \
              -DTESTS_DIR=\"${TESTS_DIR}\" ${VERILATOR_FLAGS} 
    ./obj_dir/Vmfcc_tb
 }
