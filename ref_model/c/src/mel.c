@@ -223,10 +223,10 @@ int16_t create_op_filterbank(int32_t** filterbank_op, int sample_rate, int F) {
         if (tmp > max_size)
             max_size = tmp;
     }
-    // printf("MEL_BANK_SIZE= %d\n", max_size + 2);
+
     for (int i = 0; i < NUM_FILTERS; i++) {
 
-        filterbank_op[i] = malloc((max_size + 2) * sizeof(int32_t));
+        filterbank_op[i] = malloc((max_size + 1) * sizeof(int32_t));
 
         for (init_index = 0; 
              init_index < NFFT / 2 + 1 && !filterbank[i][init_index]; 
@@ -236,18 +236,17 @@ int16_t create_op_filterbank(int32_t** filterbank_op, int sample_rate, int F) {
              end_index >= 0 && !filterbank[i][end_index]; 
              end_index--);
 
-        int k = 2;
+        int k = 1;
 
-        int start_index = i * (max_size + 2);
+        int start_index = i * (max_size + 1);
 
-        filterbank_op[i][0] = init_index;
-        filterbank_op[i][1] = end_index;
+        filterbank_op[i][0] = (init_index << 16) + end_index;
 
         for (int j = init_index; j <= end_index; j++) {
             filterbank_op[i][k++] = filterbank[i][j];
         }
 
-        while (k < max_size + 2) {
+        while (k < max_size + 1) {
             filterbank_op[i][k++] = 0;
         }
 
@@ -262,9 +261,9 @@ void save_op_filterbank(const char *filename, int32_t** filterbank_op, int16_t m
         perror("fopen");
         return;
     }
-    printf("MEL_BANK_SIZE= %d\n", max_size + 2);
+    printf("MEL_BANK_SIZE= %d\n", max_size + 1);
     for (int i = 0; i < NUM_FILTERS; i++) 
-        for (int j = 0; j < max_size + 2; j++) 
+        for (int j = 0; j < max_size + 1; j++) 
             fprintf(fp, "%08" PRIx32 "\n", filterbank_op[i][j]);
     fclose(fp);
 }
@@ -278,8 +277,8 @@ void apply_op_filterbank(int64_t power_spectrum_frame[NFFT/2 + 1], int32_t energ
     for (int i = 0; i < NUM_FILTERS; i++) {
         int64_t sum = 0;
 
-        int init_index = filterbank[i][0];
-        int end_index = filterbank[i][1] + 1;
+        int init_index = filterbank[i][0] >> 16;
+        int end_index = (filterbank[i][0] & 0x0000FFFF) + 1;
 
 
         for (int k = init_index; k < end_index ; k++) {
@@ -288,7 +287,7 @@ void apply_op_filterbank(int64_t power_spectrum_frame[NFFT/2 + 1], int32_t energ
                 power_spectrum_frame_k = power_spectrum_frame[k] >> (F_FFT - MEL_COEFF_WIDTH_F);
             else if (F_FFT < MEL_COEFF_WIDTH_F)
                 power_spectrum_frame_k = power_spectrum_frame[k] << (MEL_COEFF_WIDTH_F - F_FFT);
-            sum = sum + mul_fp_(power_spectrum_frame_k, (int64_t)(filterbank[i][2 + k - init_index]), MEL_COEFF_WIDTH_F);
+            sum = sum + mul_fp_(power_spectrum_frame_k, (int64_t)(filterbank[i][1 + k - init_index]), MEL_COEFF_WIDTH_F);
         }
 
         if (sum <= 0) {

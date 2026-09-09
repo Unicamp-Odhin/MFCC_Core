@@ -66,7 +66,7 @@ function run_fft_test {
 function run_mel_test {
    echo "Executando teste Mel"
    verilator ${TESTS_DIR}/mel_tb.sv \
-             ${RTL_DIR}/mel.sv ${RTL_DIR}/log2_fp.sv ${RTL_DIR}/pre_emphasis.sv ${RTL_DIR}/fifo.sv ${RTL_DIR}/window_buffer.sv ${RTL_DIR}/hamming_rom.sv ${RTL_DIR}/hamming_window.sv ${RTL_DIR}/complex_pkg.sv ${RTL_DIR}/long_mul_fixed.sv ${RTL_DIR}/fft_radix2.sv \
+             ${RTL_DIR}/mel.sv ${RTL_DIR}/mel_table_rom.sv ${RTL_DIR}/log2_fp.sv ${RTL_DIR}/pre_emphasis.sv ${RTL_DIR}/fifo.sv ${RTL_DIR}/window_buffer.sv ${RTL_DIR}/hamming_rom.sv ${RTL_DIR}/hamming_window.sv ${RTL_DIR}/complex_pkg.sv ${RTL_DIR}/long_mul_fixed.sv ${RTL_DIR}/fft_radix2.sv \
              -DTESTS_DIR=\"${TESTS_DIR}\"  ${VERILATOR_FLAGS}
    ./obj_dir/Vmel_tb
 }

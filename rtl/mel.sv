@@ -10,7 +10,7 @@ module mel #(
     parameter F = 16,
     parameter MEL_ENERGY_WIDTH = 32,
     parameter FILTER_INDEX_WIDTH = $clog2(NUM_MEL_FILTERS),
-    parameter MEL_BANK_SIZE = 33
+    parameter MEL_BANK_SIZE = 32
 ) (
     input logic clk,
     input logic rst_n,
@@ -46,7 +46,7 @@ module mel #(
 
   logic [POWER_WIDTH-1:0] sum, sum_next, sum_finish;
   logic [FILTER_INDEX_WIDTH-1:0] i, i_next;
-  logic [RFFT_BIN_ADDR_WIDTH:0] k, k_next, k_init;
+  logic [RFFT_BIN_ADDR_WIDTH:0] k, k_next, k_init, k_end;
   logic [MEL_MEMORY_ADDR_WIDTH-1:0] i_total, i_total_next, prt_memory;
 
   logic [POWER_WIDTH-1:0] temp_mul_next;
@@ -55,16 +55,19 @@ module mel #(
   logic [POWER_WIDTH-1:0] power_spectrum;
   assign power_spectrum = power_spectrum_mem[k];
 
-  logic [POWER_WIDTH-1:0] mel_memory[0:MEL_MEMORY_DEPTH-1];
+  // logic [POWER_WIDTH-1:0] mel_memory[0:MEL_MEMORY_DEPTH-1];
   logic [POWER_WIDTH-1:0] filter;
 
-  assign prt_memory = i_total + 2 + k - k_init;
+  mel_table_rom dut_mel_table_rom(
+      .addr(prt_memory),
+      .dout(filter)
+  );
 
-  assign filter = (prt_memory < MEL_MEMORY_DEPTH) ? mel_memory[prt_memory] : 32'h0;
+  // // assign filter = (prt_memory < MEL_MEMORY_DEPTH) ? mel_memory[prt_memory] : 32'h0;
 
-  initial begin
-    $readmemh("tables/mel_table.hex", mel_memory);
-  end
+  // initial begin
+  //   $readmemh("tables/mel_table.hex", mel_memory);
+  // end
 
   typedef enum logic [1:0] {
     IDLE,
@@ -106,6 +109,11 @@ module mel #(
       i       <= i_next;
       k       <= k_next;
       i_total <= i_total_next;
+      if (state == LOAD) begin
+         k_init <= filter[RFFT_BIN_ADDR_WIDTH+16:16];
+         k <= filter[RFFT_BIN_ADDR_WIDTH+16:16];
+         k_end <= filter[RFFT_BIN_ADDR_WIDTH:0];
+      end
       if (next_state == CALC_ENERGY) sum_finish <= sum_next;
       if (i == NUM_MEL_FILTERS) begin
         state      <= IDLE;
@@ -116,7 +124,6 @@ module mel #(
     end
   end
 
-  assign k_init = mel_memory[i_total];
 
   always_comb begin
     mel_value_energies = '0;
@@ -145,7 +152,7 @@ module mel #(
         mel_prt_energies   = i;
 
         if (i < NUM_MEL_FILTERS) begin
-          k_next     = mel_memory[i_total];
+          prt_memory = i_total;
           next_state = CALC_SUM;
         end else begin
           next_state = IDLE;
@@ -156,10 +163,11 @@ module mel #(
         mel_valid          = 1'b0;
         mel_value_energies = '0;
         mel_prt_energies   = i;
+        prt_memory = i_total + 1 + k - k_init;
 
-        if (k <= mel_memory[i_total+1]) begin
-          sum_next   = sum + temp_mul_next;
-          k_next     = k + 1;
+        sum_next = sum + temp_mul_next;
+        k_next = k + 1;
+        if (k < k_end) begin
           next_state = CALC_SUM;
         end else begin
           next_state = CALC_ENERGY;
@@ -196,7 +204,7 @@ module mel #(
     endcase
   end
 
-  baselog2_fp #(
+  log2_fp #(
       .F(F)
   ) u_base2log (
       .x(sum_finish),

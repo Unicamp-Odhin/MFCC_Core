@@ -54,7 +54,7 @@ module mel_tb ();
 
   initial begin
     $display("---- Iniciando Teste MEL ----");
-    $dumpfile("build/mel_tb.vcd");
+    $dumpfile({`TESTS_DIR, "/build/mel_tb.vcd"});
     $dumpvars(0, mel_tb);
 
     start_in  = 0;
