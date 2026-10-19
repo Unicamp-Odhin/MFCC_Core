@@ -255,3 +255,8 @@ log/
 logs/
 report/
 reports/
+
+
+
+MFCC_elaborated.v 
+MFCC_Netlist.v

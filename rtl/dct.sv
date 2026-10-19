@@ -86,7 +86,7 @@ module dct #(
   assign signed_filter = energies[n_ptr];
 
   // TODO arrumar a paremetrizacao
-  localparam ADDR_WIDTH_COS = NF_LOG2 + NC_LOG2;
+  localparam ADDR_WIDTH_COS = NF_LOG2 + NC_LOG2 + 1;
   logic [ADDR_WIDTH_COS-1:0] cos_addr;
 
   cos_lut_rom u_cos_lut (
@@ -98,6 +98,7 @@ module dct #(
   dct_state_t dct_current_state, dct_next_state;
 
   long_mul_fixed #(
+      .WIDTH(ENERGIES_WIDTH),
       .F(F)
   ) u_mul (
       .a(signed_filter),
