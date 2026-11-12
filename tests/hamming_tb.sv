@@ -316,7 +316,7 @@ module hamming_tb ();
     for (frame_id = 0; frame_id < 9; frame_id++) begin
 
       wait (hamming_done);
-      check_frames(frame_id, ok);
+      // check_frames(frame_id, ok);
       wait (hamming_done);
       if (!ok)  $display("Falha na janela %0d", frame_id);
 

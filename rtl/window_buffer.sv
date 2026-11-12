@@ -33,7 +33,6 @@ module window_buffer #(
   logic [PTR_WIDTH-1:0] win_rd_idx;  // indice sequencial dentro da janela atual
   logic [PTR_WIDTH-1:0] win_base_ptr;  // endereço base da janela
   logic [PTR_WIDTH-1:0] rd_phys_addr;  // De fato onde a sample está no buffer
-  logic [PTR_WIDTH-1:0] fill_cnt; // Quantas amostras faltam ser lidas para completar a próxima janela
 
   assign frame_size = FRAME_SIZE;
   assign frame_step = FRAME_STEP;
@@ -48,6 +47,13 @@ module window_buffer #(
 
   state_t current_state, next_state;
 
+  logic [PTR_WIDTH:0] addr_sum;
+  logic diff_pointers;
+  assign addr_sum = win_base_ptr + win_rd_idx;
+
+  assign diff_pointers = rd_phys_addr != wr_ptr;
+
+  
   // Controle de estados
   always_ff @(posedge clk) begin
     if (!rst_n) begin
@@ -56,9 +62,6 @@ module window_buffer #(
       current_state <= next_state;
     end
   end
-
-  logic fill_cnt_is_zero;
-  assign fill_cnt_is_zero = ~|fill_cnt;
 
   always_comb begin
     idle_o = 0;
@@ -69,7 +72,13 @@ module window_buffer #(
         if (start_move) next_state = MOVE;
       end
       START: next_state = REQUEST_DATA;
-      MOVE: next_state = REQUEST_DATA;
+      MOVE: begin
+        if (!fifo_empty_i) begin
+          next_state = FILL;
+        end else begin
+          next_state = REQUEST_DATA;
+        end
+      end 
       REQUEST_DATA: begin
         if (!fifo_empty_i) begin
           next_state = FILL;
@@ -78,7 +87,7 @@ module window_buffer #(
         end
       end
       FILL: begin
-        if (fill_cnt_is_zero) begin
+        if (win_rd_idx == (frame_size - 1)) begin
           next_state = IDLE;
           done_o = 1;
         end
@@ -88,30 +97,6 @@ module window_buffer #(
       default: next_state = current_state;
     endcase
   end
-  
-  logic [PTR_WIDTH:0] addr_sum;
-  logic diff_pointers, valid_to_read;
-  assign addr_sum = win_base_ptr + win_rd_idx;
-  assign diff_pointers = (((addr_sum) >= frame_size) ? ((addr_sum) - frame_size) : (addr_sum)) != {1'b0, wr_ptr};
-  assign valid_to_read_o = (next_state != MOVE) && (next_state != START) && diff_pointers && (~fifo_empty_i);
-
-
-  always_ff @(posedge clk) begin
-    if (!rst_n) begin
-      win_rd_idx   <= 0;
-      rd_phys_addr <= 0;
-    end else begin
-
-      if (addr_sum >= frame_size) rd_phys_addr <= addr_sum - frame_size;
-      else rd_phys_addr <= addr_sum[PTR_WIDTH-1:0];
-
-      if (start_move) win_rd_idx <= 0;
-      else if (valid_to_read_o) begin
-        if (win_rd_idx == frame_size - 1) win_rd_idx <= 0;
-        else win_rd_idx <= win_rd_idx + 1;
-      end
-    end
-  end
 
 
   always_ff @(posedge clk) begin
@@ -119,14 +104,18 @@ module window_buffer #(
     fifo_rd_en_o                <= 0;
 
     if (!rst_n) begin
-      fill_cnt     <= 0;
       win_base_ptr <= 0;
       wr_ptr       <= 0;
+      win_rd_idx   <= 0;
+      rd_phys_addr <= '0;
+     valid_to_read_o <= '0;
     end else begin
+      rd_phys_addr <= (addr_sum >= frame_size) ? (addr_sum - frame_size) : addr_sum[PTR_WIDTH-1:0];
+      valid_to_read_o <= '0;
+      
       case (current_state)
         START: begin
           win_base_ptr <= 0;
-          fill_cnt <= frame_size - 1;
           start_next_state_o <= 1;
         end
         MOVE: begin
@@ -135,25 +124,25 @@ module window_buffer #(
           end else begin
             win_base_ptr <= win_base_ptr + frame_step;
           end
-          fill_cnt <= frame_size - 1;
           start_next_state_o <= 1;
+          fifo_rd_en_o <= ~fifo_empty_i && (win_rd_idx != frame_size - 1);
         end
         REQUEST_DATA: begin
           fifo_rd_en_o <= 1;
         end
         FILL: begin
+          
           buffer[wr_ptr] <= fifo_data_i;
-          if (wr_ptr == frame_size - 1) begin
-            wr_ptr <= 0;
-          end else begin
-            wr_ptr <= wr_ptr + 1;
-          end
-          fill_cnt <= fill_cnt - 1;
-          fifo_rd_en_o <= 1 & ~fifo_empty_i && fill_cnt != 1;
+          wr_ptr <= wr_ptr + 1;
+
+          valid_to_read_o <= 1'b1;
+          win_rd_idx <= win_rd_idx + 1;
+          fifo_rd_en_o <= ~fifo_empty_i && (win_rd_idx != frame_size - 1);
         end
         IDLE: begin
           if (start_move) begin
-            fill_cnt <= 0;
+            wr_ptr <= 0;
+            win_rd_idx <= 0;
           end
         end
       endcase

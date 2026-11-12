@@ -51,7 +51,6 @@ module hamming_window #(
   logic temp_valid;
   logic done;
 
-  logic start_latency;
 
   always_ff @(posedge clk) begin
     rd_en_o <= 0;
@@ -63,7 +62,6 @@ module hamming_window #(
       frame_ptr <= 0;
       temp_ptr <= 0;
     end else begin
-      start_latency <= rd_en_o;
       temp_valid <= 0;
 
       case (hamming_state)
@@ -78,26 +76,21 @@ module hamming_window #(
           end
         end
         CALC: begin
-          rd_en_o <= 0;
-          if (calc_pointer == NUM_COEFFICIENTS) begin
-            hamming_sample_temp <= 0;
-            temp_valid          <= 1;
+          if (valid_to_read_i) begin
             rd_en_o <= 0;
-            hamming_state <= PADDING;
+            hamming_sample_temp <= frame_sample_i * hamming_coefficient;
+            temp_valid <= 1; 
             frame_ptr <= frame_ptr + 1;
             temp_ptr <= frame_ptr;
-          end else begin
-            if (valid_to_read_i) begin
-              rd_en_o <= 1;
+
+            if (calc_pointer == NUM_COEFFICIENTS - 1) begin
+              rd_en_o <= 0;
+              hamming_state <= PADDING;
+            end else begin
+                rd_en_o <= 1;
+                calc_pointer <= calc_pointer + 1;
+              hamming_state <= CALC;
             end
-            if (start_latency) begin
-              temp_valid          <= 1;
-              hamming_sample_temp <= frame_sample_i * hamming_coefficient;
-              calc_pointer        <= calc_pointer + 1;
-              frame_ptr           <= frame_ptr + 1;
-              temp_ptr            <= frame_ptr;
-            end
-            hamming_state <= CALC;
           end
         end
         PADDING: begin
@@ -124,14 +117,11 @@ module hamming_window #(
   end
 
   always_ff @(posedge clk) begin
-    if (!rst_n) begin
-      out_valid_o <= 0;
-    end else begin
-      frame_ptr_o <= temp_ptr;
-      out_valid_o <= temp_valid;
-      hamming_sample_o <= (hamming_sample_temp[N+F-1:F]);
-    end
   end
+      
+  assign frame_ptr_o = temp_ptr;
+  assign out_valid_o = temp_valid;
+  assign hamming_sample_o = (hamming_sample_temp[N+F-1:F]);
 
 
 endmodule
