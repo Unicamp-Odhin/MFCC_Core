@@ -62,6 +62,7 @@ let
     typing-extensions
     urllib3
     watchdog
+    pandas
   ]);
 
 in
