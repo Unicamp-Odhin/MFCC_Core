@@ -4,12 +4,12 @@
 //`define DIRECT_FRAME
 
 module fft_tb ();
-  localparam MAX_AUDIO_SIZE = 4001;
+  localparam MAX_AUDIO_SIZE = 50177;
   localparam SAMPLE_RATE = 16000;
   localparam WIDTH_MIC = 16;
   localparam WIDTH = 64;
   localparam F_WIDTH = 16;
-  localparam PCM_FIFO_DEPTH = 2048;
+  localparam PCM_FIFO_DEPTH = 20480;
   localparam FRAME_SIZE_T = 0.025;
   localparam FRAME_STEP_T = 0.01;
   localparam FRAME_SIZE = $rtoi(SAMPLE_RATE * FRAME_SIZE_T);
@@ -60,7 +60,8 @@ module fft_tb ();
       .clk  (clk),
       .rst_n(rst_n),
 
-      .wr_en_i(pre_emphasis_valid & x_prev_valid),
+      .wr_en_i(pre_emphasis_valid),
+      // .wr_en_i(pre_emphasis_valid & x_prev_valid),
       .rd_en_i(fifo_rd_en),
 
       .write_data_i(pre_emphasized_signal),
@@ -127,14 +128,6 @@ module fft_tb ();
   logic [WIDTH-1:0] fft_power_sample;
   logic fft_power_valid, fft_done;
 
-`ifdef DIRECT_FRAME
-  logic [15:0] fft_test_buffer[0:FFT_SIZE - 1];
-  logic [15:0] fft_test_sample;
-  logic [9:0] fft_test_ptr;
-  logic fft_test_valid;
-  logic start_fft;
-`endif
-
   fft_radix2 #(
       .NFFT(FFT_SIZE),
       .WIDTH(WIDTH),
@@ -147,13 +140,6 @@ module fft_tb ();
       .in_valid      (hamming_out_valid),
       .frame_ptr_i   (frame_ptr),
       .frame_sample_i(hamming_sample),
-
-`ifdef DIRECT_FRAME
-      .in_valid      (fft_test_valid),
-      .frame_ptr_i   (fft_test_ptr),
-      .frame_sample_i(fft_test_sample),
-      .start_i       (start_fft),
-`endif
       .start_i       (hamming_done),
 
 
@@ -184,11 +170,13 @@ module fft_tb ();
     end
   endtask
 
-  task dump_fft_buffer_to_hex;
+  task dump_fft_buffer_to_hex(input int frame_idx);
     integer fd;
     integer i;
+    string filename;
     begin
-      fd = $fopen({`TESTS_DIR, "/data/4_power_spectrum/0000.hex"}, "w");
+      filename = $sformatf("%s/data/4_power_spectrum/%04d.hex", `TESTS_DIR, frame_idx);
+      fd = $fopen(filename, "w");
       for (i = 0; i <= RFFT_SIZE; i = i + 1) begin
         $fwrite(fd, "%x\n", rfft_power_buffer[i]);
       end
@@ -200,60 +188,32 @@ module fft_tb ();
 
   initial begin
     $readmemh({`TESTS_DIR, "/ref_vectors/0_samples_dump.hex"}, samples);
-`ifdef DIRECT_FRAME
-    $readmemh("dumps/hamming_frame_0.hex", fft_test_buffer);
-`endif
     $dumpfile({`TESTS_DIR, "/build/fft_tb.vcd"});
 
     $dumpvars(0, fft_tb);
 
     $display("Iniciando teste da FFT");
 
-    start_move = 0;
     rst_n = 0;
     clk = 0;
     #4;
     rst_n = 1;
 
     $display("Iniciando processamento de áudio");
-
-    #10
-`ifdef DIRECT_FRAME
-    wait (finished);
-`endif
     #20;
 
     $display("Iniciando FFT");
 
-    #100;
-`ifdef DIRECT_FRAME
-    start_fft = 1;
-    #2;
-    start_fft = 0;
-`endif
-
-    //#(1000); // Espera 1ms para garantir que o reset foi aplicado
-
-
-    //wait(hamming_done);
-
-    //dump_hamming_to_hex;
-
     #20;  // Espera 20 ciclos de clock
-
-    wait (fft_done);
-    $display("FFT concluída");
+    @(posedge fft_done);
+    $display("FFT 0000 concluída");
     $display("Numero de ciclos de clock: %d", clock_cycles);
-
-    #20;  // Espera 10 ciclos de clock
-
-    dump_fft_buffer_to_hex;
-
-    //wait(!idle);
+    dump_fft_buffer_to_hex(0);
 
     #20;
-
-    //wait(idle);
+    @(posedge fft_done);
+    $display("FFT 0001 concluída");
+    dump_fft_buffer_to_hex(1);
 
     #2000;
 
@@ -262,26 +222,56 @@ module fft_tb ();
 
   always #1 clk = ~clk;
 
-  always_ff @(posedge clk or negedge rst_n) begin
+  // localparam SAMPLE_INTERVAL = 63;  // ciclos de clock (100MHz / 16kHz)
+  localparam SAMPLE_INTERVAL = 6250;  // ciclos de clock (100MHz / 16kHz)
+
+  integer sample_timer;
+  logic   mic_read;
+  assign mic_read = sample_timer == 0;
+
+  always_ff @(posedge clk) begin
     if (!rst_n) begin
-      pcm_ready_i             <= 0;
-      pcm_in                  <= 0;
-      pre_emphasis_valid_prev <= 0;
+      i            <= 0;
+      pcm_ready_i    <= 0;
+      pcm_in       <= 0;
+      sample_timer <= 0;
     end else begin
-      if (i < MAX_AUDIO_SIZE && !fifo_full) begin
-        pcm_in      <= samples[i];
-        pcm_ready_i <= 1;
-        i           <= i + 1;
+      if (i < MAX_AUDIO_SIZE) begin
+        if (mic_read) begin
+          pcm_in       <= samples[i];
+          pcm_ready_i    <= 1;
+          i            <= i + 1;
+          sample_timer <= SAMPLE_INTERVAL - 1;
+        end else begin
+          pcm_ready_i <= 0;
+          sample_timer <= sample_timer - 1;
+        end
       end else begin
         pcm_ready_i <= 0;
       end
-
-      if (fifo_full && pcm_ready_i) begin
-        i <= i - 3;
-      end
-      pre_emphasis_valid_prev <= pre_emphasis_valid;
     end
   end
+
+  // always_ff @(posedge clk or negedge rst_n) begin
+  //   if (!rst_n) begin
+  //     pcm_ready_i             <= 0;
+  //     pcm_in                  <= 0;
+  //     pre_emphasis_valid_prev <= 0;
+  //   end else begin
+  //     if (i < MAX_AUDIO_SIZE && !fifo_full) begin
+  //       pcm_in      <= samples[i];
+  //       pcm_ready_i <= 1;
+  //       i           <= i + 1;
+  //     end else begin
+  //       pcm_ready_i <= 0;
+  //     end
+
+  //     if (fifo_full && pcm_ready_i) begin
+  //       i <= i - 3;
+  //     end
+  //     pre_emphasis_valid_prev <= pre_emphasis_valid;
+  //   end
+  // end
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -291,28 +281,7 @@ module fft_tb ();
     end
   end
 
-`ifdef DIRECT_FRAME
-  integer j;
+  assign start_move = hamming_done && u_window_buffer.current_state == 0;
 
-  logic   finished;
-
-  always_ff @(posedge clk or negedge rst_n) begin
-    finished <= 0;
-    if (!rst_n) begin
-      j              <= 0;
-      fft_test_valid <= 0;
-    end else begin
-      if (j < FFT_SIZE) begin
-        fft_test_sample <= fft_test_buffer[j];
-        fft_test_valid  <= 1;
-        fft_test_ptr    <= j[9:0];
-        j               <= j + 1;
-      end else begin
-        fft_test_valid <= 0;
-        finished       <= 1;
-      end
-    end
-  end
-`endif
 
 endmodule

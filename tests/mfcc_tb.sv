@@ -166,8 +166,8 @@ module mfcc_tb ();
 
     #20
 
-    for (j = 0; j < 2; j++) begin
-      $display("Processando quadro %0d", j + 1);
+    for (j = 0; j < 10; j++) begin
+      $display("\nProcessando quadro %0d", j + 1);
 
 
       wait (uut.hamming_done);

@@ -6,14 +6,14 @@ module fft_radix2 #(
     parameter F = 16,
     parameter NFFT_LOG2 = $clog2(NFFT)
 ) (
-    input  logic clk,
-    input  logic rst_n,
+    input logic clk,
+    input logic rst_n,
 
-    input  logic in_valid,
-    input  logic [NFFT_LOG2-1:0] frame_ptr_i,
-    input  logic [WIDTH-1:0] frame_sample_i,
+    input logic in_valid,
+    input logic [NFFT_LOG2-1:0] frame_ptr_i,
+    input logic [WIDTH-1:0] frame_sample_i,
 
-    input  logic start_i,
+    input logic start_i,
 
     output logic fft_done_o,
 
@@ -65,8 +65,8 @@ module fft_radix2 #(
     endfunction
 
     localparam WIDTH_DIFF = COMPLEX_WIDTH - WIDTH;
-    localparam RFFT_SIZE  = NFFT/2;
-    localparam NFFT_LOG22  = $clog2(NFFT_LOG2);
+    localparam RFFT_SIZE = NFFT/2;
+    localparam NFFT_LOG22 = $clog2(NFFT_LOG2);
 
     logic parity[NFFT_LOG2 - 1:0];
 
@@ -126,115 +126,107 @@ module fft_radix2 #(
     fft_state_t fft_state;
     butterfly_task_t sched;
 
-    pipeline_stage_1_t  stage1;
+    pipeline_stage_1_t stage1;
     pipeline_stage_mul_t stage2_mul;
-    pipeline_stage_2_t  stage3_addsub;
+    pipeline_stage_2_t stage3_addsub;
 
     // Power calculation pipeline
     long_complex power_stage1;
     logic [WIDTH-1:0] power_stage2_re, stage1_mult_re, stage1_mult_im;
     logic [WIDTH-1:0] power_stage2_im;
     logic [WIDTH-1:0] power_stage3;
-    logic [WIDTH-1:0] power_stage4;
 
 
     logic power_valid_stage1;
     logic power_valid_stage2;
     logic power_valid_stage3;
-    logic power_valid_stage4;
 
     logic [NFFT_LOG2-1:0] power_ptr_stage1;
     logic [NFFT_LOG2-1:0] power_ptr_stage2;
     logic [NFFT_LOG2-1:0] power_ptr_stage3;
-    logic [NFFT_LOG2-1:0] power_ptr_stage4;
     logic [NFFT_LOG2-1:0] power_ptr;
 
     long_mul_fixed #(.F(F)) u_mul_stage1_re (
-        .a      (power_stage1.re[WIDTH-1:0]),
-        .b      (power_stage1.re[WIDTH-1:0]),
+        .a (power_stage1.re[WIDTH-1:0]),
+        .b (power_stage1.re[WIDTH-1:0]),
         .result (stage1_mult_re)
     );
 
     long_mul_fixed #(.F(F)) u_mul_stage1_im (
-        .a      (power_stage1.im[WIDTH-1:0]),
-        .b      (power_stage1.im[WIDTH-1:0]),
+        .a (power_stage1.im[WIDTH-1:0]),
+        .b (power_stage1.im[WIDTH-1:0]),
         .result (stage1_mult_im)
     );
         
-    // Outputs
-    assign power_valid_o  = power_valid_stage4;
-    assign power_ptr_o = power_ptr_stage4;
-    assign power_sample_o = power_stage4;
-
     logic [NFFT_LOG2 - 1:0] even_ptr_sum, odd_ptr_sum;
 
     assign even_ptr_sum = sched.k + sched.j;
-    assign odd_ptr_sum  = sched.k + sched.j + sched.half_m;
+    assign odd_ptr_sum = sched.k + sched.j + sched.half_m;
 
     // Main control
     always_ff @(posedge clk) begin : FFT_CALCULATION_PIPELINED
         if (!rst_n) begin
-            fft_state           <= IDLE;
-            sched.stage         <= 1;
-            sched.k             <= 0;
-            sched.j             <= 0;
-            sched.m             <= 2;
-            sched.half_m        <= 1;
+            fft_state <= IDLE;
+            sched.stage <= 1;
+            sched.k <= 0;
+            sched.j <= 0;
+            sched.m <= 2;
+            sched.half_m <= 1;
             sched.twiddle_index <= 0;
-            sched.twiddle_step  <= NFFT >> 1;
-            fft_done_o          <= 0;
+            sched.twiddle_step <= NFFT >> 1;
+            fft_done_o <= 0;
 
-            power_ptr           <= 0;
-            power_ptr_stage1    <= 0;
-            power_ptr_stage2    <= 0;
-            power_ptr_stage3    <= 0;
-            power_ptr_stage4    <= 0;
-            power_valid_stage1  <= 0;
-            power_valid_stage2  <= 0;
-            power_valid_stage3  <= 0;
-            power_valid_stage4  <= 0;
-            power_stage3        <= 0;
+            power_ptr <= 0;
+            power_ptr_stage1 <= 0;
+            power_ptr_stage2 <= 0;
+            power_ptr_stage3 <= 0;
+            power_ptr_o <= 0;
+            power_valid_stage1 <= 0;
+            power_valid_stage2 <= 0;
+            power_valid_stage3 <= 0;
+            power_valid_o <= 0;
+            power_stage3 <= 0;
         end else begin
             fft_done_o <= 0;
 
             case (fft_state)
                 IDLE: begin
                     if (start_i) begin
-                        fft_state           <= PROCESSING;
-                        sched.stage         <= 1;
-                        sched.k             <= 0;
-                        sched.j             <= 0;
-                        sched.m             <= 2;
-                        sched.half_m        <= 1;
+                        fft_state <= PROCESSING;
+                        sched.stage <= 1;
+                        sched.k <= 0;
+                        sched.j <= 0;
+                        sched.m <= 2;
+                        sched.half_m <= 1;
                         sched.twiddle_index <= 0;
-                        sched.twiddle_step  <= NFFT >> 1;
-                        power_ptr           <= 0;
+                        sched.twiddle_step <= NFFT >> 1;
+                        power_ptr <= 0;
                     end
                 end
 
                 PROCESSING: begin
                     // Pipeline Stage 1: Read and schedule
                     stage1.even <= x_read(even_ptr_sum[NFFT_LOG2-1:0]);
-                    stage1.odd  <= x_read(odd_ptr_sum[NFFT_LOG2-1:0]);
+                    stage1.odd <= x_read(odd_ptr_sum[NFFT_LOG2-1:0]);
 
-                    stage1.twiddle   <= twiddles[sched.twiddle_index[NFFT_LOG2:0]];
-                    stage1.meta      <= sched;
+                    stage1.twiddle <= twiddles[sched.twiddle_index[NFFT_LOG2:0]];
+                    stage1.meta <= sched;
 
                     // Scheduler update
                     if (sched.j < sched.half_m - 1) begin
-                        sched.j             <= sched.j + 1;
+                        sched.j <= sched.j + 1;
                         sched.twiddle_index <= sched.twiddle_index + sched.twiddle_step;
                     end else begin
-                        sched.j             <= 0;
+                        sched.j <= 0;
                         sched.twiddle_index <= 0;
                         if (sched.k < NFFT - sched.m) begin
                             sched.k <= sched.k + sched.m;
                         end else begin
                             sched.k <= 0;
                             if (sched.stage < NFFT_LOG2[NFFT_LOG22:0]) begin
-                                sched.stage        <= sched.stage + 1;
-                                sched.m            <= 1 << (sched.stage + 1);
-                                sched.half_m       <= 1 << sched.stage;
+                                sched.stage <= sched.stage + 1;
+                                sched.m <= 1 << (sched.stage + 1);
+                                sched.half_m <= 1 << sched.stage;
                                 sched.twiddle_step <= NFFT >> (sched.stage + 1);
                             end else begin
                                 fft_state <= CALC_REAL_POWER;
@@ -245,42 +237,43 @@ module fft_radix2 #(
                 end
 
                 CALC_REAL_POWER: begin
-                    if (power_ptr_stage4 == RFFT_SIZE) begin
+                    if (power_ptr_o == RFFT_SIZE) begin
                         fft_state <= DONE;
                     end else begin
                         // Power pipeline Stage 1
-                        power_ptr          <= power_ptr + 1;
-                        power_stage1       <= x_read(power_ptr);
-                        power_ptr_stage1   <= power_ptr;
+                        power_ptr <= power_ptr + 1;
+                        power_stage1 <= x_read(power_ptr);
+                        power_ptr_stage1 <= power_ptr;
                         power_valid_stage1 <= 1;
 
                         // Power pipeline Stage 2
                         power_stage2_re <= stage1_mult_re;
                         power_stage2_im <= stage1_mult_im;
 
-                        power_ptr_stage2   <= power_ptr_stage1;
+                        power_ptr_stage2 <= power_ptr_stage1;
                         power_valid_stage2 <= power_valid_stage1;
 
                         // Power pipeline Stage 3
-                        power_stage3       <= power_stage2_re + power_stage2_im;
-                        power_ptr_stage3   <= power_ptr_stage2;
+                        power_stage3 <= power_stage2_re + power_stage2_im;
+                        power_ptr_stage3 <= power_ptr_stage2;
                         power_valid_stage3 <= power_valid_stage2;
 
                         // Power pipeline Stage 4
-                        power_stage4       <= power_stage3 >> NFFT_LOG2; //Dividir por NFFT
-                        power_ptr_stage4   <= power_ptr_stage3;
-                        power_valid_stage4 <= power_valid_stage3;
+                        power_sample_o <= power_stage3 >> NFFT_LOG2; //Dividir por NFFT
+                        power_ptr_o <= power_ptr_stage3;
+                        power_valid_o <= power_valid_stage3;
                     end
                 end
 
                 DONE: begin
-                    fft_done_o         <= 1;
-                    power_ptr          <= 0;
+                    fft_done_o <= 1;
+                    power_ptr <= 0;
+                    power_ptr_o <= 0;
                     power_valid_stage1 <= 0;
                     power_valid_stage2 <= 0;
                     power_valid_stage3 <= 0;
-                    power_valid_stage4 <= 0;
-                    fft_state          <= IDLE;
+                    power_valid_o <= 0;
+                    fft_state <= IDLE;
                 end
 
                 default: fft_state <= IDLE;
@@ -295,26 +288,26 @@ module fft_radix2 #(
     logic signed [COMPLEX_WIDTH-1:0] aibr_result;
 
     long_mul_fixed #(.F(F)) u_mul_arbr (
-        .a      (stage1.twiddle.re),
-        .b      (stage1.odd.re),
+        .a (stage1.twiddle.re),
+        .b (stage1.odd.re),
         .result (arbr_result)
     );
 
     long_mul_fixed #(.F(F)) u_mul_aibi (
-        .a      (stage1.twiddle.im),
-        .b      (stage1.odd.im),
+        .a (stage1.twiddle.im),
+        .b (stage1.odd.im),
         .result (aibi_result)
     );
 
     long_mul_fixed #(.F(F)) u_mul_arbi (
-        .a      (stage1.twiddle.re),
-        .b      (stage1.odd.im),
+        .a (stage1.twiddle.re),
+        .b (stage1.odd.im),
         .result (arbi_result)
     );
 
     long_mul_fixed #(.F(F)) u_mul_aibr (
-        .a      (stage1.twiddle.im),
-        .b      (stage1.odd.re),
+        .a (stage1.twiddle.im),
+        .b (stage1.odd.re),
         .result (aibr_result)
     );
 
@@ -330,30 +323,40 @@ module fft_radix2 #(
 
         stage2_mul.addr_even <= stage1.meta.k + stage1.meta.j;
 
-        stage2_mul.addr_odd  <= stage1.meta.k  + stage1.meta.j  + stage1.meta.half_m;
+        stage2_mul.addr_odd <= stage1.meta.k + stage1.meta.j + stage1.meta.half_m;
     end
 
 
     // FFT Pipeline Stage 3: c_add and c_sub
     always_ff @(posedge clk) begin
         //x[k + j] = u + (t)
-        stage3_addsub.sum.re         <= stage2_mul.even.re + (stage2_mul.arbr - stage2_mul.aibi);
-        stage3_addsub.sum.im         <= stage2_mul.even.im + (stage2_mul.arbi + stage2_mul.aibr);
+        stage3_addsub.sum.re <= stage2_mul.even.re + (stage2_mul.arbr - stage2_mul.aibi);
+        stage3_addsub.sum.im <= stage2_mul.even.im + (stage2_mul.arbi + stage2_mul.aibr);
 
         //x[k + j + half_m] = u - (t)
-        stage3_addsub.diff.re        <= stage2_mul.even.re - (stage2_mul.arbr - stage2_mul.aibi);
-        stage3_addsub.diff.im        <= stage2_mul.even.im - (stage2_mul.arbi + stage2_mul.aibr);
+        stage3_addsub.diff.re <= stage2_mul.even.re - (stage2_mul.arbr - stage2_mul.aibi);
+        stage3_addsub.diff.im <= stage2_mul.even.im - (stage2_mul.arbi + stage2_mul.aibr);
 
-        stage3_addsub.addr_even      <= stage2_mul.addr_even;
-        stage3_addsub.addr_odd       <= stage2_mul.addr_odd;
+        stage3_addsub.addr_even <= stage2_mul.addr_even;
+        stage3_addsub.addr_odd <= stage2_mul.addr_odd;
 
         stage3_addsub.addr_even_bank <= count_ones_and_mask2bit(stage2_mul.addr_even);
-        stage3_addsub.addr_odd_bank  <= count_ones_and_mask2bit(stage2_mul.addr_odd);
+        stage3_addsub.addr_odd_bank <= count_ones_and_mask2bit(stage2_mul.addr_odd);
     end
 
     logic x0_write_en, x1_write_en, x2_write_en, x3_write_en;
     long_complex x0_write_data, x1_write_data, x2_write_data, x3_write_data;
     logic [NFFT_LOG2-1:0] x0_write_addr, x1_write_addr, x2_write_addr, x3_write_addr;
+
+
+    logic [2:0] wb_valid_pipe;
+
+    always_ff @(posedge clk) begin
+        if (!rst_n)
+            wb_valid_pipe <= 3'b0;
+        else
+            wb_valid_pipe <= {wb_valid_pipe[1:0], (fft_state == PROCESSING)};
+    end
 
     // FFT Pipeline Stage 4: Writeback
     always_ff @(posedge clk) begin
@@ -368,17 +371,17 @@ module fft_radix2 #(
             x2_write_addr <= frame_ptr_reversal;
             x3_write_addr <= frame_ptr_reversal;
 
-            x0_write_en   <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b00;
-            x1_write_en   <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b01;
-            x2_write_en   <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b10;
-            x3_write_en   <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b11;
+            x0_write_en <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b00;
+            x1_write_en <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b01;
+            x2_write_en <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b10;
+            x3_write_en <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b11;
             
             x0_write_data <= {frame_sample_i, COMPLEX_WIDTH'(0)}; // Extensão de sinal
             x1_write_data <= {frame_sample_i, COMPLEX_WIDTH'(0)}; // Extensão de sinal
             x2_write_data <= {frame_sample_i, COMPLEX_WIDTH'(0)}; // Extensão de sinal
             x3_write_data <= {frame_sample_i, COMPLEX_WIDTH'(0)}; // Extensão de sinal
             
-        end else if(fft_state == PROCESSING || power_ptr < 3) begin  // TODO analisar melhor isso, mas é para esperar o pipeline terminar e não perder os dados
+        end else if ((fft_state == PROCESSING && wb_valid_pipe[2]) || (fft_state == CALC_REAL_POWER && power_ptr < 3)) begin  // TODO analisar melhor isso, mas é para esperar o pipeline terminar e não perder os dados
             case (stage3_addsub.addr_even_bank)
                 0: begin
                     x0_write_en <= 1;

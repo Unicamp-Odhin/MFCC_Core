@@ -156,6 +156,14 @@ module dct_tb ();
       .fft_done_o(fft_done)
   );
 
+  logic [WIDTH-1:0] rfft_power_buffer[0:RFFT_SIZE];
+
+  always_ff @(posedge clk) begin
+    if (fft_power_valid) begin
+      rfft_power_buffer[fft_ptr] <= fft_power_sample;
+    end
+  end
+
   logic mel_done, mel_valid;
   logic [5:0] mel_ptr;
   logic [WIDTH_OUT-1:0] mel_sample;
@@ -221,12 +229,27 @@ module dct_tb ();
     end
   end
 
-
-  task dump_mel_energies_to_hex;
+  task dump_fft_buffer_to_hex(input int frame_idx);
     integer fd;
     integer i;
+    string filename;
     begin
-      fd = $fopen({`TESTS_DIR, "/data/5_energies/0000.hex"}, "w");
+      filename = $sformatf("%s/data/4_power_spectrum/%04d.hex", `TESTS_DIR, frame_idx);
+      fd = $fopen(filename, "w");
+      for (i = 0; i <= RFFT_SIZE; i = i + 1) begin
+        $fwrite(fd, "%x\n", rfft_power_buffer[i]);
+      end
+      $fclose(fd);
+    end
+  endtask
+
+  task dump_mel_energies_to_hex(input int frame_idx);
+    integer fd;
+    integer i;
+    string filename;
+    begin
+      filename = $sformatf("%s/data/5_energies/%04d.hex", `TESTS_DIR, frame_idx);
+      fd = $fopen(filename, "w");
       for (i = 0; i < NUM_MEL_FILTERS; i = i + 1) begin
         $fwrite(fd, "%h\n", mel_energies[i]);
       end
@@ -234,11 +257,13 @@ module dct_tb ();
     end
   endtask
 
-  task dump_coeficients_to_hex;
+  task dump_coeficients_to_hex(input int frame_idx);
     integer fd;
     integer i;
+    string filename;
     begin
-      fd = $fopen({`TESTS_DIR, "/data/6_ceps/0000.hex"}, "w");
+      filename = $sformatf("%s/data/6_ceps/%04d.hex", `TESTS_DIR, frame_idx);
+      fd = $fopen(filename, "w");
       for (i = 0; i < NUM_CEPS; i = i + 1) begin
         $fwrite(fd, "%h\n", coeficientes[i]);
       end
@@ -264,15 +289,25 @@ module dct_tb ();
 
     #(1000);  // Espera 1ms para garantir que o reset foi aplicado
 
-    wait (dct_done);
 
+    #20;  // Espera 20 ciclos de clock
+    @(posedge fft_done);
+    $display("FFT 0000 concluída");
     #20;  // Espera 10 ciclos de clock
+    dump_fft_buffer_to_hex(0);
 
-    dump_mel_energies_to_hex();
-    dump_coeficients_to_hex();
+    $display("Frame 0000");
+    wait (dct_done);
+    #20;  // Espera 10 ciclos de clock
+    dump_mel_energies_to_hex(0);
+    dump_coeficients_to_hex(0);
+    #20;
 
-    //wait(!idle);
-
+    $display("Frame 0001");
+    wait (dct_done);
+    #20;  // Espera 10 ciclos de clock
+    dump_mel_energies_to_hex(1);
+    dump_coeficients_to_hex(2);
     #20;
 
     //wait(idle);
@@ -305,6 +340,7 @@ module dct_tb ();
     end
   end
 
-  assign start_move = 0;
+  assign start_move = hamming_done && u_window_buffer.current_state == 0;
+
 
 endmodule
