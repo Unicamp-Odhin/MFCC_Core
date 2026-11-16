@@ -6,15 +6,16 @@ module MFCC_Wrapper (
     wire pcm_ready_i = 1'b0;
     wire start_i = 1'b0;
     wire mfcc_done_o;
-    wire [(13*16)-1:0] mfcc_data_o;
+    wire [383:0] mfcc_data_o;
 (* keep_hierarchy = "yes" *)
     MFCC_Core dut (
-        .clk(clk),
-        .rst_n(rst_n),
-        .pcm_in(pcm_in),
-        .pcm_ready_i(pcm_ready_i),
-        .start_i(start_i),
-        .mfcc_done_o(mfcc_done_o),
-        .mfcc_data_o(mfcc_data_o)
+        .clock          (clk),
+        .rst_n          (rst_n),
+        .pcm_in         (pcm_in),
+        .pcm_ready_i    (pcm_ready_i),
+        .start_i        (start_i),
+        .auto_restart_i (1'b1),
+        .mfcc_done_o    (mfcc_done_o),
+        .mfcc_data_o    (mfcc_data_o)
     );
 endmodule

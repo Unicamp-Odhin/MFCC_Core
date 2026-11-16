@@ -211,13 +211,8 @@ module dct #(
   end
 
 
-  always_comb begin
-    if (temp_ceps_out != '0) begin
-      ceps_out = temp_ceps_out[CEPS_WIDTH+F-1:F];
-    end else begin
-      ceps_out = '0;
-    end
-  end
+
+  assign ceps_out = temp_ceps_out[CEPS_WIDTH+F-1:F];
 
 
 endmodule

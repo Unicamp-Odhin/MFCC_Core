@@ -4,11 +4,11 @@
 
 # Clock constraint (100 MHz → período de 10 ns)
 
-#set_property -dict { PACKAGE_PIN E3  IOSTANDARD LVCMOS33 } [get_ports { clk }];
-set_property PACKAGE_PIN Y9 [get_ports {clk}];  # "GCLK" zebdoard
-set_property IOSTANDARD LVCMOS33 [get_ports {clk}];
-create_clock -name sys_clk -period 10.000 [get_ports clk]
-#set_property PACKAGE_PIN Y9 [get_ports {clk}];  # "GCLK" zebdoard
+#set_property -dict { PACKAGE_PIN E3  IOSTANDARD LVCMOS33 } [get_ports { clock }];
+set_property PACKAGE_PIN Y9 [get_ports {clock}];  # "GCLK" zebdoard
+set_property IOSTANDARD LVCMOS33 [get_ports {clock}];
+create_clock -name sys_clk -period 10.000 [get_ports clock]
+#set_property PACKAGE_PIN Y9 [get_ports {clock}];  # "GCLK" zebdoard
 
 ###############################################################################
 # OBS:

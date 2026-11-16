@@ -70,14 +70,7 @@ module fft_radix2 #(
 
     logic parity[NFFT_LOG2 - 1:0];
 
-    long_complex twiddles[0 : NFFT / 2];
-
-
     logic [NFFT_LOG2-1:0] frame_ptr_reversal;
-
-    initial begin
-        $readmemh("tables/twiddles.hex", twiddles);
-    end
 
     typedef enum logic [1:0] {
         IDLE,
@@ -357,9 +350,18 @@ module fft_radix2 #(
         stage3_addsub.addr_odd_bank <= count_ones_and_mask2bit(stage2_mul.addr_odd);
     end
 
+    logic [NFFT_LOG2-1:0] x0_write_addr, x1_write_addr, x2_write_addr, x3_write_addr;
     logic x0_write_en, x1_write_en, x2_write_en, x3_write_en;
     long_complex x0_write_data, x1_write_data, x2_write_data, x3_write_data;
-    logic [NFFT_LOG2-1:0] x0_write_addr, x1_write_addr, x2_write_addr, x3_write_addr;
+    logic [NFFT_LOG2-1:0] x0_write_addr_even, x1_write_addr_even, x2_write_addr_even, x3_write_addr_even;
+    logic x0_write_en_even, x1_write_en_even, x2_write_en_even, x3_write_en_even;
+    long_complex x0_write_data_even, x1_write_data_even, x2_write_data_even, x3_write_data_even;
+    logic [NFFT_LOG2-1:0] x0_write_addr_odd, x1_write_addr_odd, x2_write_addr_odd, x3_write_addr_odd;
+    logic x0_write_en_odd, x1_write_en_odd, x2_write_en_odd, x3_write_en_odd;
+    long_complex x0_write_data_odd, x1_write_data_odd, x2_write_data_odd, x3_write_data_odd;
+    logic [NFFT_LOG2-1:0] x0_write_addr_idle, x1_write_addr_idle, x2_write_addr_idle, x3_write_addr_idle;
+    logic x0_write_en_idle, x1_write_en_idle, x2_write_en_idle, x3_write_en_idle;
+    long_complex x0_write_data_idle, x1_write_data_idle, x2_write_data_idle, x3_write_data_idle;
 
 
     logic [2:0] wb_valid_pipe;
@@ -373,76 +375,138 @@ module fft_radix2 #(
 
     // FFT Pipeline Stage 4: Writeback
     always_ff @(posedge clk) begin
-        x0_write_en <= 0;
-        x1_write_en <= 0;
-        x2_write_en <= 0;
-        x3_write_en <= 0;
+        x0_write_en_odd <= '0;
+        x1_write_en_odd <= '0;
+        x2_write_en_odd <= '0;
+        x3_write_en_odd <= '0;
 
-        if(in_valid) begin
-            x0_write_addr <= frame_ptr_reversal;
-            x1_write_addr <= frame_ptr_reversal;
-            x2_write_addr <= frame_ptr_reversal;
-            x3_write_addr <= frame_ptr_reversal;
+        x0_write_addr_odd <= '0;
+        x1_write_addr_odd <= '0;
+        x2_write_addr_odd <= '0;
+        x3_write_addr_odd <= '0;
 
-            x0_write_en <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b00;
-            x1_write_en <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b01;
-            x2_write_en <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b10;
-            x3_write_en <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b11;
-            
-            x0_write_data <= {frame_sample_i, COMPLEX_WIDTH'(0)}; // Extensão de sinal
-            x1_write_data <= {frame_sample_i, COMPLEX_WIDTH'(0)}; // Extensão de sinal
-            x2_write_data <= {frame_sample_i, COMPLEX_WIDTH'(0)}; // Extensão de sinal
-            x3_write_data <= {frame_sample_i, COMPLEX_WIDTH'(0)}; // Extensão de sinal
-            
-        end else if ((fft_state == PROCESSING && wb_valid_pipe[2]) || (fft_state == CALC_REAL_POWER && power_ptr < 3)) begin  // TODO analisar melhor isso, mas é para esperar o pipeline terminar e não perder os dados
-            case (stage3_addsub.addr_even_bank)
-                0: begin
-                    x0_write_en <= 1;
-                    x0_write_addr <= stage3_addsub.addr_even[NFFT_LOG2 - 1:0];
-                    x0_write_data <= stage3_addsub.sum;
-                end 
-                1: begin
-                    x1_write_en <= 1;
-                    x1_write_addr <= stage3_addsub.addr_even[NFFT_LOG2 - 1:0];
-                    x1_write_data <= stage3_addsub.sum;
-                end 
-                2: begin
-                    x2_write_en <= 1; 
-                    x2_write_addr <= stage3_addsub.addr_even[NFFT_LOG2 - 1:0];
-                    x2_write_data <= stage3_addsub.sum;
-                end
-                3: begin
-                    x3_write_en <= 1;
-                    x3_write_addr <= stage3_addsub.addr_even[NFFT_LOG2 - 1:0];
-                    x3_write_data <= stage3_addsub.sum;
-                end 
-            endcase
+        x0_write_data_odd <= '0;
+        x1_write_data_odd <= '0;
+        x2_write_data_odd <= '0;
+        x3_write_data_odd <= '0;
 
+        if ((fft_state == PROCESSING && wb_valid_pipe[2]) || (fft_state == CALC_REAL_POWER && power_ptr < 3)) begin 
             case (stage3_addsub.addr_odd_bank)
                 0: begin
-                    x0_write_en <= 1;
-                    x0_write_addr <= stage3_addsub.addr_odd[NFFT_LOG2 - 1:0];
-                    x0_write_data <= stage3_addsub.diff;
+                    x0_write_en_odd <= 1;
+                    x0_write_addr_odd <= stage3_addsub.addr_odd[NFFT_LOG2 - 1:0];
+                    x0_write_data_odd <= stage3_addsub.diff;
                 end 
                 1: begin
-                    x1_write_en <= 1;
-                    x1_write_addr <= stage3_addsub.addr_odd[NFFT_LOG2 - 1:0];
-                    x1_write_data <= stage3_addsub.diff;
+                    x1_write_en_odd <= 1;
+                    x1_write_addr_odd <= stage3_addsub.addr_odd[NFFT_LOG2 - 1:0];
+                    x1_write_data_odd <= stage3_addsub.diff;
                 end 
                 2: begin
-                    x2_write_en <= 1;
-                    x2_write_addr <= stage3_addsub.addr_odd[NFFT_LOG2 - 1:0];
-                    x2_write_data <= stage3_addsub.diff;
+                    x2_write_en_odd <= 1;
+                    x2_write_addr_odd <= stage3_addsub.addr_odd[NFFT_LOG2 - 1:0];
+                    x2_write_data_odd <= stage3_addsub.diff;
                 end 
                 3: begin
-                    x3_write_en <= 1;
-                    x3_write_addr <= stage3_addsub.addr_odd[NFFT_LOG2 - 1:0];
-                    x3_write_data <= stage3_addsub.diff;
+                    x3_write_en_odd <= 1;
+                    x3_write_addr_odd <= stage3_addsub.addr_odd[NFFT_LOG2 - 1:0];
+                    x3_write_data_odd <= stage3_addsub.diff;
                 end 
             endcase
         end
     end
 
+    always_ff @(posedge clk) begin
+        x0_write_en_even <= '0;
+        x1_write_en_even <= '0;
+        x2_write_en_even <= '0;
+        x3_write_en_even <= '0;
+
+        x0_write_addr_even <= '0;
+        x1_write_addr_even <= '0;
+        x2_write_addr_even <= '0;
+        x3_write_addr_even <= '0;
+
+        x0_write_data_even <= '0;
+        x1_write_data_even <= '0;
+        x2_write_data_even <= '0;
+        x3_write_data_even <= '0;
+
+        if ((fft_state == PROCESSING && wb_valid_pipe[2]) || (fft_state == CALC_REAL_POWER && power_ptr < 3)) begin 
+            case (stage3_addsub.addr_even_bank)
+                0: begin
+                    x0_write_en_even <= 1;
+                    x0_write_addr_even <= stage3_addsub.addr_even[NFFT_LOG2 - 1:0];
+                    x0_write_data_even <= stage3_addsub.sum;
+                end 
+                1: begin
+                    x1_write_en_even <= 1;
+                    x1_write_addr_even <= stage3_addsub.addr_even[NFFT_LOG2 - 1:0];
+                    x1_write_data_even <= stage3_addsub.sum;
+                end 
+                2: begin
+                    x2_write_en_even <= 1;
+                    x2_write_addr_even <= stage3_addsub.addr_even[NFFT_LOG2 - 1:0];
+                    x2_write_data_even <= stage3_addsub.sum;
+                end 
+                3: begin
+                    x3_write_en_even <= 1;
+                    x3_write_addr_even <= stage3_addsub.addr_even[NFFT_LOG2 - 1:0];
+                    x3_write_data_even <= stage3_addsub.sum;
+                end 
+            endcase
+        end
+    end
+
+    always_ff @(posedge clk) begin
+        x0_write_en_idle <= '0;
+        x1_write_en_idle <= '0;
+        x2_write_en_idle <= '0;
+        x3_write_en_idle <= '0;
+
+        x0_write_addr_idle <= '0;
+        x1_write_addr_idle <= '0;
+        x2_write_addr_idle <= '0;
+        x3_write_addr_idle <= '0;
+
+        x0_write_data_idle <= '0;
+        x1_write_data_idle <= '0;
+        x2_write_data_idle <= '0;
+        x3_write_data_idle <= '0;
+
+        if(in_valid && fft_state == IDLE ) begin
+            x0_write_addr_idle <= frame_ptr_reversal;
+            x1_write_addr_idle <= frame_ptr_reversal;
+            x2_write_addr_idle <= frame_ptr_reversal;
+            x3_write_addr_idle <= frame_ptr_reversal;
+
+            x0_write_en_idle <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b00;
+            x1_write_en_idle <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b01;
+            x2_write_en_idle <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b10;
+            x3_write_en_idle <= count_ones_and_mask2bit(frame_ptr_reversal) == 2'b11;
+            
+            x0_write_data_idle <= {frame_sample_i, COMPLEX_WIDTH'(0)};
+            x1_write_data_idle <= {frame_sample_i, COMPLEX_WIDTH'(0)};
+            x2_write_data_idle <= {frame_sample_i, COMPLEX_WIDTH'(0)};
+            x3_write_data_idle <= {frame_sample_i, COMPLEX_WIDTH'(0)};
+        end
+    end
+
+    assign x0_write_addr = (fft_state == IDLE ) ? x0_write_addr_idle : (x0_write_addr_even | x0_write_addr_odd);
+    assign x1_write_addr = (fft_state == IDLE ) ? x1_write_addr_idle : (x1_write_addr_even | x1_write_addr_odd);
+    assign x2_write_addr = (fft_state == IDLE ) ? x2_write_addr_idle : (x2_write_addr_even | x2_write_addr_odd);
+    assign x3_write_addr = (fft_state == IDLE ) ? x3_write_addr_idle : (x3_write_addr_even | x3_write_addr_odd);
+
+    assign x0_write_en = (fft_state == IDLE ) ? x0_write_en_idle : (x0_write_en_even | x0_write_en_odd);
+    assign x1_write_en = (fft_state == IDLE ) ? x1_write_en_idle : (x1_write_en_even | x1_write_en_odd);
+    assign x2_write_en = (fft_state == IDLE ) ? x2_write_en_idle : (x2_write_en_even | x2_write_en_odd);
+    assign x3_write_en = (fft_state == IDLE ) ? x3_write_en_idle : (x3_write_en_even | x3_write_en_odd);
+    
+    assign x0_write_data = (fft_state == IDLE ) ? x0_write_data_idle : (x0_write_data_even | x0_write_data_odd);
+    assign x1_write_data = (fft_state == IDLE ) ? x1_write_data_idle : (x1_write_data_even | x1_write_data_odd);
+    assign x2_write_data = (fft_state == IDLE ) ? x2_write_data_idle : (x2_write_data_even | x2_write_data_odd);
+    assign x3_write_data = (fft_state == IDLE ) ? x3_write_data_idle : (x3_write_data_even | x3_write_data_odd);
+    
     always_ff @(posedge clk) begin
         if(x0_write_en) begin
             x_bank0[x0_write_addr] <= x0_write_data;
