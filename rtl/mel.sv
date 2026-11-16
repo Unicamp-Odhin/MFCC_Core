@@ -30,7 +30,7 @@ module mel #(
 );
   // localparam ACCUMULATOR_WIDTH = $clog2(NUM_RFFT_BINS)+POWER_WIDTH;
   localparam MEL_MEMORY_DEPTH = MEL_BANK_SIZE * NUM_MEL_FILTERS;
-  localparam MEL_BANK_ADDR_WIDTH = $clog2(MEL_BANK_SIZE) + 1;
+  //localparam MEL_BANK_ADDR_WIDTH = $clog2(MEL_BANK_SIZE) + 1;
   localparam MEL_MEMORY_ADDR_WIDTH = $clog2(MEL_MEMORY_DEPTH);
   localparam LOG10_CONST = $rtoi(6.02059992 * (1 << F));
 
@@ -55,7 +55,6 @@ module mel #(
   logic [POWER_WIDTH-1:0] power_spectrum;
   assign power_spectrum = power_spectrum_mem[k];
 
-  // logic [POWER_WIDTH-1:0] mel_memory[0:MEL_MEMORY_DEPTH-1];
   logic [POWER_WIDTH-1:0] filter;
 
   mel_table_rom dut_mel_table_rom(
@@ -63,11 +62,6 @@ module mel #(
       .dout(filter)
   );
 
-  // // assign filter = (prt_memory < MEL_MEMORY_DEPTH) ? mel_memory[prt_memory] : 32'h0;
-
-  // initial begin
-  //   $readmemh("tables/mel_table.hex", mel_memory);
-  // end
 
   typedef enum logic [1:0] {
     IDLE,
@@ -135,6 +129,7 @@ module mel #(
     i_next             = i;
     k_next             = k;
     i_total_next       = i_total;
+    prt_memory         = 0;
 
     case (state)
       IDLE: begin

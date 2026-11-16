@@ -64,7 +64,7 @@ module fft_radix2 #(
         end
     endfunction
 
-    localparam WIDTH_DIFF = COMPLEX_WIDTH - WIDTH;
+    //localparam WIDTH_DIFF = COMPLEX_WIDTH - WIDTH;
     localparam RFFT_SIZE = NFFT/2;
     localparam NFFT_LOG22 = $clog2(NFFT_LOG2);
 

@@ -5,8 +5,6 @@
 package complex_pkg;
   // Tipo fixo com parte real e imaginária
   localparam FIXED_SHIFT = 31;
-  localparam INT64_MAX = 9223372036854775807;
-  localparam INT64_MIN = -9223372036854775808;
 
   typedef struct packed {
     logic signed [31:0] re;

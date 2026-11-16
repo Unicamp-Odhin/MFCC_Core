@@ -20,6 +20,18 @@ module log2_fp #(
   integer k, int_part, shift_amt;
 
   always_comb begin
+    xu         = 0;
+    k          = 0;
+    int_part   = 0;
+    left_shift = 0;
+    shift_amt  = 0;
+    shifted_x  = 0;
+    produto    = 0;
+    deslocado  = produto >> F; 
+    cond       = 0; 
+    frac_bits  = 0;
+    x_cur      = 0;
+    
     if (x <= 0) begin
       result = 64'h8000_0000_0000_0000;  // INT64_MIN
     end else begin

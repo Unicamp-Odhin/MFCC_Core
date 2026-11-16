@@ -64,8 +64,10 @@ module window_buffer #(
   end
 
   always_comb begin
+    next_state = current_state;
     idle_o = 0;
     done_o = 0;
+
     unique case (current_state)
       IDLE: begin
         idle_o = 1;
@@ -144,6 +146,10 @@ module window_buffer #(
             wr_ptr <= 0;
             win_rd_idx <= 0;
           end
+        end
+        default : begin
+          wr_ptr <= wr_ptr;
+          win_rd_idx <= win_rd_idx;
         end
       endcase
     end

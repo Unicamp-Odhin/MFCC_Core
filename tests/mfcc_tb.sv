@@ -8,7 +8,7 @@ module mfcc_tb ();
   localparam SAMPLE_RATE = 16000;
   localparam WIDTH_MIC = 16;
   localparam WIDTH = 64;
-  localparam WIDTH_OUT = 32;
+  //localparam WIDTH_OUT = 32;
   localparam F_WIDTH = 16;
   localparam PCM_FIFO_DEPTH = 2048;
   localparam FRAME_SIZE_T = 0.025;
