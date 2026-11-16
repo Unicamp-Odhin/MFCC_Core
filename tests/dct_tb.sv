@@ -279,7 +279,6 @@ module dct_tb ();
 
     $display("Iniciando teste da DCT");
 
-    start_move = 0;
     rst_n = 0;
     clk = 0;
     #4;
@@ -307,7 +306,7 @@ module dct_tb ();
     wait (dct_done);
     #20;  // Espera 10 ciclos de clock
     dump_mel_energies_to_hex(1);
-    dump_coeficients_to_hex(2);
+    dump_coeficients_to_hex(1);
     #20;
 
     //wait(idle);
@@ -340,7 +339,7 @@ module dct_tb ();
     end
   end
 
-  assign start_move = hamming_done && u_window_buffer.current_state == 0;
+  assign start_move = dct_done && u_window_buffer.current_state == 0;
 
 
 endmodule

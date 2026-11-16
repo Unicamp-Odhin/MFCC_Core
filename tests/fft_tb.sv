@@ -229,49 +229,49 @@ module fft_tb ();
   logic   mic_read;
   assign mic_read = sample_timer == 0;
 
-  always_ff @(posedge clk) begin
-    if (!rst_n) begin
-      i            <= 0;
-      pcm_ready_i    <= 0;
-      pcm_in       <= 0;
-      sample_timer <= 0;
-    end else begin
-      if (i < MAX_AUDIO_SIZE) begin
-        if (mic_read) begin
-          pcm_in       <= samples[i];
-          pcm_ready_i    <= 1;
-          i            <= i + 1;
-          sample_timer <= SAMPLE_INTERVAL - 1;
-        end else begin
-          pcm_ready_i <= 0;
-          sample_timer <= sample_timer - 1;
-        end
-      end else begin
-        pcm_ready_i <= 0;
-      end
-    end
-  end
-
-  // always_ff @(posedge clk or negedge rst_n) begin
+  // always_ff @(posedge clk) begin
   //   if (!rst_n) begin
-  //     pcm_ready_i             <= 0;
-  //     pcm_in                  <= 0;
-  //     pre_emphasis_valid_prev <= 0;
+  //     i            <= 0;
+  //     pcm_ready_i    <= 0;
+  //     pcm_in       <= 0;
+  //     sample_timer <= 0;
   //   end else begin
-  //     if (i < MAX_AUDIO_SIZE && !fifo_full) begin
-  //       pcm_in      <= samples[i];
-  //       pcm_ready_i <= 1;
-  //       i           <= i + 1;
+  //     if (i < MAX_AUDIO_SIZE) begin
+  //       if (mic_read) begin
+  //         pcm_in       <= samples[i];
+  //         pcm_ready_i    <= 1;
+  //         i            <= i + 1;
+  //         sample_timer <= SAMPLE_INTERVAL - 1;
+  //       end else begin
+  //         pcm_ready_i <= 0;
+  //         sample_timer <= sample_timer - 1;
+  //       end
   //     end else begin
   //       pcm_ready_i <= 0;
   //     end
-
-  //     if (fifo_full && pcm_ready_i) begin
-  //       i <= i - 3;
-  //     end
-  //     pre_emphasis_valid_prev <= pre_emphasis_valid;
   //   end
   // end
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      pcm_ready_i             <= 0;
+      pcm_in                  <= 0;
+      pre_emphasis_valid_prev <= 0;
+    end else begin
+      if (i < MAX_AUDIO_SIZE && !fifo_full) begin
+        pcm_in      <= samples[i];
+        pcm_ready_i <= 1;
+        i           <= i + 1;
+      end else begin
+        pcm_ready_i <= 0;
+      end
+
+      if (fifo_full && pcm_ready_i) begin
+        i <= i - 3;
+      end
+      pre_emphasis_valid_prev <= pre_emphasis_valid;
+    end
+  end
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -281,7 +281,8 @@ module fft_tb ();
     end
   end
 
-  assign start_move = hamming_done && u_window_buffer.current_state == 0;
+  assign start_move = fft_done && u_window_buffer.current_state == 0;
+  // assign start_move = hamming_done && u_window_buffer.current_state == 0;
 
 
 endmodule

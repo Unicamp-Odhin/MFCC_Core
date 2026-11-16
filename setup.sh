@@ -40,6 +40,9 @@ for mod in "${MODULES[@]}"; do
     module load "${mod}"
 done
 
+mkdir -p "$TESTS_DIR/build"
+mkdir -p "$TABLES_DIR"
+
 mkdir -p "$TESTS_DIR/data/2_frames"
 mkdir -p "$TESTS_DIR/data/3_hamming_frames"
 mkdir -p "$TESTS_DIR/data/4_power_spectrum"

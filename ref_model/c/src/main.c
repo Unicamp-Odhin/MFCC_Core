@@ -11,6 +11,7 @@
 #include <ctype.h>
 
 #include "mfcc/mfcc.h"
+#include "fft_fp.h"
 
 #include "wav.h"
 
@@ -96,6 +97,19 @@ void dump_hex(const char *file_name, const void *buffer, int size, size_t elemen
     fclose(fp);
 }
 
+void dump_hex_complex(const char *file_name, complex_t *buffer, int size) {
+    FILE *fp = fopen(file_name, "w");
+    if (!fp) {
+        perror("fopen");
+        return;
+    }
+
+    for (int i = 0; i < size; i++) {
+        fprintf(fp, "%016llx%016llx\n", (unsigned long long)buffer[i].real, (unsigned long long)buffer[i].imag);
+    }
+
+    fclose(fp);
+}
 void dump_fixed_point_to_float(const char *file_name, const void *buffer, int size, int F, size_t element_size){
     float SCALE = (float)(1ULL << F);
     FILE *fp = fopen(file_name, "w");
@@ -296,7 +310,7 @@ int main(int argc, char *argv[]) {
     dump_hex(filepath, result.window, result.frame_size, sizeof(int32_t));
 
     snprintf(filepath, sizeof(filepath), "%s/twiddles.hex", tables_dir);
-    dump_hex(filepath, result.twiddles, MFCC_NFFT, sizeof(complex_t));
+    dump_hex_complex(filepath, result.twiddles, MFCC_NFFT / 2);
     #endif
 
     clock_t end_time = clock();

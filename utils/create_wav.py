@@ -17,4 +17,4 @@ waveform = amplitude * np.sin(2 * np.pi * frequency * t)
 waveform_int16 = np.int16(waveform * 32767)
 
 # Salva como WAV
-wavfile.write("data/seno_440Hz.wav", sample_rate, waveform_int16)
+wavfile.write("wav/seno_440Hz.wav", sample_rate, waveform_int16)
