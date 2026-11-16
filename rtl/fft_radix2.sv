@@ -163,6 +163,16 @@ module fft_radix2 #(
     assign even_ptr_sum = sched.k + sched.j;
     assign odd_ptr_sum = sched.k + sched.j + sched.half_m;
 
+    logic [7:0] twiddle_address;
+    logic [127:0] twiddle_value;
+
+    assign twiddle_address = sched.twiddle_index[NFFT_LOG2:0];
+
+    twiddles_rom u_twiddles (
+        .addr (twiddle_address),
+        .dout (twiddle_value)
+    );
+
     // Main control
     always_ff @(posedge clk) begin : FFT_CALCULATION_PIPELINED
         if (!rst_n) begin
@@ -209,7 +219,10 @@ module fft_radix2 #(
                     stage1.even <= x_read(even_ptr_sum[NFFT_LOG2-1:0]);
                     stage1.odd <= x_read(odd_ptr_sum[NFFT_LOG2-1:0]);
 
-                    stage1.twiddle <= twiddles[sched.twiddle_index[NFFT_LOG2:0]];
+
+                    // stage1.twiddle <= twiddles[sched.twiddle_index[NFFT_LOG2:0]];
+
+                    stage1.twiddle <= {twiddle_value[127:64], twiddle_value[63:0]};
                     stage1.meta <= sched;
 
                     // Scheduler update
