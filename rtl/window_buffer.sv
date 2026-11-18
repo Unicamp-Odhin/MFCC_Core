@@ -24,7 +24,6 @@ module window_buffer #(
     output logic start_next_state_o,
     output logic idle_o
 );
-  logic [WIDTH-1:0] buffer[0:FRAME_SIZE-1];
 
   localparam int PTR_WIDTH = $clog2(FRAME_SIZE);
   logic [PTR_WIDTH-1:0] frame_size, frame_step;
@@ -54,8 +53,88 @@ module window_buffer #(
 
   logic valid_to_read;
 
+  logic [WIDTH-1:0] buffer_rdata;
+
+  logic [PTR_WIDTH-1:0] mem_waddr;
+  logic [PTR_WIDTH-1:0] mem_raddr;
+
+  logic mem_we;
+  logic mem_re;
+
+  assign mem_waddr = wr_ptr;
+  assign mem_raddr = rd_phys_addr;
+
+  // assign mem_we = fifo_rd_en_ff;
+  always_ff @(posedge clk) begin
+    mem_we <= ~fifo_empty_i;
+  end
+  assign mem_re = valid_to_read;
+
+
+  `ifdef SAED32
+      // TODO por hora fiz isso como um ajuste para a questão de 400 posições
+      localparam int NUM_BANKS = (FRAME_SIZE + 127) / 128;
+      localparam int NUM_SLICES = WIDTH / 32;
+
+      logic [WIDTH-1:0] rdata_bank [0:NUM_BANKS-1];
+
+      genvar b, s;
+
+      generate
+          for (b = 0; b < NUM_BANKS; b++) begin : g_bank
+
+              for (s = 0; s < NUM_SLICES; s++) begin : g_slice
+
+                  SRAM2RW128x32 u_sram (
+
+                      // PORT 1: WRITE
+                      .A1   (mem_waddr[6:0]),
+                      .CE1  (clk),
+                      .CSB1 (~(mem_we && (mem_waddr[PTR_WIDTH-1:7] == b))),
+                      .WEB1 (~mem_we),
+                      .OEB1 (1'b1),
+
+                      .I1   (fifo_data_i[s*32 +: 32]),
+                      .O1   (),
+
+                      // PORT 2: READ
+                      .A2   (mem_raddr[6:0]),
+                      .CE2  (clk),
+                      .CSB2 (~(mem_re && (mem_raddr[PTR_WIDTH-1:7] == b))),
+                      .WEB2 (1'b1),
+                      .OEB2 (1'b0),
+
+                      .I2   (32'b0),
+                      .O2   (rdata_bank[b][s*32 +: 32])
+
+                  );
+
+              end
+          end
+      endgenerate
+
+      always_ff @(posedge clk) begin
+          if (mem_re)
+              buffer_rdata <= rdata_bank[mem_raddr[PTR_WIDTH-1:7]];
+      end
+
+  `else
+
+      logic [WIDTH-1:0] mem [0:FRAME_SIZE-1];
+
+      always_ff @(posedge clk) begin
+          if (mem_we)
+              mem[mem_waddr] <= fifo_data_i;
+      end
+
+      always_ff @(posedge clk) begin
+          if (mem_re)
+              buffer_rdata <= mem[mem_raddr];
+      end
+
+  `endif
+
   
-  // Controle de estados
   always_ff @(posedge clk) begin
     if (!rst_n) begin
       current_state <= START;
@@ -161,21 +240,6 @@ module window_buffer #(
     fifo_rd_en_ff <= fifo_rd_en_o;
   end
 
-  // Escrita síncrona do buffer
-  always_ff @(posedge clk) begin
-    if (rst_n) begin
-      if (fifo_rd_en_ff) begin
-        buffer[wr_ptr] <= fifo_data_i;
-      end
-    end
-  end
-
-  always_ff @(posedge clk) begin
-    if (!rst_n) begin
-      read_data_o <= '0;
-    end else if (valid_to_read) begin
-      read_data_o <= buffer[rd_phys_addr];
-    end
-  end
+  assign read_data_o = buffer_rdata;
 
 endmodule
