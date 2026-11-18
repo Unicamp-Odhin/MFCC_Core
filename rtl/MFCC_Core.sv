@@ -12,7 +12,7 @@ module MFCC_Core #(
     parameter FRAME_STEP      = 160,
     parameter FFT_SIZE        = 512,                           // Tamanho da FFT
     parameter NFFT_LOG2       = $clog2(FFT_SIZE),
-    parameter PCM_FIFO_DEPTH  = 2048                           // Profundidade do FIFO de PCM
+    parameter PCM_FIFO_DEPTH  = 32                           // Profundidade do FIFO de PCM
 ) (
     input logic clock,
     input logic rst_n,
