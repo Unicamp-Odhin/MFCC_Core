@@ -14,6 +14,8 @@ foreach file {
     log2_fp.sv
     mel.sv
     
+    sram_1r1w.sv 
+    mel_table_rom.sv 
     cos_lut_rom.sv
     hamming_rom.sv
     twiddles_rom.sv
@@ -23,5 +25,4 @@ foreach file {
     puts "Analyzing $file"
     analyze -format sverilog $file
 }
-  
 
