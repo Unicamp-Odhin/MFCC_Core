@@ -5,7 +5,6 @@ set RTL_DIR $::env(RTL_DIR)
 set TESTS_DIR $::env(TESTS_DIR)
 set FM_DIR $::env(FM_DIR)
 
-
 source "${DC_DIR}/common/setup.tcl"
 source "${DC_DIR}/common/utils.tcl"
 

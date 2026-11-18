@@ -1,6 +1,9 @@
 remove_design -all
+set SAED32 "SAED32"
 
 define_design_lib WORK -path $work_path
+
+analyze -format verilog "/pdk/synopsys/saed32/SAED32_EDK/lib/sram/verilog/saed32sram.v"
 
 foreach file {
     mfcc_pkg.sv
@@ -23,6 +26,6 @@ foreach file {
     MFCC_Core.sv 
 } {
     puts "Analyzing $file"
-    analyze -format sverilog $file
+    analyze -format sverilog -define $SAED32 -vcs $file
 }
 
