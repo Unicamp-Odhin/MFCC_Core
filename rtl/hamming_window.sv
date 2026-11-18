@@ -13,7 +13,6 @@ module hamming_window #(
     input logic start_i,
 
     input  logic valid_to_read_i,
-    output logic rd_en_o,
 
     output logic [NFFT_LOG2-1:0] frame_ptr_o,
 
@@ -53,7 +52,6 @@ module hamming_window #(
 
 
   always_ff @(posedge clk) begin
-    rd_en_o <= 0;
     done <= 0;
     done_o <= done;
 
@@ -72,29 +70,24 @@ module hamming_window #(
             frame_ptr <= 0;
             temp_ptr <= 0;
             temp_valid <= 0;
-            rd_en_o <= 0;
           end
         end
         CALC: begin
           if (valid_to_read_i) begin
-            rd_en_o <= 0;
             hamming_sample_temp <= frame_sample_i * hamming_coefficient;
             temp_valid <= 1; 
             frame_ptr <= frame_ptr + 1;
             temp_ptr <= frame_ptr;
 
             if (calc_pointer == NUM_COEFFICIENTS - 1) begin
-              rd_en_o <= 0;
               hamming_state <= PADDING;
             end else begin
-                rd_en_o <= 1;
                 calc_pointer <= calc_pointer + 1;
               hamming_state <= CALC;
             end
           end
         end
         PADDING: begin
-          rd_en_o    <= 0;
           temp_valid <= 1;
 
           if (frame_ptr < NFFT_SIZE_COMPAIR[NFFT_LOG2-1:0]) begin

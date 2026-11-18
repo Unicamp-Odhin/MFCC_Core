@@ -74,7 +74,6 @@ module MFCC_Core #(
 
   logic [WIDTH - 1:0] window_buffer_data_o;
   logic window_valid_to_read;
-  logic window_rd_en;
   logic start_move;
   logic start_hamming;
 
@@ -92,7 +91,6 @@ module MFCC_Core #(
       .fifo_data_i (fifo_read_data),
       .fifo_empty_i(fifo_empty),
 
-      .rd_en_i        (window_rd_en),
       .read_data_o    (window_buffer_data_o),
       .valid_to_read_o(window_valid_to_read),
 
@@ -116,7 +114,6 @@ module MFCC_Core #(
       .start_i(start_hamming),
 
       .valid_to_read_i(window_valid_to_read),
-      .rd_en_o        (window_rd_en),
 
       .frame_ptr_o     (frame_ptr),
       .frame_sample_i  (window_buffer_data_o),

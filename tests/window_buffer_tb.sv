@@ -65,7 +65,6 @@ module window_buffer_tb ();
 
   logic [WIDTH-1:0] window_buffer_data;
   logic window_valid_to_read;
-  logic window_rd_en;
   logic start_move;
   logic start_hamming;
   logic window_done;
@@ -84,7 +83,6 @@ module window_buffer_tb ();
       .fifo_data_i (fifo_read_data),
       .fifo_empty_i(fifo_empty),
 
-      .rd_en_i(window_rd_en),
       .read_data_o(window_buffer_data),
       .valid_to_read_o(window_valid_to_read),
       .done_o(window_done),

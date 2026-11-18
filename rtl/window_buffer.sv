@@ -17,7 +17,6 @@ module window_buffer #(
     input  logic             fifo_empty_i,
 
     // Read Interface
-    input  logic             rd_en_i,
     output logic [WIDTH-1:0] read_data_o,
     output logic             valid_to_read_o,
     output logic             done_o,
@@ -52,6 +51,8 @@ module window_buffer #(
   assign addr_sum = win_base_ptr + win_rd_idx;
 
   assign diff_pointers = rd_phys_addr != wr_ptr;
+
+  logic valid_to_read;
 
   
   // Controle de estados
@@ -101,6 +102,7 @@ module window_buffer #(
   end
 
 
+
   always_ff @(posedge clk) begin
     start_next_state_o          <= 0;
     fifo_rd_en_o                <= 0;
@@ -110,10 +112,10 @@ module window_buffer #(
       wr_ptr       <= 0;
       win_rd_idx   <= 0;
       rd_phys_addr <= '0;
-     valid_to_read_o <= '0;
+      valid_to_read <= '0;
     end else begin
       rd_phys_addr <= (addr_sum >= frame_size) ? (addr_sum - frame_size) : addr_sum[PTR_WIDTH-1:0];
-      valid_to_read_o <= '0;
+      valid_to_read <= '0;
       
       case (current_state)
         START: begin
@@ -133,11 +135,9 @@ module window_buffer #(
           fifo_rd_en_o <= 1;
         end
         FILL: begin
-          
-          buffer[wr_ptr] <= fifo_data_i;
           wr_ptr <= wr_ptr + 1;
 
-          valid_to_read_o <= 1'b1;
+          valid_to_read <= 1'b1;
           win_rd_idx <= win_rd_idx + 1;
           fifo_rd_en_o <= ~fifo_empty_i && (win_rd_idx != frame_size - 1);
         end
@@ -155,6 +155,27 @@ module window_buffer #(
     end
   end
 
-  assign read_data_o = buffer[rd_phys_addr];
+  logic fifo_rd_en_ff;
+  always_ff @(posedge clk) begin
+    valid_to_read_o <= valid_to_read;
+    fifo_rd_en_ff <= fifo_rd_en_o;
+  end
+
+  // Escrita síncrona do buffer
+  always_ff @(posedge clk) begin
+    if (rst_n) begin
+      if (fifo_rd_en_ff) begin
+        buffer[wr_ptr] <= fifo_data_i;
+      end
+    end
+  end
+
+  always_ff @(posedge clk) begin
+    if (!rst_n) begin
+      read_data_o <= '0;
+    end else if (valid_to_read) begin
+      read_data_o <= buffer[rd_phys_addr];
+    end
+  end
 
 endmodule
