@@ -18,6 +18,16 @@ NFFT = 512
 NFILT = 40
 NUM_CEPS = 12
 
+python_dir = os.getenv("REF_PYTHON_DIR")
+
+def dump_buffer_to_hex_8(file_name, buffer):
+    os.makedirs(os.path.dirname(file_name), exist_ok=True)
+    
+    with open(file_name, 'w') as fp:
+        for value in buffer:
+            int_value = int(value)
+            hex_str = f"{int_value & 0xFF:02x}"
+            fp.write(f"{hex_str}\n")
 
 def dump_buffer_to_hex_16(file_name, buffer):
     os.makedirs(os.path.dirname(file_name), exist_ok=True)
@@ -25,7 +35,7 @@ def dump_buffer_to_hex_16(file_name, buffer):
     with open(file_name, 'w') as fp:
         for value in buffer:
             int_value = int(value)
-            hex_str = f"{int_value & 0xFFFFFFFF:08x}"
+            hex_str = f"{int_value & 0xFFFF:04x}"
             fp.write(f"{hex_str}\n")
 
 def dump_buffer_to_hex_32(file_name, buffer):
@@ -33,8 +43,8 @@ def dump_buffer_to_hex_32(file_name, buffer):
     
     with open(file_name, 'w') as fp:
         for value in buffer:
-            int_value = int(value) & 0xFFFF  
-            hex_str = f"{int_value:04x}"
+            int_value = int(value) & 0xFFFFFFFF
+            hex_str = f"{int_value:08x}"
             fp.write(f"{hex_str}\n")
 
 def dump_buffer(filename, buffer):
@@ -66,7 +76,7 @@ def load_audio(audio_path):
         n_frames = wav_file.getnframes()
         y = np.frombuffer(wav_file.readframes(n_frames), dtype=np.int16)
     
-    frame_size = int(sample_rate * FRAME_SIZE) + 1
+    frame_size = int(sample_rate * FRAME_SIZE)
     frame_step = int(sample_rate * FRAME_STEP)
     num_samples = len(y)
     num_frames = (num_samples - frame_size + frame_step - 1) // frame_step + 1
@@ -114,23 +124,20 @@ def plot_pre_emphasized(y_preemphasized, output_dir, audio_name):
 
 def frame_signal(y_preemphasized, sample_rate, frame_size, frame_step):
     """Step 3: Frame the signal into overlapping segments"""
-    signal_length = len(y_preemphasized)
+    num_samples = len(y_preemphasized)
 
-    # Coloque esses "+1" por questão de arredondamento e assim fica igual ao C
-    frame_length = int(round(frame_size * sample_rate)) + 1 
-    frame_step = int(round(frame_step * sample_rate)) + 1
-    num_frames = int(np.ceil(float(np.abs(signal_length - frame_length)) / frame_step)) + 1
+    num_frames = int(np.ceil(float((num_samples - frame_size -1) / frame_step))) + 1
     
     # Pad signal to ensure all frames have equal number of samples
-    pad_signal_length = num_frames * frame_step + frame_length
-    z = np.zeros((pad_signal_length - signal_length))
+    pad_signal_length = num_frames * frame_step + frame_size
+    z = np.zeros((pad_signal_length - num_samples))
     pad_signal = np.append(y_preemphasized, z)
     
     # Slice the signal into frames
-    indices = (np.tile(np.arange(0, frame_length), (num_frames, 1)) + 
-              np.tile(np.arange(0, num_frames * frame_step, frame_step), (frame_length, 1)).T)
+    indices = (np.tile(np.arange(0, frame_size), (num_frames, 1)) + 
+              np.tile(np.arange(0, num_frames * frame_step, frame_step), (frame_size, 1)).T)
     frames = pad_signal[indices.astype(np.int32, copy=False)]
-    return frames, frame_length
+    return frames, frame_size
 
 def plot_frames(frames, output_dir, audio_name):
     """Plot and save sample frames"""
@@ -242,20 +249,12 @@ def compute_mfcc(filter_banks, num_ceps=NUM_CEPS):
         for k in range(num_ceps):
             soma = 0.0
             
-            print(f"\n---- k = {k} ----")
-            
             for n in range(n_filters):
                 cos_val = np.cos(np.pi * (n + 0.5) * k / n_filters)
                 mult = x[n] * cos_val
                 
-                print(f"n={n} | amostra={x[n]:.6f} | cos={cos_val:.6f} | "
-                      f"mult={mult:.6f} | soma_antes={soma:.6f}", end="")
-                
                 soma += mult
                 
-                print(f" | soma_depois={soma:.6f}")
-            
-            # Fator de escala ortonormal
             if k == 0:
                 escala = np.sqrt(1.0 / n_filters)
             else:
@@ -263,7 +262,6 @@ def compute_mfcc(filter_banks, num_ceps=NUM_CEPS):
             
             mfcc[i, k] = soma * escala
             
-            print(f"Resultado final mfcc[{k}] = {mfcc[i, k]:.6f}")
     
     return mfcc
 
@@ -286,7 +284,7 @@ def main():
     LOG = True
     PLOT = False
 
-    output_dir = "dumps/"
+    output_dir = f"{python_dir}/dumps/"
     os.makedirs(output_dir, exist_ok=True)
     audio_path = sys.argv[1]
     audio_name = os.path.splitext(os.path.basename(audio_path))[0]
@@ -301,18 +299,20 @@ def main():
     if PLOT:
         plot_pre_emphasized(y_preemphasized, output_dir, audio_name)
     if LOG:
-        file_name = "dumps/1_pre_emphasis.hex"
-        dump_buffer_to_hex_16(file_name, y_preemphasized)
+        file_name = f"{output_dir}/0_samples_dump.hex"
+        dump_buffer_to_hex_16(file_name, y)
+        file_name = f"{output_dir}/1_pre_emphasis.hex"
+        dump_buffer(file_name, y_preemphasized)
 
     # Step 3: Frame the signal
-    frames, frame_length = frame_signal(y_preemphasized, sample_rate, FRAME_SIZE, FRAME_STEP)
+    frames, frame_length = frame_signal(y_preemphasized, sample_rate, frame_size, frame_step)
     if PLOT:
         plot_frames(frames, output_dir, audio_name)
     if LOG:
-        os.makedirs("dumps/2_frames", exist_ok=True)
+        os.makedirs(f"{output_dir}/2_frames", exist_ok=True)
         for i in range(len(frames)):
-            file_name = f"dumps/2_frames/{i:04d}.hex"
-            dump_buffer_to_hex_32(file_name, frames[i])
+            file_name = f"{output_dir}/2_frames/{i:04d}.hex"
+            dump_buffer(file_name, frames[i])
     
 
     # Step 4: Apply window function
@@ -321,10 +321,10 @@ def main():
         plot_windowed_frame(frames, output_dir, audio_name)
 
     if LOG:
-        os.makedirs("dumps/3_hamming_frames", exist_ok=True)
+        os.makedirs(f"{output_dir}3_hamming_frames", exist_ok=True)
         for i in range(len(frames)):
-            file_name = f"dumps/3_hamming_frames/{i:04d}.hex"
-            dump_buffer_to_hex_16(file_name, frames[i])
+            file_name = f"{output_dir}3_hamming_frames/{i:04d}.hex"
+            dump_buffer(file_name, frames[i])
 
     # Step 5: Compute spectrum
     mag_frames, pow_frames = compute_spectrum(frames)
@@ -332,9 +332,9 @@ def main():
         plot_spectrum(mag_frames, output_dir, audio_name)
 
     if LOG:
-        os.makedirs("dumps/power_spectrum", exist_ok=True)
+        os.makedirs(f"{output_dir}4_power_spectrum", exist_ok=True)
         for i in range(len(pow_frames)):
-            file_name = f"dumps/power_spectrum/{i:04d}.hex"
+            file_name = f"{output_dir}4_power_spectrum/{i:04d}.hex"
             dump_buffer(file_name, pow_frames[i])
 
 
@@ -344,35 +344,23 @@ def main():
         save_and_plot_filterbanks(filter_banks, output_dir, audio_name)
     
     if LOG:
-        os.makedirs("dumps/4_energies", exist_ok=True)
+        os.makedirs(f"{output_dir}5_energies", exist_ok=True)
         for i in range(len(filter_banks)):
-            file_name = f"dumps/4_energies/{i:04d}.hex"
+            file_name = f"{output_dir}5_energies/{i:04d}.hex"
             dump_buffer(file_name, filter_banks[i])
             # dump_buffer_to_hex_float(file_name, filter_banks[i])
         
-        os.makedirs("dumps/plot/", exist_ok=True)
-        with open("dumps/plot/spectrogram_matrix.dat", "w") as fp_spec:
-            for frame in filter_banks:
-                fp_spec.write(" ".join(f"{value}" for value in frame))
-                fp_spec.write("\n")
 
     # Step 7: Compute MFCCs
     mfcc = compute_mfcc(filter_banks)
     if PLOT:
         plot_mfcc(mfcc, output_dir, audio_name)
 
-    os.makedirs("dumps/6_ceps", exist_ok=True)
+    os.makedirs(f"{output_dir}6_ceps", exist_ok=True)
     for i, frame in enumerate(mfcc):
-        frame_file = os.path.join("dumps/6_ceps", f"{i:04d}.hex")
+        frame_file = os.path.join(f"{output_dir}6_ceps", f"{i:04d}.hex")
         with open(frame_file, "w") as fp:
             fp.write("\n".join(f"{value}" for value in frame))
-    
-    if LOG:
-        os.makedirs("dumps/plot/", exist_ok=True)
-        with open("dumps/plot/ceps_matrix.dat", "w") as fp_ceps:
-            for frame in mfcc:
-                fp_ceps.write(" ".join(f"{value:.6f}" for value in frame))
-                fp_ceps.write("\n")
 
 if __name__ == "__main__":
     main()

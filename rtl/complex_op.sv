@@ -1,0 +1,35 @@
+`timescale 1ns / 1ps
+
+`ifndef COMPLEX_PKG
+`define COMPLEX_PKG
+package complex_pkg;
+  // Tipo fixo com parte real e imaginária
+  localparam FIXED_SHIFT = 31;
+  localparam logic signed [63:0] INT64_MAX = 64'sh7FFFFFFFFFFFFFFF;
+  localparam logic signed [63:0] INT64_MIN = 64'sh8000000000000000;
+
+  typedef struct packed {
+    logic signed [31:0] re;
+    logic signed [31:0] im;
+  } complex;
+
+  typedef struct packed {
+    logic signed [63:0] re;
+    logic signed [63:0] im;
+  } long_complex;
+
+  function automatic logic signed [63:0] long_mul_fixed(logic signed [63:0] a,
+                                                        logic signed [63:0] b);
+    logic signed [127:0] tmp = a * b;
+    //tmp = tmp + (1 << ((FIXED_SHIFT * 2) - 1)); // Arredondamento
+    if (tmp >= 0) tmp = tmp + (1 << 31);
+    else tmp = tmp - (1 << 31);
+
+    tmp = tmp >> 32;  // Desloca para obter o resultado em Q
+
+    long_mul_fixed = tmp[63:0];  // Retorna os 32 bits mais significativos
+  endfunction
+
+
+endpackage
+`endif  // COMPLEX_PKG

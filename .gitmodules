@@ -1,0 +1,9 @@
+[submodule "ref_model/lib/mfcc_fixed_point"]
+	path = ref_model/lib/mfcc_fixed_point
+	url = git@github.com:Unicamp-Odhin/mfcc_fixed_point.git
+[submodule "ref_model/c/lib/mfcc_fixed_point"]
+	path = ref_model/c/lib/mfcc_fixed_point
+	url = git@github.com:Unicamp-Odhin/mfcc_fixed_point.git
+[submodule "ref_model/c/lib/lib/mfcc_fixed_point"]
+	path = ref_model/c/lib/lib/mfcc_fixed_point
+	url = git@github.com:Unicamp-Odhin/mfcc_fixed_point.git

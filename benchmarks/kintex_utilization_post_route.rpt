@@ -1,7 +1,7 @@
 Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2024 Advanced Micro Devices, Inc. All Rights Reserved.
 ---------------------------------------------------------------------------------------------------------------------------------------------
 | Tool Version : Vivado v.2024.2 (lin64) Build 5239630 Fri Nov 08 22:34:34 MST 2024
-| Date         : Wed Mar 25 05:38:49 2026
+| Date         : Sun Mar 29 01:37:49 2026
 | Host         : vader running 64-bit Arch Linux
 | Command      : report_utilization -file kintex_utilization_post_route.rpt
 | Design       : MFCC_Core

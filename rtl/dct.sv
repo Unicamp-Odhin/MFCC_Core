@@ -1,21 +1,49 @@
-`timescale 1ns/1ps
+`timescale 1ns / 1ps
+
+module mul_fixed #(
+    parameter WIDTH = 32,
+    parameter F = 16
+) (
+    input  logic signed [WIDTH-1:0] a,
+    input  logic signed [WIDTH-1:0] b,
+    output logic signed [WIDTH-1:0] result
+);
+
+  localparam int TWO_W = 2 * WIDTH;
+  logic signed [TWO_W-1:0] mult_result;
+  logic signed [TWO_W-1:0] rounded_result;
+
+  assign mult_result = a * b;
+
+  localparam signed [TWO_W-1:0] ONE = 1;
+
+  always_comb begin
+    if (mult_result >= 0) rounded_result = mult_result + (ONE <<< (F - 1));
+    else rounded_result = mult_result - (ONE <<< (F - 1));
+  end
+
+  assign result = rounded_result >>> F;
+
+endmodule
 
 module dct #(
     parameter NUM_CEPS    = 12,
-    parameter NUM_FILTERS = 40,
-    parameter INPUT_WIDTH = 8,
-    parameter CEPS_WIDTH  = 16,
-    parameter NF_LOG2     = $clog2(NUM_FILTERS),
-    parameter NC_LOG2     = $clog2(NUM_CEPS)
+    parameter NUM_MEL_FILTERS = 40,
+    parameter ENERGIES_WIDTH = 32,
+    parameter CEPS_WIDTH  = 32,
+    parameter DCT_COEFF_WIDTH = 32,
+    parameter F = 16,
+    parameter NF_LOG2 = $clog2(NUM_MEL_FILTERS),
+    parameter NC_LOG2 = $clog2(NUM_CEPS)
 ) (
-    input  logic clk,
-    input  logic rst_n,
+    input logic clk,
+    input logic rst_n,
 
-    input  logic in_valid,
-    input  logic [NF_LOG2 - 1:0]     frame_ptr_i,
-    input  logic [INPUT_WIDTH - 1:0] power_in,
+    input logic                             in_valid,
+    input logic        [       NF_LOG2-1:0] frame_ptr_i,
+    input logic signed [ENERGIES_WIDTH-1:0] energy_in,
 
-    input  logic start_i,
+    input logic start_i,
 
     output logic dct_done_o,
 
@@ -23,95 +51,168 @@ module dct #(
     output logic [CEPS_WIDTH - 1:0] ceps_out,
     output logic [NC_LOG2 - 1:0] ceps_ptr_o
 );
+  // TODO parametrizar no futuro:
+  // int32_t factor0 = (int32_t)(sqrt((1.0f / num_filters)) * DCT_SCALE);
+  // int32_t factork = (int32_t)(sqrt((2.0f / num_filters)) * DCT_SCALE);
+  localparam int FACTOR0 = 10362;
+  localparam int FACTORK = 14654;
 
-    logic signed [31:0] cos_lut[NUM_CEPS][NUM_FILTERS]; // LUT para os cossenos
-    logic signed [INPUT_WIDTH - 1:0] mel_filters[NUM_FILTERS]; // Buffer de entrada
 
-    initial begin
-        $readmemh("tables/cos.hex", cos_lut);
+  logic signed [ENERGIES_WIDTH-1:0] energies[NUM_MEL_FILTERS];
+
+  always_ff @(posedge clk) begin : MEL_BUFFER_INPUT_LOGIC
+    if (in_valid) begin
+      energies[frame_ptr_i] <= energy_in;
     end
+  end
 
-    always_ff @( posedge clk ) begin : MEL_BUFFER_INPUT_LOGIC
-        if (in_valid) begin
-            mel_filters[frame_ptr_i] <= power_in;
+  typedef enum logic [1:0] {
+    IDLE,
+    PROCESSING,
+    UPDATE_K,
+    DONE
+  } dct_state_t;
+
+
+  logic [NC_LOG2-1:0] k_ptr;
+  logic [NF_LOG2-1:0] n_ptr;
+
+  logic signed [2*CEPS_WIDTH-1:0] mul_result, mul_result_temp;
+  logic signed [2*CEPS_WIDTH-1:0] acc, temp_ceps_out;
+  logic signed [ENERGIES_WIDTH-1:0] signed_filter;
+  logic signed [DCT_COEFF_WIDTH-1:0] cos;
+
+
+  assign signed_filter = energies[n_ptr];
+
+  // TODO arrumar a paremetrizacao
+  localparam ADDR_WIDTH_COS = NF_LOG2 + NC_LOG2 + 1;
+  logic [ADDR_WIDTH_COS-1:0] cos_addr;
+
+  cos_lut_rom u_cos_lut (
+      .addr(cos_addr),
+      .dout(cos)
+  );
+
+
+  dct_state_t dct_current_state, dct_next_state;
+
+  long_mul_fixed #(
+      .WIDTH(ENERGIES_WIDTH),
+      .F(F)
+  ) u_mul (
+      .a(signed_filter),
+      .b(cos),
+      .result(mul_result_temp)
+  );
+
+
+  always_ff @(posedge clk) begin
+    if (!rst_n) begin
+      dct_current_state <= IDLE;
+
+      k_ptr <= '0;
+      n_ptr <= '0;
+      ceps_ptr_o <= '0;
+      cos_addr <= '0;
+
+      acc <= '0;
+      mul_result <= '0;
+      temp_ceps_out <= '0;
+
+      dct_valid_o <= 1'b0;
+      dct_done_o <= 1'b0;
+
+    end else begin
+
+      dct_valid_o <= 1'b0;
+      dct_done_o <= 1'b0;
+
+      dct_current_state <= dct_next_state;
+
+      case (dct_current_state)
+
+        IDLE: begin
+          if (start_i) begin
+            k_ptr <= '0;
+            n_ptr <= '0;
+            acc   <= '0;
+            cos_addr <= '0;
+
+          end
         end
-    end
 
-    typedef enum logic [1:0] {
-        IDLE,
-        PROCESSING,
-        UPDATE_K,
-        DONE
-    } dct_state_t;
-
-
-    logic [NC_LOG2 - 1:0] k_ptr;
-    logic [NF_LOG2 - 1:0] n_ptr;
-
-    logic signed [63:0] mul_result;
-    logic signed [31:0] acc;
-    dct_state_t dct_state;
-    logic [63:0] signed_filter, cos;
-
-    assign signed_filter = {{56{mel_filters[n_ptr][INPUT_WIDTH - 1]}},mel_filters[n_ptr]};
-    assign cos           = {{32{cos_lut[k_ptr][n_ptr][31]}},cos_lut[k_ptr][n_ptr]};
-
-    always_ff @(posedge clk ) begin : DCT_FSM
-        dct_done_o   <= 0;
-        dct_valid_o  <= 0;
-
-        if (!rst_n) begin
-            ceps_ptr_o <= 'd0;
-            dct_state  <= IDLE;
-            acc        <= 0;
-            k_ptr      <= 0;
-            n_ptr      <= 0;
-            mul_result <= 0;
-        end else begin
-            unique case (dct_state)
-                IDLE: begin
-                    if (start_i) begin
-                        k_ptr     <= 0;
-                        n_ptr     <= 0;
-                        acc       <= 0;
-                        dct_state <= PROCESSING;
-                    end
-                end
-
-                PROCESSING: begin
-                    mul_result <= (signed_filter * cos) + (1 << 30); // Arredondamento
-                    acc <= acc + mul_result[62:31];
-                    n_ptr <= n_ptr + 1;
-
-                    if(n_ptr == NUM_FILTERS) begin
-                        dct_state <= UPDATE_K;
-                    end
-                end
-
-                UPDATE_K: begin
-                    ceps_ptr_o  <= k_ptr;
-                    ceps_out    <= acc[CEPS_WIDTH - 1:0];
-                    dct_valid_o <= 1;
-                    k_ptr       <= k_ptr + 1;
-                    n_ptr       <= 0;
-                    acc         <= 0;
-                    mul_result  <= 0;
-
-                    if(k_ptr == NUM_CEPS - 1) begin
-                        dct_state <= DONE;
-                    end else begin
-                        dct_state <= PROCESSING;
-                    end
-                end
-
-                DONE: begin
-                    dct_done_o <= 1;
-                    dct_state  <= IDLE;
-                end
-
-                default: dct_state <= IDLE;
-            endcase
+        PROCESSING: begin
+          mul_result <= mul_result_temp;
+          acc <= acc + mul_result;
+          n_ptr <= n_ptr + 1'b1;
+          cos_addr <= cos_addr + 1'b1;
         end
+
+        UPDATE_K: begin
+          ceps_ptr_o <= k_ptr;
+          cos_addr <= cos_addr - 1'b1;
+
+          if (k_ptr == 0) temp_ceps_out <= FACTOR0 * acc;
+          else temp_ceps_out <= FACTORK * acc;
+
+          k_ptr <= k_ptr + 1'b1;
+          n_ptr <= '0;
+
+          acc <= '0;
+
+          mul_result <= '0;
+          dct_valid_o <= 1'b1;
+        end
+
+        DONE: begin
+          dct_done_o <= 1'b1;
+        end
+
+        default: begin
+          k_ptr <= '0;
+          n_ptr <= '0;
+          acc   <= '0;
+        end
+
+      endcase
     end
+  end
+
+
+  always_comb begin
+
+    dct_next_state = dct_current_state;
+
+    case (dct_current_state)
+
+      IDLE: begin
+        if (start_i) dct_next_state = PROCESSING;
+      end
+
+      PROCESSING: begin
+        if (n_ptr == NUM_MEL_FILTERS) dct_next_state = UPDATE_K;
+      end
+
+      UPDATE_K: begin
+        if (k_ptr == NUM_CEPS - 1) dct_next_state = DONE;
+        else dct_next_state = PROCESSING;
+      end
+
+      DONE: begin
+        dct_next_state = IDLE;
+      end
+
+      default: begin
+        dct_next_state = IDLE;
+      end
+
+    endcase
+  end
+
+
+
+  assign ceps_out = temp_ceps_out[CEPS_WIDTH+F-1:F];
+
 
 endmodule
