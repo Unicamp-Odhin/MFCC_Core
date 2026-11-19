@@ -113,16 +113,12 @@ module mel #(
   logic [POWER_WIDTH-1:0] temp_log2, temp_log10;
 
 
-  logic [POWER_WIDTH/2-1:0] filter_temp;
   logic [POWER_WIDTH-1:0] filter;
 
   mel_table_rom dut_mel_table_rom(
       .addr(prt_memory),
-      .dout(filter_temp)
+      .dout(filter)
   );
-
-  assign filter = {{(POWER_WIDTH/2){1'b0}}, filter_temp};
-
 
   typedef enum logic [1:0] {
     IDLE,

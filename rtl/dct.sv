@@ -77,7 +77,7 @@ module dct #(
   logic [NC_LOG2-1:0] k_ptr;
   logic [NF_LOG2-1:0] n_ptr;
 
-  logic signed [2*CEPS_WIDTH-1:0] mul_result;
+  logic signed [2*CEPS_WIDTH-1:0] mul_result, mul_result_temp;
   logic signed [2*CEPS_WIDTH-1:0] acc, temp_ceps_out;
   logic signed [ENERGIES_WIDTH-1:0] signed_filter;
   logic signed [DCT_COEFF_WIDTH-1:0] cos;
@@ -86,8 +86,7 @@ module dct #(
   assign signed_filter = energies[n_ptr];
 
   // TODO arrumar a paremetrizacao
-  // localparam ADDR_WIDTH_COS = NF_LOG2 + NC_LOG2 + 1;
-  localparam ADDR_WIDTH_COS = 7;
+  localparam ADDR_WIDTH_COS = NF_LOG2 + NC_LOG2 + 1;
   logic [ADDR_WIDTH_COS-1:0] cos_addr;
 
   cos_lut_rom u_cos_lut (
@@ -97,8 +96,6 @@ module dct #(
 
 
   dct_state_t dct_current_state, dct_next_state;
-
-  logic signed [ENERGIES_WIDTH-1:0] mul_result_temp;
 
   long_mul_fixed #(
       .WIDTH(ENERGIES_WIDTH),
@@ -146,7 +143,7 @@ module dct #(
         end
 
         PROCESSING: begin
-          mul_result <= {{(ENERGIES_WIDTH){1'b0}}, mul_result_temp};
+          mul_result <= mul_result_temp;
           acc <= acc + mul_result;
           n_ptr <= n_ptr + 1'b1;
           cos_addr <= cos_addr + 1'b1;
