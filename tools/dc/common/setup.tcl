@@ -6,11 +6,22 @@ set LIBRARY_FILES "${NDM_REFERENCE_LIB_DIRS}"
 
 lappend search_path "${DB_PATH}"
 lappend search_path "${RTL_DIR}"
-lappend search_path "${TARGET_LIBRARY}"
 
-set_app_var target_library $TARGET_LIBRARY
+
+
+set iopad_library "${LIB_IO_PATH}/saed32io_wb_tt1p05v25c_2p5v.db"
 set_app_var synthetic_library dw_foundation.sldb
-set_app_var link_library "* $target_library $synthetic_library"
+
+set STD_DB_MAX "${PDK_BASE}/lib/stdcell_hvt/db_nldm/saed32hvt_ss0p95v25c.db"
+
+set_app_var target_library [list $STD_DB_MAX $SRAM_DB_MAX]
+set_app_var link_library   "* $target_library $synthetic_library $iopad_library"
+
+# min library para hold
+set_min_library $STD_DB_MAX  -min_version "${PDK_BASE}/lib/stdcell_hvt/db_nldm/saed32hvt_ff1p16v25c.db"
+set_min_library $SRAM_DB_MAX -min_version $SRAM_DB_MIN
+
+
 set_app_var designer "MFCC_Core"
 
 set ndm_design_library "$NDM_DESIGN_LIB"
@@ -26,6 +37,7 @@ if {![file isdirectory $NDM_DESIGN_LIB]} {
 
 set_tlu_plus_files \
     -max_tluplus  $TLUPLUS_MAX_FILE \
+    -min_tluplus  $TLUPLUS_MIN_FILE \
     -tech2itf_map $MAP_FILE
 
 #####################################################################

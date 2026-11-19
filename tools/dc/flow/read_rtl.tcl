@@ -3,8 +3,6 @@ set SAED32 "SAED32"
 
 define_design_lib WORK -path $work_path
 
-analyze -format verilog "/pdk/synopsys/saed32/SAED32_EDK/lib/sram/verilog/saed32sram.v"
-
 foreach file {
     mfcc_pkg.sv
     pre_emphasis.sv

@@ -1,7 +1,7 @@
 source "${PROJECT_ROOT}/pdks/saed32/common.tcl"
 
 
-set LIB_PATH_HVT "${PDK_BASE}/lib/stdcell_hvt/"
+set LIB_PATH_HVT "${PDK_BASE}/lib/stdcell_hvt"
 set DB_PATH_HVT "${PDK_BASE}/lib/stdcell_hvt/db_nldm"
 set TARGET_LIBRARY "saed32hvt_tt1p05v25c.db"
 set NDM_REFERENCE_LIB_DIRS_HVT [list \
@@ -10,7 +10,7 @@ set NDM_REFERENCE_LIB_DIRS_HVT [list \
 ]
 set CTS_LIB_CELL_PATTERN_LIST_HVT [list "*/NBUFF*LVT" "*/NBUFF*hvt" "*/INVX*_LVT" "*/INVX*_hvt" "*/CG*" "*/AOBUFX*_LVT" "*/AOINV*" "*/*DFF*"]
 
-set LIB_PATH_RVT "${PDK_BASE}/lib/stdcell_rvt/"
+set LIB_PATH_RVT "${PDK_BASE}/lib/stdcell_rvt"
 set DB_PATH_RVT "${PDK_BASE}/lib/stdcell_rvt/db_nldm"
 set target_library_rvt "saed32rvt_tt1p05v25c.db"
 set NDM_REFERENCE_LIB_DIRS_RVT [list \

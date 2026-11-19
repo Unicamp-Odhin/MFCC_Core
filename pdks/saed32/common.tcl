@@ -1,4 +1,4 @@
-set PDK_BASE "/pdk/synopsys/saed32/SAED32_EDK/"
+set PDK_BASE "/pdk/synopsys/saed32/SAED32_EDK"
 set TECH_FILE "${PDK_BASE}/tech/tf/saed32nm_1p9m.tf"
 set MAP_FILE "${PDK_BASE}/tech/starrc/saed32nm_tf_itf_tluplus.map"
 set TLUPLUS_MAX_FILE "${PDK_BASE}/tech/starrc/nominal/saed32nm_1p9m_nominal.tluplus"
@@ -12,7 +12,7 @@ set MW_GROUND_NET  "VSSD"
 set MW_POWER_PORT  "VCCD"
 set MW_GROUND_PORT "VSSD"
 
-set LIB_IO_PATH "${PDK_BASE}/lib/io_std/"
+set LIB_IO_PATH "${PDK_BASE}/lib/io_std"
 
 set ROUTING_LAYER_DIRECTION_OFFSET_LIST "{M1 horizontal} {M2 vertical} {M3 horizontal} {M4 vertical} {M5 horizontal} {M6 vertical} {M7 horizontal} {M8 vertical} {M9 horizontal} {MRDL vertical} "
 

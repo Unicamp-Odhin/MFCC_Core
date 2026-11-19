@@ -47,29 +47,81 @@ module mel #(
 
   logic [POWER_WIDTH-1:0] power_spectrum_mem[0:NUM_RFFT_BINS-1];
 
-  always_ff @(posedge clk) begin : POWER_SPECTRUM_BUFFER_INPUT_LOGIC
-    if (in_valid) begin
-      power_spectrum_mem[power_spectrum_frame_ptr] <= power_spectrum_frame_in;
-    end
-  end
-  
+  `ifdef SAED32
+    localparam int PS_NUM_BANKS  = (NUM_RFFT_BINS + 127) / 128;
+    localparam int PS_NUM_SLICES = POWER_WIDTH / 32;
 
-  always_ff @(posedge clk) begin
-    if (read_en) begin
-      power_spectrum <= power_spectrum_mem[k_next];
+    logic [POWER_WIDTH-1:0] ps_rdata_bank [0:PS_NUM_BANKS-1];
+
+    genvar b, s;
+
+    generate
+      for (b = 0; b < PS_NUM_BANKS; b++) begin : g_ps_bank
+
+        for (s = 0; s < PS_NUM_SLICES; s++) begin : g_ps_slice
+
+          SRAM2RW128x32 u_ps_sram (
+
+            // PORT 1: ESCRITA (frame_in)
+            .A1   (power_spectrum_frame_ptr[6:0]),
+            .CE1  (clk),
+            .CSB1 (~(in_valid && (power_spectrum_frame_ptr[NFFT_LOG2-1:7] == b))),
+            .WEB1 (~in_valid),
+            .OEB1 (1'b1),
+
+            .I1   (power_spectrum_frame_in[s*32 +: 32]),
+            .O1   (),
+
+            // PORT 2: LEITURA (frame_out)
+            .A2   (k_next[6:0]),
+            .CE2  (clk),
+            .CSB2 (~(read_en && (k_next[NFFT_LOG2-1:7] == b))),
+            .WEB2 (1'b1),
+            .OEB2 (1'b0),
+
+            .I2   (32'b0),
+            .O2   (ps_rdata_bank[b][s*32 +: 32])
+
+          );
+
+        end
+      end
+    endgenerate
+
+    always_ff @(posedge clk) begin
+      if (read_en) begin
+        power_spectrum <= ps_rdata_bank[k_next[NFFT_LOG2-1:7]];
+      end
     end
-  end
+
+  `else
+    always_ff @(posedge clk) begin : POWER_SPECTRUM_BUFFER_INPUT_LOGIC
+      if (in_valid) begin
+        power_spectrum_mem[power_spectrum_frame_ptr] <= power_spectrum_frame_in;
+      end
+    end
+
+    always_ff @(posedge clk) begin
+      if (read_en) begin
+        power_spectrum <= power_spectrum_mem[k_next];
+      end
+    end
+
+  `endif
 
   logic [POWER_WIDTH-1:0] temp_mul_next;
   logic [POWER_WIDTH-1:0] temp_log2, temp_log10;
 
 
+  logic [POWER_WIDTH/2-1:0] filter_temp;
   logic [POWER_WIDTH-1:0] filter;
 
   mel_table_rom dut_mel_table_rom(
       .addr(prt_memory),
-      .dout(filter)
+      .dout(filter_temp)
   );
+
+  assign filter = {{(POWER_WIDTH/2){1'b0}}, filter_temp};
 
 
   typedef enum logic [1:0] {

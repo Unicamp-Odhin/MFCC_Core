@@ -38,14 +38,17 @@ module hamming_window #(
   
   logic [NFFT_LOG2 - 1:0] frame_ptr;
 
+  logic signed [N/2-1:0] hamming_coefficient_temp;
   logic signed [N-1:0] hamming_coefficient;
   logic signed [2*N-1:0] hamming_sample_temp;
 
   hamming_rom hamming_rom_uut (
       .addr(calc_pointer),
-      .dout(hamming_coefficient)
+      .dout(hamming_coefficient_temp)
   );
 
+  assign hamming_coefficient = {{(N/2){1'b0}}, hamming_coefficient_temp};
+  
   logic [NFFT_LOG2-1:0] temp_ptr;
   logic temp_valid;
   logic done;

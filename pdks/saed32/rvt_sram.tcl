@@ -1,11 +1,11 @@
 source "${PROJECT_ROOT}/pdks/saed32/common.tcl"
 
 
-set LIB_PATH_SRAM "${PDK_BASE}/lib/sram/"
+set LIB_PATH_SRAM "${PDK_BASE}/lib/sram"
 set DB_PATH_SRAM "${PDK_BASE}/lib/sram/db_nldm"
 set TARGET_LIBRARY_SRAM "saed32sram_tt1p05v25c.db"
 
-set LIB_PATH_RVT "${PDK_BASE}/lib/stdcell_rvt/"
+set LIB_PATH_RVT "${PDK_BASE}/lib/stdcell_rvt"
 set DB_PATH_RVT "${PDK_BASE}/lib/stdcell_rvt/db_nldm"
 set TARGET_LIBRARY_RVT "saed32rvt_tt1p05v25c.db"
 set NDM_REFERENCE_LIB_DIRS_RVT [list \
