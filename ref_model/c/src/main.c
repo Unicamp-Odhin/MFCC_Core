@@ -306,6 +306,12 @@ int main(int argc, char *argv[]) {
     #endif
 
     #ifdef CONFIG_CREATE_DATABANK
+    snprintf(filepath, sizeof(filepath), "%s/cos_lut.hex", tables_dir);
+    dump_hex(filepath, result.cos_lut, MFCC_NUM_CEPS, sizeof(int32_t));
+
+    snprintf(filepath, sizeof(filepath), "%s/mel_table.hex", tables_dir);
+    dump_hex(filepath, result.filterbank, MFCC_NUM_FILTERS, sizeof(int32_t));
+
     snprintf(filepath, sizeof(filepath), "%s/hamming_window.hex", tables_dir);
     dump_hex(filepath, result.window, result.frame_size, sizeof(int32_t));
 
