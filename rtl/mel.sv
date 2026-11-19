@@ -28,6 +28,10 @@ module mel #(
     output logic mel_valid
 
 );
+  logic [FILTER_INDEX_WIDTH-1:0] mel_prt_energies_internal;
+  logic mel_done_internal;
+  
+  
   // localparam ACCUMULATOR_WIDTH = $clog2(NUM_RFFT_BINS)+POWER_WIDTH;
   localparam MEL_MEMORY_DEPTH = MEL_BANK_SIZE * NUM_MEL_FILTERS;
   //localparam MEL_BANK_ADDR_WIDTH = $clog2(MEL_BANK_SIZE) + 1;
@@ -46,6 +50,8 @@ module mel #(
   logic [POWER_WIDTH-1:0] power_spectrum;
 
   logic [POWER_WIDTH-1:0] power_spectrum_mem[0:NUM_RFFT_BINS-1];
+
+  logic calc_valid;
 
   `ifdef SAED32
     localparam int PS_NUM_BANKS  = (NUM_RFFT_BINS + 127) / 128;
@@ -110,8 +116,6 @@ module mel #(
   `endif
 
   logic [POWER_WIDTH-1:0] temp_mul_next;
-  logic [POWER_WIDTH-1:0] temp_log2, temp_log10;
-
 
   logic [POWER_WIDTH-1:0] filter;
 
@@ -137,13 +141,6 @@ module mel #(
       .result(temp_mul_next)
   );
 
-  long_mul_fixed #(
-      .F(F)
-  ) u_mul_out (
-      .a     (temp_log2),
-      .b     (log10_const_signal),
-      .result(temp_log10)
-  );
 
   always_ff @(posedge clk) begin
     if (!rst_n) begin
@@ -152,7 +149,7 @@ module mel #(
       i          <= 0;
       k          <= 0;
       i_total    <= 0;
-      mel_done_o <= 0;
+      mel_done_internal <= 0;
       sum_finish <= 0;
     end else begin
       state   <= next_state;
@@ -168,18 +165,18 @@ module mel #(
       if (next_state == CALC_ENERGY) sum_finish <= sum_next;
       if (i == NUM_MEL_FILTERS) begin
         state      <= IDLE;
-        mel_done_o <= 1;
+        mel_done_internal <= 1;
       end else begin
-        mel_done_o <= 0;
+        mel_done_internal <= 0;
       end
     end
   end
 
 
   always_comb begin
-    mel_value_energies = '0;
-    mel_prt_energies   = i;
-    mel_valid          = 1'b0;
+    //mel_value_energies = '0;
+    mel_prt_energies_internal   = i;
+    calc_valid          = 1'b0;
 
     next_state         = state;
     sum_next           = sum;
@@ -192,7 +189,7 @@ module mel #(
 
     case (state)
       IDLE: begin
-        mel_valid    = 1'b0;
+        calc_valid    = 1'b0;
         sum_next     = 0;
         i_next       = 0;
         i_total_next = 0;
@@ -201,9 +198,8 @@ module mel #(
       end
 
       LOAD: begin
-        mel_valid          = 1'b0;
-        mel_value_energies = '0;
-        mel_prt_energies   = i;
+        calc_valid          = 1'b0;
+        mel_prt_energies_internal   = i;
 
         if (i < NUM_MEL_FILTERS) begin
           prt_memory = i_total;
@@ -217,9 +213,8 @@ module mel #(
 
       CALC_SUM: begin
 
-        mel_valid          = 1'b0;
-        mel_value_energies = '0;
-        mel_prt_energies   = i;
+        calc_valid          = 1'b0;
+        mel_prt_energies_internal   = i;
         prt_memory = i_total + 1 + k - k_init;
 
         sum_next = sum + temp_mul_next;
@@ -238,14 +233,8 @@ module mel #(
         i_total_next     = i_total + MEL_BANK_SIZE;
         sum_next         = 0;
 
-        mel_valid        = 1'b1;
-        mel_prt_energies = i;
-
-        if (sum <= 0) begin
-          mel_value_energies = '0;  // Pode ajustar para saturar em 0
-        end else begin
-          mel_value_energies = temp_log10[MEL_ENERGY_WIDTH-1:0];
-        end
+        calc_valid        = 1'b1;
+        mel_prt_energies_internal = i;
 
         next_state = LOAD;
       end
@@ -256,18 +245,56 @@ module mel #(
         i_next             = 0;
         i_total_next       = 0;
         k_next             = 0;
-        mel_valid          = 1'b0;
-        mel_value_energies = 8'h0;
-        mel_prt_energies   = 6'h0;
+        calc_valid          = 1'b0;
+        mel_prt_energies_internal   = 6'h0;
       end
     endcase
   end
 
-  log2_fp #(
+  logic log_mel_valid, log_mel_done;
+  logic [FILTER_INDEX_WIDTH-1:0] log_mel_prt_energies;
+  logic [POWER_WIDTH-1:0] temp_log2, temp_log10;
+
+  log2_fp_pipelined # (
       .F(F)
   ) u_base2log (
-      .x(sum_finish),
-      .result(temp_log2)
+      .clk     (clk),
+      .rst_n   (rst_n),
+
+      .valid_i (calc_valid),
+      .x       (sum_finish),
+
+      .ptr_i   (mel_prt_energies_internal),
+      .done_i  (mel_done_internal),
+      .ptr_o   (log_mel_prt_energies),
+      .done_o  (log_mel_done),
+
+      .result  (temp_log2),
+      .valid_o (log_mel_valid)
   );
 
+  long_mul_fixed #(
+      .F      (F)
+  ) u_mul_out (
+      .a      (temp_log2),
+      .b      (log10_const_signal),
+      .result (temp_log10)
+  );
+  
+
+  always_ff @(posedge clk) begin
+    if (!rst_n) begin
+      mel_value_energies   <= 0;
+      mel_valid            <= 0;
+      mel_done_o           <= 0;
+      mel_prt_energies     <= 0;
+    end else  begin
+      mel_done_o           <= log_mel_done;
+      mel_valid            <= log_mel_valid;
+      mel_value_energies   <= temp_log10[MEL_ENERGY_WIDTH-1:0];
+      mel_prt_energies     <= log_mel_prt_energies;
+    end
+  end
+
+  
 endmodule

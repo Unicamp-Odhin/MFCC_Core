@@ -1,7 +1,7 @@
 read_verilog mfcc_wrapper.v mfcc_F16.v
 read_xdc xilinx.xdc
 set_property PROCESSING_ORDER EARLY [get_files xilinx.xdc]
-synth_design -top MFCC_Core -part xc7k325tffg676-2
+synth_design -top MFCC_Wrapper -part xc7k325tffg676-2
 opt_design
 place_design
 route_design
