@@ -36,6 +36,15 @@ module mel #(
 
   logic signed [POWER_WIDTH-1:0] log10_const_signal;
   assign log10_const_signal = LOG10_CONST;
+
+  logic [POWER_WIDTH-1:0] sum, sum_next, sum_finish;
+  logic [FILTER_INDEX_WIDTH-1:0] i, i_next;
+  logic [RFFT_BIN_ADDR_WIDTH:0] k, k_next, k_init, k_end;
+  logic [MEL_MEMORY_ADDR_WIDTH-1:0] i_total, i_total_next, prt_memory;
+
+  logic read_en;
+  logic [POWER_WIDTH-1:0] power_spectrum;
+
   logic [POWER_WIDTH-1:0] power_spectrum_mem[0:NUM_RFFT_BINS-1];
 
   always_ff @(posedge clk) begin : POWER_SPECTRUM_BUFFER_INPUT_LOGIC
@@ -43,17 +52,17 @@ module mel #(
       power_spectrum_mem[power_spectrum_frame_ptr] <= power_spectrum_frame_in;
     end
   end
+  
 
-  logic [POWER_WIDTH-1:0] sum, sum_next, sum_finish;
-  logic [FILTER_INDEX_WIDTH-1:0] i, i_next;
-  logic [RFFT_BIN_ADDR_WIDTH:0] k, k_next, k_init, k_end;
-  logic [MEL_MEMORY_ADDR_WIDTH-1:0] i_total, i_total_next, prt_memory;
+  always_ff @(posedge clk) begin
+    if (read_en) begin
+      power_spectrum <= power_spectrum_mem[k_next];
+    end
+  end
 
   logic [POWER_WIDTH-1:0] temp_mul_next;
   logic [POWER_WIDTH-1:0] temp_log2, temp_log10;
 
-  logic [POWER_WIDTH-1:0] power_spectrum;
-  assign power_spectrum = power_spectrum_mem[k];
 
   logic [POWER_WIDTH-1:0] filter;
 
@@ -131,6 +140,8 @@ module mel #(
     i_total_next       = i_total;
     prt_memory         = 0;
 
+    read_en = 1'b0;
+
     case (state)
       IDLE: begin
         mel_valid    = 1'b0;
@@ -149,12 +160,15 @@ module mel #(
         if (i < NUM_MEL_FILTERS) begin
           prt_memory = i_total;
           next_state = CALC_SUM;
+          k_next = filter[RFFT_BIN_ADDR_WIDTH+16:16];
+          read_en = 1'b1;
         end else begin
           next_state = IDLE;
         end
       end
 
       CALC_SUM: begin
+
         mel_valid          = 1'b0;
         mel_value_energies = '0;
         mel_prt_energies   = i;
@@ -162,7 +176,9 @@ module mel #(
 
         sum_next = sum + temp_mul_next;
         k_next = k + 1;
+
         if (k < k_end) begin
+          read_en = 1'b1;
           next_state = CALC_SUM;
         end else begin
           next_state = CALC_ENERGY;
