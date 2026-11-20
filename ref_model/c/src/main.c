@@ -97,6 +97,45 @@ void dump_hex(const char *file_name, const void *buffer, int size, size_t elemen
     fclose(fp);
 }
 
+void dump_2d_hex(const char *file_name, const void *buffer, size_t rows, size_t cols, size_t element_size) {
+    FILE *fp = fopen(file_name, "w");
+    if (!fp) {
+        perror("fopen");
+        return;
+    }
+
+    int width = element_size * 2;
+    
+    const void * const *mat = (const void * const *)buffer;
+
+    for (size_t i = 0; i < rows; i++) {
+        for (size_t j = 0; j < cols; j++) {
+            uint64_t value = 0;
+
+            switch (element_size) {
+                case sizeof(int16_t):
+                    value = ((const uint16_t *)mat[i])[j];
+                    break;
+                case sizeof(int32_t):
+                    value = ((const uint32_t *)mat[i])[j];
+                    break;
+                case sizeof(int64_t):
+                    value = ((const uint64_t *)mat[i])[j];
+                    break;
+                default:
+                    fprintf(stderr, "Unsupported element size: %zu\n", element_size);
+                    fclose(fp);
+                    return;
+            }
+            
+            fprintf(fp, "%0*llx\n", width, (unsigned long long)value);
+        }
+    }
+    
+    fclose(fp);
+}
+
+
 void dump_hex_complex(const char *file_name, complex_t *buffer, int size) {
     FILE *fp = fopen(file_name, "w");
     if (!fp) {
@@ -307,10 +346,10 @@ int main(int argc, char *argv[]) {
 
     #ifdef CONFIG_CREATE_DATABANK
     snprintf(filepath, sizeof(filepath), "%s/cos_lut.hex", tables_dir);
-    dump_hex(filepath, result.cos_lut, MFCC_NUM_CEPS, sizeof(int32_t));
+    dump_2d_hex(filepath, result.cos_lut, MFCC_NUM_CEPS, MFCC_NUM_FILTERS, sizeof(int32_t));
 
     snprintf(filepath, sizeof(filepath), "%s/mel_table.hex", tables_dir);
-    dump_hex(filepath, result.filterbank, MFCC_NUM_FILTERS, sizeof(int32_t));
+    dump_2d_hex(filepath, result.filterbank, MFCC_NUM_FILTERS, result.max_width_mel, sizeof(int32_t));
 
     snprintf(filepath, sizeof(filepath), "%s/hamming_window.hex", tables_dir);
     dump_hex(filepath, result.window, result.frame_size, sizeof(int32_t));
