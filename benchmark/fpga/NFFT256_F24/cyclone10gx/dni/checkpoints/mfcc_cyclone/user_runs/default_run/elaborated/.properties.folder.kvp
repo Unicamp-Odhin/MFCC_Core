@@ -1,5 +1,0 @@
-22 serialization::archive 19 0 1 0 0 4 0 0 0 16 dms:cdms:version 0 0 1 0
-0 5 50 Version 24.3.0 Build 212 11/18/2024 SC Pro Edition 17 dms:cdms:sub_type
-1 5 10 checkpoint 28 dms:cdms:is_checkpoint_valid
-2 0 1 29 dms:cdms:checkpoint_timestamp
-3 4 1795282293

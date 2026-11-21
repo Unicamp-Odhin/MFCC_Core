@@ -261,3 +261,19 @@ reports/
 MFCC_elaborated.v 
 MFCC_Netlist.v
 benchmark/mfcc_post_route.dcp
+
+# artefatos de compilacao Quartus (Pro) do benchmark
+benchmark/fpga/**/qdb/
+benchmark/fpga/**/dni/
+benchmark/fpga/**/tmp-clearbox/
+benchmark/fpga/**/serv_req_info.txt
+benchmark/fpga/**/*.cdb
+benchmark/fpga/**/*.qmsgdb
+benchmark/fpga/**/*.model
+benchmark/fpga/**/*.rdb
+benchmark/fpga/**/*.idb
+benchmark/fpga/**/*.mif
+benchmark/fpga/**/*.tdf
+benchmark/fpga/**/*.hdb
+benchmark/fpga/**/*.flock
+benchmark/fpga/**/*.kvp
