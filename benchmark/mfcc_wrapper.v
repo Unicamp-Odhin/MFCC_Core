@@ -1,13 +1,14 @@
 module MFCC_Wrapper (
-    input wire clk
+    input wire clk,
+    input wire rst_n,
+    input wire [15:0] pcm_in,
+    input wire pcm_ready_i,
+    input wire start_i,
+
+    output wire mfcc_done_o,
+    output wire [383:0] mfcc_data_o
 );
-    wire rst_n = 1'b1;   // reset amarrado em 1
-    wire [15:0] pcm_in = 16'd0;
-    wire pcm_ready_i = 1'b0;
-    wire start_i = 1'b0;
-    wire mfcc_done_o;
-    wire [383:0] mfcc_data_o;
-(* keep_hierarchy = "yes" *)
+
     MFCC_Core dut (
         .clock          (clk),
         .rst_n          (rst_n),
@@ -18,4 +19,5 @@ module MFCC_Wrapper (
         .mfcc_done_o    (mfcc_done_o),
         .mfcc_data_o    (mfcc_data_o)
     );
+
 endmodule

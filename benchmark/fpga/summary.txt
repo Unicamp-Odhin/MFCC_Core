@@ -1,0 +1,5 @@
+combo            fpga       part                  status       LUTs      FFs  DSPs   BRAM     WNS Fmax(MHz) Power(W)
+NFFT512_F16      artymini   xc7a35tcpg236-1       OK              -        -     -      -       -         -        -
+NFFT512_F16      ecp5_45k   LFE5U-45F speed6      FALHOU      15727     5180   143     27       -         -        -
+NFFT512_F16      ecp5_85k   LFE5U-85F speed8      FALHOU      15727     5180   143     27       -         -        -
+NFFT512_F16      gowin      GW2AR-18C (Tang Nano 9K) FALHOU          -        -     -      -       -         -        -
