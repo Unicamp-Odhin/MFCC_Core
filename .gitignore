@@ -277,3 +277,6 @@ benchmark/fpga/**/*.tdf
 benchmark/fpga/**/*.hdb
 benchmark/fpga/**/*.flock
 benchmark/fpga/**/*.kvp
+
+# saidas de execucao dos sweeps (logs, .done, relatorios) ficam so no disco
+benchmark/fpga/

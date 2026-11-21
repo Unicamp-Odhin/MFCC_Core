@@ -1,9 +1,0 @@
-Synthesis Status : Successful - Sat Nov 21 14:35:36 2026
-Revision Name : mfcc_cyclone
-Top-level Entity Name : MFCC_Core
-Family : Cyclone 10 GX
-Quartus Prime Version : 24.3.0 Build 212 11/18/2024 SC Pro Edition
-Device : 10CX220YF780E5G
-Logic utilization estimate (in ALMs) : 4,557 / 80,330 ( 6 % )
-Total registers : 3869
-Estimated DSP Blocks Post-Merging : 95
