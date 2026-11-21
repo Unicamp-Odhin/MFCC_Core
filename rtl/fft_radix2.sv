@@ -205,7 +205,7 @@ module fft_radix2 #(
     assign odd_ptr_sum  = sched.k + sched.j + sched.half_m;
 
     // Twiddle
-    logic [7:0]   twiddle_address;
+    logic [NFFT_LOG2:0]   twiddle_address;
     logic [127:0] twiddle_value;
 
     assign twiddle_address = sched.twiddle_index[NFFT_LOG2:0];

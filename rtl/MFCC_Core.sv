@@ -12,7 +12,8 @@ module MFCC_Core #(
     parameter FRAME_STEP      = 160,
     parameter FFT_SIZE        = 512,                           // Tamanho da FFT
     parameter NFFT_LOG2       = $clog2(FFT_SIZE),
-    parameter PCM_FIFO_DEPTH  = 32                           // Profundidade do FIFO de PCM
+    parameter PCM_FIFO_DEPTH  = 32,                           // Profundidade do FIFO de PCM
+    parameter MEL_BANK_SIZE   = 32
 ) (
     input logic clock,
     input logic rst_n,
@@ -76,6 +77,7 @@ module MFCC_Core #(
   logic window_valid_to_read;
   logic start_move;
   logic start_hamming;
+  logic idle_window;
 
   window_buffer #(
       .WIDTH     (WIDTH),
@@ -94,8 +96,8 @@ module MFCC_Core #(
       .read_data_o    (window_buffer_data_o),
       .valid_to_read_o(window_valid_to_read),
 
-      .start_next_state_o(start_hamming)
-      //   .idle_o            (idle)
+      .start_next_state_o(start_hamming),
+      .idle_o(idle_window)
   );
 
   logic hamming_done, hamming_out_valid;
@@ -157,7 +159,8 @@ module MFCC_Core #(
   mel #(
       .NUM_MEL_FILTERS(NUM_MEL_FILTERS),
       .NUM_RFFT_BINS  (RFFT_SIZE),
-      .F              (F_WIDTH)
+      .F              (F_WIDTH),
+      .MEL_BANK_SIZE  (MEL_BANK_SIZE)
   ) u_mel (
       .clk  (clk),
       .rst_n(rst_n),
@@ -208,24 +211,21 @@ module MFCC_Core #(
     end
   end
 
-  logic hamming_finished;
-  logic idle;
+  logic finished;
   logic start_move_auto;
 
   always_ff @(posedge clk) begin : RESTARTIG_LOGIC
-    // start_move <= start_i || (auto_restart_i && start_move_auto);
-    // start_move <= 0;
 
     if (!rst_n) begin
       start_move_auto  <= 0;
-      hamming_finished <= 0;
+      finished <= 0;
     end else begin
-      if (hamming_done) begin
-        hamming_finished <= 1;
+      if (dct_done) begin
+        finished <= 1;
       end
-      start_move_auto <= hamming_finished && idle;
-      if (hamming_finished && idle) begin
-        hamming_finished <= 0;
+      start_move_auto <= finished && idle_window;
+      if (finished && idle_window) begin
+        finished <= 0;
       end
     end
   end
