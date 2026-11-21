@@ -1,0 +1,19 @@
+Fitter Status : Successful - Sat Nov 21 14:39:31 2026
+Quartus Prime Version : 24.3.0 Build 212 11/18/2024 SC Pro Edition
+Revision Name : mfcc_cyclone
+Top-level Entity Name : MFCC_Core
+Family : Cyclone 10 GX
+Device : 10CX220YF780E5G
+Timing Models : Final
+Power Models : Final
+Device Status : Final
+Logic utilization (in ALMs) : 5,856 / 80,330 ( 7 % )
+Total registers : 3367
+Total pins : 1 / 340 ( < 1 % )
+Total virtual pins : 661
+Total block memory bits : 638,316 / 12,021,760 ( 5 % )
+Total RAM Blocks : 39 / 587 ( 7 % )
+Total DSP Blocks : 77 / 192 ( 40 % )
+Total HSSI RX channels : 0 / 12 ( 0 % )
+Total HSSI TX channels : 0 / 12 ( 0 % )
+Total PLLs : 0 / 30 ( 0 % )

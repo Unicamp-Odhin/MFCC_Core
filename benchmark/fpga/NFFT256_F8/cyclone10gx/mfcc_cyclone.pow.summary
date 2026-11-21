@@ -1,0 +1,23 @@
+Power Analyzer Status : Successful - Sat Nov 21 14:30:14 2026
+Quartus Prime Version : 24.3.0 Build 212 11/18/2024 SC Pro Edition
+Revision Name : mfcc_cyclone
+Top-level Entity Name : MFCC_Core
+Family : Cyclone 10 GX
+Device : 10CX220YF780E5G
+Timing Models : Final
+Power Models : Final
+Device Status : Final
+Total On-Chip Power Dissipation : 1043.99 mW
+Transceiver Standby On-Chip Power Dissipation : 0.00 mW
+Transceiver Dynamic On-Chip Power Dissipation : 0.00 mW
+I/O Standby On-Chip Power Dissipation : 0.06 mW
+I/O Dynamic On-Chip Power Dissipation : 0.27 mW
+Core Dynamic On-Chip Power Dissipation : 41.14 mW
+HPS Standby On-Chip Power Dissipation : 0.00 mW
+HPS Dynamic On-Chip Power Dissipation : 0.00 mW
+Device Static On-Chip Power Dissipation : 1002.52 mW
+High Bandwidth Memory Standby On-Chip Power Dissipation : 0.00 mW
+High Bandwidth Memory Dynamic On-Chip Power Dissipation : 0.00 mW
+Analog/Digital Converter Standby On-Chip Power Dissipation : 0.00 mW
+Analog/Digital Converter Dynamic On-Chip Power Dissipation : 0.00 mW
+Power Estimation Confidence : Low: user provided insufficient toggle rate data

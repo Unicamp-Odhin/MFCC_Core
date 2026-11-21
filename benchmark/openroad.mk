@@ -6,7 +6,7 @@ export SYNTH_HIERARCHICAL ?= True
 export SYNTH_MINIMUM_KEEP_SIZE ?= 10
 
 
-export VERILOG_FILES = mfcc_NFFT256_F8.v
+export VERILOG_FILES = mfcc_NFFT512_F16.v
 export SDC_FILE      = /eda/processor_ci_perf/constraints/openroad.sdc
 
 
@@ -21,6 +21,9 @@ export PLACE_DENSITY      = 0.1
 
 export SYNTH_HDL_FRONTEND = slang
 export TNS_END_PERCENT    = 100
+# LEC (kepler-formal) no fim do flow estoura memoria em designs grandes;
+# o objetivo do sweep e rodar o flow fisico completo
+export LEC_CHECK = 0
 
 
 # export FLOORPLAN_TCL = /eda/projetos/MFCC_Core/floorplan.tcl

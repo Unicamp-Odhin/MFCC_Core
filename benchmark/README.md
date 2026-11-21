@@ -81,9 +81,9 @@ Detalhes:
 - Gowin: o TCL do alvo é gerado por combinação em `<outdir>/gowin_sweep.tcl`
   (o `gw_sh` original não aceita args); o flow roda com CWD no `<outdir>`.
 - Quartus (Cyclone 10 GX): projeto gerado por combinação
-  (`gen_proj.tcl` → `.qsf`) com `quartus_map/fit/sta/pow`; sem geração de
+  (`gen_proj.tcl` -> `.qsf`) com `quartus_map/fit/sta/pow`; sem geração de
   bitstream.
 - Execução isolada por alvo: `run_xilinx.sh <alvo> <netlist> <outdir>`,
   `run_ecp5.sh <netlist> <outdir>` (45k), `run_ecp5_85.sh` (85k).
 - Coleta: `collect_fpga_metrics.py` varre `fpga/<combo>/<fpga>/` e extrai
-  LUTs/FFs/DSP/BRAM/Fmax/Power de cada ferramenta → `summary.csv`.
+  LUTs/FFs/DSP/BRAM/Fmax/Power de cada ferramenta -> `summary.csv`.

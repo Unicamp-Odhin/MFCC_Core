@@ -1,0 +1,4 @@
+22 serialization::archive 19 0 1 0 0 3 0 0 0 18 dms:property:hpath 0 0 1 0
+0 5 0  20 dms:property:db_name
+1 5 14 root_partition 22 dms:property:parent_db
+2 5 0 

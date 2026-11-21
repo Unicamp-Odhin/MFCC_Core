@@ -8,8 +8,8 @@ if {$OUTDIR eq ""}  { set OUTDIR fpga/virtex }
 file mkdir $OUTDIR
 
 read_verilog $NETLIST
-read_xdc xilinx.xdc
-set_property PROCESSING_ORDER EARLY [get_files xilinx.xdc]
+read_xdc [file join [file dirname [info script]] xilinx_clock_port.xdc]
+set_property PROCESSING_ORDER EARLY [get_files xilinx_clock_port.xdc]
 synth_design -mode out_of_context -top MFCC_Core -part xc7vx690tffg1761-2
 opt_design
 place_design

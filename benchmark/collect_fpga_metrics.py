@@ -106,10 +106,11 @@ def parse_gowin(outdir):
 def parse_quartus(outdir):
     m = {"LUTs": None, "FFs": None, "DSPs": None, "BRAM": None,
          "Fmax_MHz": None, "Power_W": None}
-    fr = os.path.join(outdir, "mfcc_cyclone.fit.rpt")
-    if os.path.isfile(fr):
-        txt = open(fr, errors="ignore").read()
-        x = re.search(r"Total logic elements\D{0,30}([0-9,]+)", txt)
+    import glob as _g
+    fr = sorted(_g.glob(os.path.join(outdir, "mfcc_cyclone.fit.rpt")) or _g.glob(os.path.join(outdir, "mfcc_cyclone.syn.rpt")))
+    if fr:
+        txt = open(fr[0], errors="ignore").read()
+        x = re.search(r"Logic utilization \(in ALMs\)\s*;\s*([0-9,]+)", txt)
         if x:
             m["LUTs"] = num(x.group(1))
         x = re.search(r"Total registers\D{0,30}([0-9,]+)", txt)
@@ -124,28 +125,28 @@ def parse_quartus(outdir):
     sr = os.path.join(outdir, "mfcc_cyclone.sta.rpt")
     if os.path.isfile(sr):
         txt = open(sr, errors="ignore").read()
-        i = txt.find("Fmax Summary")
+        i = txt.find("; Fmax Summary")
         if i >= 0:
-            x = re.search(r";\s*[^;]+;\s*([0-9.]+)\s*;", txt[i:i + 600])
+            x = re.search(r";\s*([0-9.]+)\s*MHz", txt[i:i + 800])
             if x:
                 m["Fmax_MHz"] = num(x.group(1))
-    pr = os.path.join(outdir, "mfcc_cyclone.power.rpt")
-    if os.path.isfile(pr):
-        x = re.search(r"Total thermal power\D{0,60}([0-9.]+)\s*mW", open(pr, errors="ignore").read())
+    pr = sorted(_g.glob(os.path.join(outdir, "mfcc_cyclone.pow.rpt")) or _g.glob(os.path.join(outdir, "mfcc_cyclone.power.rpt")))
+    if pr:
+        x = re.search(r"Total On-Chip Power Dissipation\s*;\s*([0-9.]+)\s*mW", open(pr[0], errors="ignore").read())
         if x:
-            m["Power_W"] = round(num(x.group(1)) / 1000.0, 4)
+            m["Power_W"] = round(num(x.group(1)) / 1000.0, 3)
     return m
 
 
 PARSERS = {
-    "kintex": parse_vivado, "artymini": parse_vivado, "arty": parse_vivado,
+    "kintex": parse_vivado, "artymini": parse_vivado, "artix": parse_vivado,
     "zynq": parse_vivado, "virtex": parse_vivado,
     "ecp5_45k": parse_ecp5, "ecp5_85k": parse_ecp5,
     "gowin": parse_gowin, "cyclone10gx": parse_quartus,
 }
 
 PART = {"kintex": "xc7k325tffg676-2", "artymini": "xc7a35tcpg236-1",
-        "arty": "xc7a100tcsg324-1", "zynq": "xc7z020clg484-1",
+        "artix": "xc7a100tcsg324-1", "zynq": "xc7z020clg484-1",
         "virtex": "xc7vx690tffg1761-2", "ecp5_45k": "LFE5U-45F speed6",
         "ecp5_85k": "LFE5U-85F speed8", "gowin": "GW2AR-18C (Tang Nano 9K)",
         "cyclone10gx": "10CX220YF780E5G"}

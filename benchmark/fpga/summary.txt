@@ -1,5 +1,82 @@
 combo            fpga       part                  status       LUTs      FFs  DSPs   BRAM     WNS Fmax(MHz) Power(W)
-NFFT512_F16      artymini   xc7a35tcpg236-1       OK              -        -     -      -       -         -        -
+NFFT1024_F16     kintex     xc7k325tffg676-2      OK           6247     2378   155     22  -6.802     59.52    0.367
+NFFT1024_F16     artymini   xc7a35tcpg236-1       OK          19691     2870    66     22  -20.66     32.62    0.459
+NFFT1024_F16     artix      xc7a100tcsg324-1      OK           6314     2359   155     22 -19.559     33.83    0.288
+NFFT1024_F16     zynq       xc7z020clg484-1       OK           6485     2359   155     22  -19.47     33.93        -
+NFFT1024_F16     virtex     xc7vx690tffg1761-2    OK           6215     2620   155     22  -6.032     62.38    0.532
+NFFT1024_F16     ecp5_45k   LFE5U-45F speed6      FALHOU      16889     5476   143     50       -         -        -
+NFFT1024_F16     ecp5_85k   LFE5U-85F speed8      FALHOU      16889     5476   143     50       -         -        -
+NFFT1024_F16     gowin      GW2AR-18C (Tang Nano 9K) FALHOU          -        -     -      -       -         -        -
+NFFT1024_F16     cyclone10gx 10CX220YF780E5G       OK           5856     3367     - 638316       -     74.21    1.071
+NFFT1024_F24     kintex     xc7k325tffg676-2      OK           9117     2608   216   23.5  -6.651     60.06    0.569
+NFFT1024_F24     artymini   xc7a35tcpg236-1       FALHOU          -        -     -      -       -         -        -
+NFFT1024_F24     artix      xc7a100tcsg324-1      OK           9552     2589   216   23.5 -19.275     34.16    0.505
+NFFT1024_F24     zynq       xc7z020clg484-1       OK           9573     2589   216   23.5 -19.822     33.53        -
+NFFT1024_F24     virtex     xc7vx690tffg1761-2    OK           9095     2857   216   23.5  -6.805     59.51    0.735
+NFFT1024_F24     ecp5_45k   LFE5U-45F speed6      FALHOU      20359     6306   234     51       -         -        -
+NFFT1024_F24     ecp5_85k   LFE5U-85F speed8      FALHOU      20359     6306   234     51       -         -        -
+NFFT1024_F24     gowin      GW2AR-18C (Tang Nano 9K) FALHOU          -        -     -      -       -         -        -
+NFFT1024_F24     cyclone10gx 10CX220YF780E5G       OK           6497     3935     - 646508       -     71.45    1.086
+NFFT1024_F8      kintex     xc7k325tffg676-2      OK           6149     2333   139     22  -6.304     61.33    0.347
+NFFT1024_F8      artymini   xc7a35tcpg236-1       OK          14307     2556    65     22 -20.535     32.75    0.334
+NFFT1024_F8      artix      xc7a100tcsg324-1      OK           6171     2323   139     22  -18.89     34.61    0.272
+NFFT1024_F8      zynq       xc7z020clg484-1       OK           6269     2326   139     22 -19.582      33.8        -
+NFFT1024_F8      virtex     xc7vx690tffg1761-2    OK           6102     2587   139     22  -6.254     61.52    0.515
+NFFT1024_F8      ecp5_45k   LFE5U-45F speed6      FALHOU      16523     4841   134     50       -         -        -
+NFFT1024_F8      ecp5_85k   LFE5U-85F speed8      FALHOU      16523     4841   134     50       -         -        -
+NFFT1024_F8      gowin      GW2AR-18C (Tang Nano 9K) FALHOU          -        -     -      -       -         -        -
+NFFT1024_F8      cyclone10gx 10CX220YF780E5G       OK           4783     2905     - 630124       -     76.66    1.058
+NFFT256_F16      kintex     xc7k325tffg676-2      OK           5086     2140   155     12  -6.137     61.97    0.361
+NFFT256_F16      artymini   xc7a35tcpg236-1       OK          18589     2627    66     12 -18.683     34.86     0.42
+NFFT256_F16      artix      xc7a100tcsg324-1      OK           5115     2119   155     12 -16.642     37.53    0.285
+NFFT256_F16      zynq       xc7z020clg484-1       OK           5345     2118   155     12 -17.333     36.59        -
+NFFT256_F16      virtex     xc7vx690tffg1761-2    OK           5082     2111   155     12  -6.142     61.95    0.522
+NFFT256_F16      ecp5_45k   LFE5U-45F speed6      FALHOU      15234     4928   143     26       -         -        -
+NFFT256_F16      ecp5_85k   LFE5U-85F speed8      OK          15234     4928   143     26       -     31.57        -
+NFFT256_F16      gowin      GW2AR-18C (Tang Nano 9K) FALHOU          -        -     -      -       -         -        -
+NFFT256_F16      cyclone10gx 10CX220YF780E5G       OK           3965     2863     - 157424       -     79.27     1.05
+NFFT256_F24      kintex     xc7k325tffg676-2      OK           7672     2364   200     12  -3.962     71.62    0.508
+NFFT256_F24      artymini   xc7a35tcpg236-1       FALHOU          -        -     -      -       -         -        -
+NFFT256_F24      artix      xc7a100tcsg324-1      OK           8069     2355   200     12 -14.659     40.55    0.437
+NFFT256_F24      zynq       xc7z020clg484-1       OK           8167     2345   200     12 -14.206     41.31        -
+NFFT256_F24      virtex     xc7vx690tffg1761-2    OK           7676     2363   200     12  -4.022     71.32    0.668
+NFFT256_F24      ecp5_45k   LFE5U-45F speed6      FALHOU      18159     5751   234     26       -         -        -
+NFFT256_F24      ecp5_85k   LFE5U-85F speed8      FALHOU      18159     5751   234     26       -         -        -
+NFFT256_F24      gowin      GW2AR-18C (Tang Nano 9K) FALHOU          -        -     -      -       -         -        -
+NFFT256_F24      cyclone10gx 10CX220YF780E5G       OK           4327     3428     - 157424       -     78.04    1.068
+NFFT256_F8       kintex     xc7k325tffg676-2      OK           5175     2100   139     12  -4.888     67.17    0.344
+NFFT256_F8       artymini   xc7a35tcpg236-1       OK          13374     2316    65     12 -17.562     36.28    0.299
+NFFT256_F8       artix      xc7a100tcsg324-1      OK           5173     2086   139     12 -16.717     37.43    0.273
+NFFT256_F8       zynq       xc7z020clg484-1       OK           5293     2086   139     12 -17.194     36.77        -
+NFFT256_F8       virtex     xc7vx690tffg1761-2    OK           5132     2101   139     12  -5.483     64.59    0.508
+NFFT256_F8       ecp5_45k   LFE5U-45F speed6      FALHOU      15213     4310   134     25       -         -        -
+NFFT256_F8       ecp5_85k   LFE5U-85F speed8      OK          15213     4310   134     25       -     30.86        -
+NFFT256_F8       gowin      GW2AR-18C (Tang Nano 9K) FALHOU          -        -     -      -       -         -        -
+NFFT256_F8       cyclone10gx 10CX220YF780E5G       OK           3617     2406     - 157424       -     82.58    1.044
+NFFT512_F16      kintex     xc7k325tffg676-2      OK           5326     2338   155     12   -5.42     64.85    0.357
+NFFT512_F16      artymini   xc7a35tcpg236-1       OK          18793     2845    66     12 -18.074     35.62    0.455
+NFFT512_F16      artix      xc7a100tcsg324-1      OK           5379     2334   155     12 -16.249      38.1    0.279
+NFFT512_F16      zynq       xc7z020clg484-1       OK           5577     2316   155     12 -16.564     37.64        -
+NFFT512_F16      virtex     xc7vx690tffg1761-2    OK           5302     2321   155     12  -5.268      65.5    0.526
 NFFT512_F16      ecp5_45k   LFE5U-45F speed6      FALHOU      15727     5180   143     27       -         -        -
 NFFT512_F16      ecp5_85k   LFE5U-85F speed8      FALHOU      15727     5180   143     27       -         -        -
 NFFT512_F16      gowin      GW2AR-18C (Tang Nano 9K) FALHOU          -        -     -      -       -         -        -
+NFFT512_F16      cyclone10gx 10CX220YF780E5G       OK           4242     3052     - 313966       -     81.73    1.054
+NFFT512_F24      kintex     xc7k325tffg676-2      OK           8035     2578   216     12  -5.598     64.11      0.5
+NFFT512_F24      artymini   xc7a35tcpg236-1       FALHOU          -        -     -      -       -         -        -
+NFFT512_F24      artix      xc7a100tcsg324-1      OK           8493     2551   216     12 -17.039     36.98    0.428
+NFFT512_F24      zynq       xc7z020clg484-1       OK           8531     2543   216     12 -18.573        35        -
+NFFT512_F24      virtex     xc7vx690tffg1761-2    OK           8041     2566   216     12  -5.385        65    0.673
+NFFT512_F24      ecp5_45k   LFE5U-45F speed6      FALHOU      18743     6011   234     27       -         -        -
+NFFT512_F24      ecp5_85k   LFE5U-85F speed8      FALHOU      18743     6011   234     27       -         -        -
+NFFT512_F24      gowin      GW2AR-18C (Tang Nano 9K) FALHOU          -        -     -      -       -         -        -
+NFFT512_F24      cyclone10gx 10CX220YF780E5G       OK           4729     3620     - 318062       -     79.97     1.07
+NFFT512_F8       kintex     xc7k325tffg676-2      OK           5360     2299   139     12  -4.617     68.41    0.336
+NFFT512_F8       artymini   xc7a35tcpg236-1       OK          13454     2514    65     12 -17.483     36.39    0.251
+NFFT512_F8       artix      xc7a100tcsg324-1      OK           5383     2282   139     12 -16.532     37.69    0.265
+NFFT512_F8       zynq       xc7z020clg484-1       OK           5465     2284   139     12  -17.49     36.38        -
+NFFT512_F8       virtex     xc7vx690tffg1761-2    OK           5315     2302   139     12  -5.188     65.84    0.509
+NFFT512_F8       ecp5_45k   LFE5U-45F speed6      FALHOU      15095     4546   134     27       -         -        -
+NFFT512_F8       ecp5_85k   LFE5U-85F speed8      FALHOU      15095     4546   134     27       -         -        -
+NFFT512_F8       gowin      GW2AR-18C (Tang Nano 9K) FALHOU          -        -     -      -       -         -        -
+NFFT512_F8       cyclone10gx 10CX220YF780E5G       OK           3804     2608     - 309870       -     84.99    1.047

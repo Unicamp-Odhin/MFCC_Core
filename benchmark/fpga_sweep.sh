@@ -73,7 +73,7 @@ lattice_lane() {
       [ "$(cat "$outdir/.done" 2>/dev/null)" = OK ] && { echo "skip $fpga/$combo (done)"; continue; }
       mkdir -p "$outdir"
       if ! have yosys || ! have nextpnr-ecp5; then mark "$outdir" "PULADO (yosys/nextpnr ausente)"; continue; fi
-      if ( cd "$BENCH_DIR" && zsh "$BENCH_DIR/$script" "$netlist" "$outdir" ) > "$outdir/run.log" 2>&1; then
+      if ( cd "$BENCH_DIR" && zsh "$BENCH_DIR/$script" "$netlist" "$outdir" "$BENCH_DIR/wrap/wrap_ecp5_${combo}.v" ) > "$outdir/run.log" 2>&1; then
         mark "$outdir" OK
       else
         mark "$outdir" FALHOU
@@ -100,7 +100,10 @@ gowin_lane() {
 }
 
 intel_lane() {
-  local QSH; QSH=$(command -v quartus_sh || true)
+  # prefere Quartus Pro (Cyclone 10 GX nao e suportado pelo Lite)
+  local QSH
+  QSH=$(ls -d /eda/intelFPGA_pro/*/quartus/bin/quartus_sh 2>/dev/null | sort -V | tail -1)
+  [ -z "$QSH" ] && QSH=$(command -v quartus_sh || true)
   for combo in "${COMBOS[@]}"; do
     local netlist="$BENCH_DIR/mfcc_${combo}.v"
     local outdir="$OUTROOT/$combo/cyclone10gx"
@@ -111,17 +114,29 @@ intel_lane() {
       echo "project_new mfcc_cyclone -overwrite"
       echo "set_global_assignment -name FAMILY \"Cyclone 10 GX\""
       echo "set_global_assignment -name DEVICE 10CX220YF780E5G"
-      echo "set_global_assignment -name TOP_LEVEL_ENTITY MFCC_Wrapper"
+      echo "set_global_assignment -name TOP_LEVEL_ENTITY MFCC_Core"
       echo "set_global_assignment -name VERILOG_FILE $netlist"
-      echo "set_global_assignment -name VERILOG_FILE $WRAPDIR/wrap_${combo}.v"
-      echo "set_global_assignment -name SDC_FILE $OUTROOT/clk_10ns.sdc"
+      echo "set_global_assignment -name SDC_FILE $BENCH_DIR/quartus_clock.sdc"
+      # out-of-context: todas as portas VIRTUAIS exceto o clock (nao consomem pinos)
+      local vp; for vp in rst_n pcm_ready_i start_i auto_restart_i mfcc_done_o; do
+        echo "set_instance_assignment -name VIRTUAL_PIN ON -to $vp"
+      done
+      local bit; for ((bit = 0; bit < 16; bit++)); do
+        echo "set_instance_assignment -name VIRTUAL_PIN ON -to pcm_in[$bit]"
+      done
+      local nc; case "$combo" in
+        NFFT256_*) nc=7 ;; NFFT512_*) nc=12 ;; NFFT1024_*) nc=20 ;;
+      esac
+      for ((bit = 0; bit < nc*32; bit++)); do
+        echo "set_instance_assignment -name VIRTUAL_PIN ON -to mfcc_data_o[$bit]"
+      done
       echo "set_global_assignment -name PROJECT_OUTPUT_DIRECTORY ."
       echo "project_close"
     } > "$outdir/gen_proj.tcl"
     (
       cd "$outdir"
       "$QSH" -t gen_proj.tcl > quartus_gen.log 2>&1
-      quartus_map mfcc_cyclone    > quartus_map.log  2>&1
+      quartus_syn mfcc_cyclone    > quartus_syn.log  2>&1
       quartus_fit mfcc_cyclone    > quartus_fit.log  2>&1
       quartus_sta mfcc_cyclone    > quartus_sta.log  2>&1
       quartus_pow mfcc_cyclone    > quartus_pow.log  2>&1
@@ -137,7 +152,7 @@ intel_lane() {
 printf 'create_clock -name sys_clk -period 10.000 [get_ports clk]\n' > "$OUTROOT/clk_10ns.sdc"
 
 case "${1:-all}" in
-  clean) rm -rf "$OUTROOT" "$WRAPDIR"; echo "fpga/ e wrap/ removidos"; exit 0 ;;
+  clean) rm -rf "$OUTROOT"; echo "fpga/ e wrap/ removidos"; exit 0 ;;
   pilot)
     COMBOS=(NFFT512_F16)
     run_xilinx_target artymini NFFT512_F16 &
@@ -146,14 +161,25 @@ case "${1:-all}" in
     gowin_lane & P3=$!
     wait $P1 $P2 $P3
     ;;
+  lane)
+    # ./fpga_sweep.sh lane xilinx [alvos...] | lane lattice | lane gowin | lane intel
+    shift
+    case "$1" in
+      xilinx) shift; xilinx_lane ${@:-kintex artymini artix zynq virtex} ;;
+      lattice) lattice_lane ;;
+      gowin) gowin_lane ;;
+      intel) intel_lane ;;
+      *) echo "lane desconhecida: $1"; exit 1 ;;
+    esac
+    ;;
   one)
     COMBOS=(NFFT$2_F$3)
-    xilinx_lane kintex artymini arty zynq virtex &
+    xilinx_lane kintex artymini artix zynq virtex &
     L1=$!; lattice_lane & L2=$!; gowin_lane & L3=$!; intel_lane & L4=$!
     wait $L1 $L2 $L3 $L4
     ;;
   all|*)
-    xilinx_lane kintex artymini arty zynq virtex &
+    xilinx_lane kintex artymini artix zynq virtex &
     L1=$!
     ( lattice_lane; gowin_lane; intel_lane ) &
     L2=$!

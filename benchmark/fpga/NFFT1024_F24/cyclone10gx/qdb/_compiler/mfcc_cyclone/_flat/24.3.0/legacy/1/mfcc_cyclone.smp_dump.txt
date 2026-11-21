@@ -1,0 +1,39 @@
+
+State Machine - Summary
+
+State Machine - u_dct|dct_current_state
+Name dct_current_state.11 dct_current_state.10 dct_current_state.01 dct_current_state.00 
+dct_current_state.00 0 0 0 0 
+dct_current_state.01 0 0 1 1 
+dct_current_state.10 0 1 0 1 
+dct_current_state.11 1 0 0 1 
+
+State Machine - u_mel|state
+Name state.10 state.11 state.01 state.00 
+state.00 0 0 0 0 
+state.01 0 0 1 1 
+state.11 0 1 0 1 
+state.10 1 0 0 1 
+
+State Machine - u_fft|fft_state
+Name fft_state.011 fft_state.010 fft_state.001 fft_state.000 fft_state.100 
+fft_state.000 0 0 0 0 0 
+fft_state.001 0 0 1 1 0 
+fft_state.010 0 1 0 1 0 
+fft_state.011 1 0 0 1 0 
+fft_state.100 0 0 0 1 1 
+
+State Machine - u_hamming_window|hamming_state
+Name hamming_state.11 hamming_state.10 hamming_state.01 hamming_state.00 
+hamming_state.00 0 0 0 0 
+hamming_state.01 0 0 1 1 
+hamming_state.10 0 1 0 1 
+hamming_state.11 1 0 0 1 
+
+State Machine - u_window_buffer|current_state
+Name current_state.011 current_state.010 current_state.000 current_state.001 current_state.100 
+current_state.001 0 0 0 0 0 
+current_state.000 0 0 1 1 0 
+current_state.010 0 1 0 1 0 
+current_state.011 1 0 0 1 0 
+current_state.100 0 0 0 1 1 
