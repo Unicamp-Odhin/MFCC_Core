@@ -1,3 +1,4 @@
+# GERADO AUTOMATICAMENTE por utils/gen_params.py a partir do .env - NAO EDITAR
 F_PRE=16
 F_HAMMING=16
 F_FFT=16

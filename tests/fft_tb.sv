@@ -1,23 +1,24 @@
-`timescale 1ns / 1ps
+`timescale 1ns / 1ns
 
 `define SIMULATION 1
 //`define DIRECT_FRAME
 
 module fft_tb ();
-  localparam MAX_AUDIO_SIZE = 4001;
-  localparam SAMPLE_RATE = 16000;
+
+`include "mfcc_params.vh"
+  // Parametros unificados (fonte: .env -> rtl/mfcc_params.vh)
+  localparam MAX_AUDIO_SIZE = `MFCC_MAX_AUDIO_SIZE;
+  localparam SAMPLE_RATE = `MFCC_SAMPLE_RATE;
   localparam WIDTH_MIC = 16;
   localparam WIDTH = 64;
-  localparam F_WIDTH = 16;
+  localparam F_WIDTH = `MFCC_F;
   localparam PCM_FIFO_DEPTH = 256;
-  localparam FRAME_SIZE_T = 0.025;
-  localparam FRAME_STEP_T = 0.01;
-  localparam FRAME_SIZE = $rtoi(SAMPLE_RATE * FRAME_SIZE_T);
-  localparam FRAME_STEP = $rtoi(SAMPLE_RATE * FRAME_STEP_T);
-  localparam ALPHA = $rtoi(0.97 * (1 << F_WIDTH));
-  localparam FFT_SIZE = 1024;
-  localparam RFFT_SIZE = FFT_SIZE / 2;
-  localparam NFFT_LOG2 = $clog2(FFT_SIZE);
+  localparam FRAME_SIZE = `MFCC_FRAME_SIZE;
+  localparam FRAME_STEP = `MFCC_FRAME_STEP;
+  localparam ALPHA = `MFCC_ALPHA;
+  localparam FFT_SIZE = `MFCC_NFFT;
+  localparam RFFT_SIZE = `MFCC_RFFT_SIZE;
+  localparam NFFT_LOG2 = `MFCC_NFFT_LOG2;
 
   logic clk;
   logic rst_n;
@@ -201,7 +202,7 @@ module fft_tb ();
 
   always #5 clk = ~clk;
 
-  localparam SAMPLE_INTERVAL = 6250;  // ciclos de clock (100MHz / 16kHz)
+  localparam SAMPLE_INTERVAL = `MFCC_SAMPLE_INTERVAL;  // ciclos de clock @100MHz
 
   integer sample_timer;
   logic   mic_read;
@@ -222,7 +223,10 @@ module fft_tb ();
       end
 
       if (fifo_full && pcm_ready_i) begin
-        i <= i - 3;
+        // FIFO cheia: a injecao de amostras continua sendo feita apenas quando
+        // ha espaco (!fifo_full no if acima), preservando a ordem do stream.
+        // NAO e permitido reenviar amostras anteriores (i <= i - 3): isso
+        // duplicava amostras e corrompia o janelamento dos quadros seguintes.
       end
       pre_emphasis_valid_prev <= pre_emphasis_valid;
     end

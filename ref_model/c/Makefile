@@ -55,7 +55,13 @@ C_OBJECTS = $(C_SOURCES:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 MFCC_LIB = $(MFCC_DIR)/build/libmfcc.a
 
 # Alvo principal
-all: buildFolder $(MFCC_LIB) $(BUILD_DIR)/main.elf
+# Regenera params.h / config.txt a partir do .env (fonte unica de parametros)
+PARAMS_HEADER = $(MFCC_DIR)/include/mfcc/params.h
+
+all: params buildFolder $(MFCC_LIB) $(BUILD_DIR)/main.elf
+
+params:
+	@python3 ../../utils/gen_params.py
 
 .PHONY: all clean buildFolder mfcc
 

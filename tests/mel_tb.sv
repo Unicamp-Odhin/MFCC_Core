@@ -2,10 +2,15 @@
 
 module mel_tb ();
 
-  localparam NUM_FILTERS = 40;
-  localparam NFFT = 512;
-  localparam NRFFT = NFFT / 2 + 1;
-  localparam F = 16;
+`include "mfcc_params.vh"
+
+  // Parametros unificados (fonte: .env -> rtl/mfcc_params.vh)
+  localparam NUM_FILTERS = `MFCC_NUM_FILTERS;
+  localparam NFFT = `MFCC_NFFT;
+  localparam RFFT_SIZE = `MFCC_RFFT_SIZE;  // bins enviados ao mel (convencao do MFCC_Core)
+  localparam STREAM_BINS = RFFT_SIZE + 1;  // linhas do ref de power spectrum
+  localparam F = `MFCC_F;
+  localparam MEL_BANK_SIZE = `MFCC_MEL_BANK_SIZE;
 
   logic clk;
   logic rst_n;
@@ -18,12 +23,15 @@ module mel_tb ();
 
   logic mel_in_valid;
   logic [63:0] mel_test_sample_in;
-  logic [8:0] mel_test_ptr;
+  logic [9:0] mel_test_ptr;
 
   // Instância do DUT
   mel #(
       .NUM_MEL_FILTERS(NUM_FILTERS),
-      .NUM_RFFT_BINS  (NRFFT)
+      .FFT_SIZE       (NFFT),
+      .NUM_RFFT_BINS  (RFFT_SIZE),
+      .F              (F),
+      .MEL_BANK_SIZE  (MEL_BANK_SIZE)
   ) dut (
       .clk  (clk),
       .rst_n(rst_n),
@@ -45,8 +53,7 @@ module mel_tb ();
   always #5 clk = ~clk;
 
   // Memória para simular a entrada
-  //   logic [31:0] power_spectrum_mem [0:NRFFT-1];
-  logic [64:0] power_spectrum_mem [0:NRFFT-1];
+  logic [63:0] power_spectrum_mem [0:STREAM_BINS-1];
   logic [31:0]  energie_expected   [0:NUM_FILTERS-1];
 
   // Para armazenar resultados
@@ -129,10 +136,10 @@ module mel_tb ();
       j            <= 0;
       mel_in_valid <= 0;
     end else begin
-      if (j < NRFFT) begin
+      if (j < STREAM_BINS) begin
         mel_test_sample_in <= power_spectrum_mem[j];
         mel_in_valid       <= 1;
-        mel_test_ptr       <= j[8:0];
+        mel_test_ptr       <= j[9:0];
         j                  <= j + 1;
       end else begin
         mel_in_valid <= 0;
