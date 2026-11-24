@@ -9,14 +9,8 @@ import os
 import struct
 import math
 
-# Define macros
-FRAME_SIZE = 0.025  # seconds
-FRAME_STEP = 0.01  # seconds
-ALPHA = 31785
-PRE_EMPHASIS = 0.97
-NFFT = 512
-NFILT = 40
-NUM_CEPS = 12
+# Parametros unificados - GERADOS por utils/gen_params.py a partir do .env
+from params import *
 
 python_dir = os.getenv("REF_PYTHON_DIR")
 

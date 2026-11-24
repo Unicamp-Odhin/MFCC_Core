@@ -51,11 +51,11 @@ module dct #(
     output logic [CEPS_WIDTH - 1:0] ceps_out,
     output logic [NC_LOG2 - 1:0] ceps_ptr_o
 );
-  // TODO parametrizar no futuro:
-  // int32_t factor0 = (int32_t)(sqrt((1.0f / num_filters)) * DCT_SCALE);
-  // int32_t factork = (int32_t)(sqrt((2.0f / num_filters)) * DCT_SCALE);
-  localparam int FACTOR0 = 10362;
-  localparam int FACTORK = 14654;
+  // Constantes geradas pelo modelo C (ver log do main.elf), unificadas via
+  // utils/gen_params.py a partir do .env -> rtl/mfcc_params.vh
+  `include "mfcc_params.vh"
+  localparam int FACTOR0 = `MFCC_FACTOR0;
+  localparam int FACTORK = `MFCC_FACTORK;
 
 
   logic signed [ENERGIES_WIDTH-1:0] energies[NUM_MEL_FILTERS];

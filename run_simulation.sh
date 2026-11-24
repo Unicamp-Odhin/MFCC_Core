@@ -11,7 +11,7 @@ else
    nome_do_teste=$1
 fi
 
-VERILATOR_FLAGS="-Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique"
+VERILATOR_FLAGS="-Wall --assert --language 1800-2017 --timing --trace-structs --binary -Wno-fatal -j 0 --trace-fst --x-assign unique --x-initial unique -I${RTL_DIR}"
 
 function cleanup {
    echo "Limpando arquivos temporários..."

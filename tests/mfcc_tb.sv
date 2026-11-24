@@ -1,28 +1,31 @@
-`timescale 1ns / 1ps
+`timescale 1ns / 1ns
 
 import mfcc_pkg::mfcc_data_t;
 
 module mfcc_tb ();
 
-  localparam MAX_AUDIO_SIZE = 4001;
-  localparam SAMPLE_RATE = 16000;
+`include "mfcc_params.vh"
+  // Parametros unificados (fonte: .env -> rtl/mfcc_params.vh)
+  localparam MAX_AUDIO_SIZE = `MFCC_MAX_AUDIO_SIZE;
+  localparam SAMPLE_RATE = `MFCC_SAMPLE_RATE;
   localparam WIDTH_MIC = 16;
   localparam WIDTH = 64;
-  //localparam WIDTH_OUT = 32;
-  localparam F_WIDTH = 16;
-  localparam PCM_FIFO_DEPTH = 2048;
-  localparam FRAME_SIZE_T = 0.025;
-  localparam FRAME_STEP_T = 0.01;
-  localparam FRAME_SIZE = $rtoi(SAMPLE_RATE * FRAME_SIZE_T);
-  localparam FRAME_STEP = $rtoi(SAMPLE_RATE * FRAME_STEP_T);
-  localparam ALPHA = $rtoi(0.97 * (1 << F_WIDTH));
-  localparam FFT_SIZE = 512;
-  localparam RFFT_SIZE = FFT_SIZE / 2;
-  localparam NFFT_LOG2 = $clog2(FFT_SIZE);
-  localparam NUM_CEPS = 12;
-  localparam NUM_MEL_FILTERS = 40;
+  localparam F_WIDTH = `MFCC_F;
+  localparam PCM_FIFO_DEPTH = 256;
+  localparam FRAME_SIZE = `MFCC_FRAME_SIZE;
+  localparam FRAME_STEP = `MFCC_FRAME_STEP;
+  localparam ALPHA = `MFCC_ALPHA;
+  localparam WIDTH_OUT = 32;
 
+  localparam FFT_SIZE = `MFCC_NFFT;
+  localparam MEL_BANK_SIZE = `MFCC_MEL_BANK_SIZE;
 
+  localparam RFFT_SIZE = `MFCC_RFFT_SIZE;
+  localparam NUM_CEPS = `MFCC_NUM_CEPS;
+  localparam NUM_MEL_FILTERS = `MFCC_NUM_FILTERS;
+  localparam NUM_FRAMES = 10;
+
+  
   logic clk;
   logic rst_n;
 
@@ -38,30 +41,72 @@ module mfcc_tb ();
   mfcc_data_t coeficientes[0:NUM_CEPS-1];
 
   MFCC_Core #(
-      .WIDTH_MIC      (WIDTH_MIC),
-      .NUM_CEPS       (NUM_CEPS),
-      .NUM_MEL_FILTERS(NUM_MEL_FILTERS),
-      .FRAME_SIZE     (FRAME_SIZE),
-      .FRAME_STEP     (FRAME_STEP),
-      .FFT_SIZE       (FFT_SIZE),
-      .PCM_FIFO_DEPTH (PCM_FIFO_DEPTH),
-      .ALPHA          (ALPHA)
+    .WIDTH_MIC        (WIDTH_MIC),
+    .WIDTH            (WIDTH),
+    .WIDTH_OUT        (WIDTH_OUT),
+    .F_WIDTH          (F_WIDTH),
+    .ALPHA            (ALPHA),
+    .NUM_CEPS         (NUM_CEPS),
+    .NUM_MEL_FILTERS  (NUM_MEL_FILTERS),
+    .FRAME_SIZE       (FRAME_SIZE),
+    .FRAME_STEP       (FRAME_STEP),
+    .FFT_SIZE         (FFT_SIZE),
+    .PCM_FIFO_DEPTH   (PCM_FIFO_DEPTH),
+    .MEL_BANK_SIZE    (MEL_BANK_SIZE)
   ) uut (
-      .clock  (clk),
-      .rst_n(rst_n),
+      .clock          (clk),
+      .rst_n          (rst_n),
 
-      .pcm_in     (pcm_in),
-      .pcm_ready_i(pcm_ready),
+      .pcm_in         (pcm_in),
+      .pcm_ready_i    (pcm_ready),
 
-      .start_i    (start_mfcc),   // Inicia o processamento imediatamente
-      .mfcc_done_o(mfcc_done),
-      .mfcc_data_o(coeficientes)
+      .start_i        (start_mfcc),   
+      .auto_restart_i (1'b1), // Inicia o processamento imediatamente
+      .mfcc_done_o    (mfcc_done),
+      .mfcc_data_o    (coeficientes)
   );
 
   task dump_mfcc_data();
     integer k;
     for (k = 0; k < NUM_CEPS; k++) begin
       $display("Coeficiente[%0d]: %X", k, coeficientes[k].mfcc_sample);
+    end
+  endtask
+
+  // Comparacao dos ceps com a referencia gerada pelo modelo C
+  integer ceps_errors;
+  integer frame_ok_count;
+
+  task check_mfcc_frame(input int frame_idx);
+    integer fd, k, errors;
+    logic [31:0] ref_val;
+    string filename;
+    begin
+      errors = 0;
+      filename = $sformatf("%s/ref_vectors/6_ceps/%04d.hex", `TESTS_DIR, frame_idx);
+      fd = $fopen(filename, "r");
+      if (fd == 0) begin
+        $display("Erro: nao foi possivel abrir %s", filename);
+        ceps_errors++;
+        return;
+      end
+      for (k = 0; k < NUM_CEPS; k++) begin
+        void'($fscanf(fd, "%h\n", ref_val));
+        if (coeficientes[k].mfcc_sample !== ref_val) begin
+          if (errors < 3)
+            $display("  MFCC MISMATCH [%0d][%0d]: esperado=%h, obtido=%h", frame_idx, k,
+                     ref_val, coeficientes[k].mfcc_sample);
+          errors++;
+        end
+      end
+      $fclose(fd);
+      if (errors == 0) begin
+        frame_ok_count++;
+        $display("[MFCC %04d] OK %0d/%0d", frame_idx, NUM_CEPS, NUM_CEPS);
+      end else begin
+        ceps_errors++;
+        $display("[MFCC %04d] FALHA: %0d/%0d coeficientes diferentes", frame_idx, errors, NUM_CEPS);
+      end
     end
   endtask
 
@@ -75,9 +120,16 @@ module mfcc_tb ();
   initial begin
     pre_emphasis_i      = 0;
     pre_emphasis_errors = 0;
+    ceps_errors         = 0;
+    frame_ok_count      = 0;
   end
 
-  always @(posedge clk) begin
+  always @(posedge clk) begin 
+    if (uut.fifo_full)
+      $error("Error fifo cheia");
+  end
+
+  always @(posedge clk) begin 
     if (rst_n && uut.pre_emphasis_valid) begin
 
       if (pre_emphasis_i >= $size(pre_emphasis_ref)) begin
@@ -93,56 +145,6 @@ module mfcc_tb ();
     end
   end
 
-  // integer window_i;
-  // integer window_errors;
-
-  // initial begin
-  //     window_i     = 0;
-  //     window_errors = 0;
-  // end
-
-  // always @(posedge clk) begin
-  //     if (rst_n && uut.window_valid_to_read) begin
-
-  //         if (window_ref[window_i] !== uut.window_buffer_data_o) begin
-  //             $error(
-  //                 "WINDOW MISMATCH [%0d]: esperado=%h, obtido=%h",
-  //                 window_i,
-  //                 window_ref[window_i],
-  //                 uut.window_buffer_data_o
-  //             );
-
-  //             window_errors++;
-  //         end
-
-  //         window_i++;
-  //     end
-  // end
-
-  // integer hamming_errors;
-
-  // initial begin
-  //     hamming_errors = 0;
-  // end
-
-  // always @(posedge clk) begin
-  //     if (rst_n && uut.hamming_out_valid) begin
-
-  //         if (hamming_ref[uut.frame_ptr] !== uut.hamming_sample) begin
-  //             $error(
-  //                 "HAMMING MISMATCH [%0d]: esperado=%h, obtido=%h",
-  //                 uut.frame_ptr,
-  //                 hamming_ref[uut.frame_ptr],
-  //                 uut.hamming_sample
-  //             );
-
-  //             hamming_errors++;
-  //         end
-
-  //     end
-  // end
-
-
   initial begin
     $readmemh({`TESTS_DIR, "/ref_vectors/0_samples_dump.hex"}, samples);
     $readmemh({`TESTS_DIR, "/ref_vectors/1_pre_emphasis.hex"}, pre_emphasis_ref);
@@ -154,36 +156,25 @@ module mfcc_tb ();
 
     $display("Iniciando teste do MFCC Core");
 
+    @(posedge clk); 
     rst_n = 0;
     clk   = 0;
-    #20;
+
+    @(posedge clk); 
     rst_n = 1;
     start_mfcc = 1;
-    #20;
+
+    @(posedge clk); 
     start_mfcc = 0;
 
     $display("Iniciando processamento de áudio");
 
-    #20
-
-    for (j = 0; j < 10; j++) begin
+    for (j = 0; j < NUM_FRAMES; j++) begin
       $display("\nProcessando quadro %0d", j + 1);
-
-
-      wait (uut.hamming_done);
-
-      wait (uut.fft_done);
-
       wait (mfcc_done);
-
-      #20;
       dump_mfcc_data();
-
-      #10 start_mfcc = 1;
-      #20;  // Espera um pouco para garantir que o processamento comece
-      start_mfcc = 0;
-
-      #20;
+      check_mfcc_frame(j);
+      repeat(5) @(posedge clk);
     end
     $display("Processamento concluído. Coeficientes MFCC:");
 
@@ -194,7 +185,7 @@ module mfcc_tb ();
 
   always #5 clk = ~clk;  // Clock de 100MHz
 
-  localparam SAMPLE_INTERVAL = 6250;  // ciclos de clock (100MHz / 16kHz)
+  localparam SAMPLE_INTERVAL = `MFCC_SAMPLE_INTERVAL;  // ciclos de clock @100MHz
 
   integer sample_timer;
   logic   mic_read;
@@ -222,6 +213,5 @@ module mfcc_tb ();
       end
     end
   end
-
 
 endmodule

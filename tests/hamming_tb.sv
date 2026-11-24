@@ -1,17 +1,18 @@
 `timescale 1ns / 1ps
 module hamming_tb ();
-  localparam MAX_AUDIO_SIZE = 50177;
-  localparam SAMPLE_RATE = 16000;
+
+`include "mfcc_params.vh"
+  // Parametros unificados (fonte: .env -> rtl/mfcc_params.vh)
+  localparam MAX_AUDIO_SIZE = `MFCC_MAX_AUDIO_SIZE;
+  localparam SAMPLE_RATE = `MFCC_SAMPLE_RATE;
   localparam WIDTH_MIC = 16;
   localparam WIDTH = 64;
-  localparam F_WIDTH = 16;
+  localparam F_WIDTH = `MFCC_F;
   localparam PCM_FIFO_DEPTH = 2048;
-  localparam FRAME_SIZE_T = 0.025;
-  localparam FRAME_STEP_T = 0.01;
-  localparam FRAME_SIZE = $rtoi(SAMPLE_RATE * FRAME_SIZE_T);
-  localparam FRAME_STEP = $rtoi(SAMPLE_RATE * FRAME_STEP_T);
-  localparam ALPHA = $rtoi(0.97 * (1 << F_WIDTH));
-  localparam FFT_SIZE = 512;
+  localparam FRAME_SIZE = `MFCC_FRAME_SIZE;
+  localparam FRAME_STEP = `MFCC_FRAME_STEP;
+  localparam ALPHA = `MFCC_ALPHA;
+  localparam FFT_SIZE = `MFCC_NFFT;
 
   logic clk;
   logic rst_n;
@@ -140,7 +141,7 @@ module hamming_tb ();
 
       for (i = base_addr; i < FRAME_SIZE + base_addr; i = i + 1) begin
         addr = i % FRAME_SIZE;
-        $fwrite(fd, "%H\n", u_window_buffer.buffer[addr]);
+        $fwrite(fd, "%H\n", u_window_buffer.mem[addr]);
       end
       $fclose(fd);
     end
@@ -296,6 +297,7 @@ module hamming_tb ();
 
   initial begin
     $readmemh({`TESTS_DIR, "/ref_vectors/0_samples_dump.hex"}, samples);
+    ok = 1;
 
     $dumpfile({`TESTS_DIR, "/build/hamming_tb.vcd"});
 

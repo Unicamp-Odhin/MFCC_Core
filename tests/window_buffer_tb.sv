@@ -1,17 +1,18 @@
 `timescale 1ns / 1ps
 module window_buffer_tb ();
 
-  localparam MAX_AUDIO_SIZE = 4001;
-  localparam SAMPLE_RATE = 16000;
+`include "mfcc_params.vh"
+
+  // Parametros unificados (fonte: .env -> rtl/mfcc_params.vh)
+  localparam MAX_AUDIO_SIZE = `MFCC_MAX_AUDIO_SIZE;
+  localparam SAMPLE_RATE = `MFCC_SAMPLE_RATE;
   localparam WIDTH_MIC = 16;
   localparam WIDTH = 64;
-  localparam F_WIDTH = 16;
+  localparam F_WIDTH = `MFCC_F;
   localparam PCM_FIFO_DEPTH = 2048;
-  localparam FRAME_SIZE_T = 0.025;
-  localparam FRAME_STEP_T = 0.01;
-  localparam FRAME_SIZE = $rtoi(SAMPLE_RATE * FRAME_SIZE_T);
-  localparam FRAME_STEP = $rtoi(SAMPLE_RATE * FRAME_STEP_T);
-  localparam ALPHA = $rtoi(0.97 * (1 << F_WIDTH));
+  localparam FRAME_SIZE = `MFCC_FRAME_SIZE;
+  localparam FRAME_STEP = `MFCC_FRAME_STEP;
+  localparam ALPHA = `MFCC_ALPHA;
 
   localparam EXPECTED_PTR_1 = FRAME_STEP;
   localparam EXPECTED_PTR_2 = (FRAME_STEP * 2) % FRAME_SIZE;
@@ -103,7 +104,7 @@ module window_buffer_tb ();
 
       for (i = base_addr; i < FRAME_SIZE + base_addr; i = i + 1) begin
         addr = i % FRAME_SIZE;
-        $fwrite(fd, "%H\n", u_window_buffer.buffer[addr]);
+        $fwrite(fd, "%H\n", u_window_buffer.mem[addr]);
       end
       $fclose(fd);
     end
@@ -184,7 +185,6 @@ module window_buffer_tb ();
     $display("Iniciando teste de Window Buffer");
 
     start_move = 0;
-    window_rd_en = 1;
     rst_n = 0;
     clk = 0;
     @(posedge clk);
@@ -199,6 +199,10 @@ module window_buffer_tb ();
     #(1000);
 
     wait (u_window_buffer.current_state == 0);
+    // aguarda 2 ciclos: no primeiro ciclo de IDLE o pipeline ainda entrega a
+    // ultima amostra (rd_phys=399); no segundo o endereco wrapa para a base.
+    @(posedge clk);
+    @(posedge clk);
 
     if (u_window_buffer.rd_phys_addr == 0) $display("\tPonteiro win_base_ptr: OK");
     else begin
@@ -261,15 +265,29 @@ module window_buffer_tb ();
 
   always #1 clk = ~clk;
 
+  localparam SAMPLE_INTERVAL = `MFCC_SAMPLE_INTERVAL;  // ciclos de clock @100MHz
+
+  integer sample_timer;
+  logic   mic_read;
+  assign mic_read = sample_timer == 0;
+
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      pcm_ready_i <= 0;
-      pcm_in      <= 0;
+      pcm_ready_i  <= 0;
+      pcm_in       <= 0;
+      i            <= 0;
+      sample_timer <= 0;
     end else begin
-      if (i < MAX_AUDIO_SIZE && !fifo_full) begin
-        pcm_in      <= samples[i];
-        pcm_ready_i <= 1;
-        i           <= i + 1;
+      if (i < MAX_AUDIO_SIZE) begin
+        if (mic_read) begin
+          pcm_in       <= samples[i];
+          pcm_ready_i  <= 1;
+          i            <= i + 1;
+          sample_timer <= SAMPLE_INTERVAL - 1;
+        end else begin
+          pcm_ready_i  <= 0;
+          sample_timer <= sample_timer - 1;
+        end
       end else begin
         pcm_ready_i <= 0;
       end

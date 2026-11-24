@@ -1,18 +1,24 @@
 `timescale 1ns / 1ps
+// Defaults dos parametros vem do arquivo GERADO por utils/gen_params.py a
+// partir do .env — assim o modulo elaborado (ex.: via sv2v) ja nasce
+// consistente com as ROMs e constantes da configuracao corrente.
+// Overrides na instanciacao continuam tendo precedencia.
+`include "mfcc_params.vh"
 
 module MFCC_Core #(
     parameter WIDTH_MIC       = 16,                            // Largura do sample de áudio
     parameter WIDTH           = 64,
     parameter WIDTH_OUT       = 32,
-    parameter F_WIDTH         = 16,
-    parameter ALPHA           = $rtoi(0.97 * (1 << F_WIDTH)),
-    parameter NUM_CEPS        = 12,                            // Número de coeficientes MFCC
-    parameter NUM_MEL_FILTERS = 40,                            // Número de filtros Mel
-    parameter FRAME_SIZE      = 400,
-    parameter FRAME_STEP      = 160,
-    parameter FFT_SIZE        = 512,                           // Tamanho da FFT
-    parameter NFFT_LOG2       = $clog2(FFT_SIZE),
-    parameter PCM_FIFO_DEPTH  = 32                           // Profundidade do FIFO de PCM
+    parameter F_WIDTH         = `MFCC_F,
+    parameter ALPHA           = `MFCC_ALPHA,
+    parameter NUM_CEPS        = `MFCC_NUM_CEPS,                // Número de coeficientes MFCC
+    parameter NUM_MEL_FILTERS = `MFCC_NUM_FILTERS,             // Número de filtros Mel
+    parameter FRAME_SIZE      = `MFCC_FRAME_SIZE,
+    parameter FRAME_STEP      = `MFCC_FRAME_STEP,
+    parameter FFT_SIZE        = `MFCC_NFFT,                    // Tamanho da FFT
+    parameter NFFT_LOG2       = `MFCC_NFFT_LOG2,
+    parameter PCM_FIFO_DEPTH  = 32,                           // Profundidade do FIFO de PCM
+    parameter MEL_BANK_SIZE   = `MFCC_MEL_BANK_SIZE
 ) (
     input logic clock,
     input logic rst_n,
@@ -76,6 +82,7 @@ module MFCC_Core #(
   logic window_valid_to_read;
   logic start_move;
   logic start_hamming;
+  logic idle_window;
 
   window_buffer #(
       .WIDTH     (WIDTH),
@@ -94,8 +101,8 @@ module MFCC_Core #(
       .read_data_o    (window_buffer_data_o),
       .valid_to_read_o(window_valid_to_read),
 
-      .start_next_state_o(start_hamming)
-      //   .idle_o            (idle)
+      .start_next_state_o(start_hamming),
+      .idle_o(idle_window)
   );
 
   logic hamming_done, hamming_out_valid;
@@ -139,8 +146,7 @@ module MFCC_Core #(
       .in_valid      (hamming_out_valid),
       .frame_ptr_i   (frame_ptr),
       .frame_sample_i(hamming_sample),
-
-      .start_i(hamming_done),
+      .start_i       (hamming_done),
 
       .power_ptr_o   (fft_ptr),
       .power_valid_o (fft_power_valid),
@@ -156,8 +162,10 @@ module MFCC_Core #(
 
   mel #(
       .NUM_MEL_FILTERS(NUM_MEL_FILTERS),
+      .FFT_SIZE       (FFT_SIZE),
       .NUM_RFFT_BINS  (RFFT_SIZE),
-      .F              (F_WIDTH)
+      .F              (F_WIDTH),
+      .MEL_BANK_SIZE  (MEL_BANK_SIZE)
   ) u_mel (
       .clk  (clk),
       .rst_n(rst_n),
@@ -184,7 +192,8 @@ module MFCC_Core #(
       .NUM_CEPS       (NUM_CEPS),
       .NUM_MEL_FILTERS(NUM_MEL_FILTERS),
       .ENERGIES_WIDTH (WIDTH_OUT),
-      .CEPS_WIDTH     (WIDTH_OUT)
+      .CEPS_WIDTH     (WIDTH_OUT),
+      .F              (F_WIDTH)
   ) u_dct (
       .clk  (clk),
       .rst_n(rst_n),
@@ -208,24 +217,21 @@ module MFCC_Core #(
     end
   end
 
-  logic hamming_finished;
-  logic idle;
+  logic finished;
   logic start_move_auto;
 
   always_ff @(posedge clk) begin : RESTARTIG_LOGIC
-    // start_move <= start_i || (auto_restart_i && start_move_auto);
-    // start_move <= 0;
 
     if (!rst_n) begin
       start_move_auto  <= 0;
-      hamming_finished <= 0;
+      finished <= 0;
     end else begin
-      if (hamming_done) begin
-        hamming_finished <= 1;
+      if (fft_done) begin
+        finished <= 1;
       end
-      start_move_auto <= hamming_finished && idle;
-      if (hamming_finished && idle) begin
-        hamming_finished <= 0;
+      start_move_auto <= finished && idle_window;
+      if (finished && idle_window) begin
+        finished <= 0;
       end
     end
   end

@@ -260,3 +260,4 @@ reports/
 
 MFCC_elaborated.v 
 MFCC_Netlist.v
+benchmark/mfcc_post_route.dcp

@@ -49,12 +49,15 @@ module mel #(
   logic read_en;
   logic [POWER_WIDTH-1:0] power_spectrum;
 
-  logic [POWER_WIDTH-1:0] power_spectrum_mem[0:NUM_RFFT_BINS-1];
+  // NUM_RFFT_BINS + 1 slots: a FFT entrega NFFT/2+1 bins (0..NFFT/2), mas os
+  // instantiations passam NUM_RFFT_BINS = NFFT/2. Sem o slot extra, a escrita
+  // do bin de Nyquist (ptr = NFFT/2) wrapava para mem[0] e corrompia o filtro 0.
+  logic [POWER_WIDTH-1:0] power_spectrum_mem[0:NUM_RFFT_BINS];
 
   logic calc_valid;
 
   `ifdef SAED32
-    localparam int PS_NUM_BANKS  = (NUM_RFFT_BINS + 127) / 128;
+    localparam int PS_NUM_BANKS  = (NUM_RFFT_BINS + 1 + 127) / 128;
     localparam int PS_NUM_SLICES = POWER_WIDTH / 32;
 
     logic [POWER_WIDTH-1:0] ps_rdata_bank [0:PS_NUM_BANKS-1];

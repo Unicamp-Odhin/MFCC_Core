@@ -171,7 +171,7 @@ def plot_barras_frame(py_frame, c_frame, frame_idx, F_val, output_path,
 
     fig, axs = plt.subplots(1, 3, figsize=(18, 5.5))
     fig.suptitle(
-        f'Seção 6.3 — Python vs. RTL (frame {frame_idx}, F={F_val})',
+        f'Seção 6.3 - Python vs. RTL (frame {frame_idx}, F={F_val})',
         fontsize=13, fontweight='bold')
 
     w = 0.38
@@ -281,19 +281,19 @@ def main():
 
     axs[0].plot(F_vals, mae_vals, 'b-o', linewidth=2, markersize=6)
     axs[0].set_ylabel('MAE')
-    axs[0].set_title('Erro Absoluto Médio (MAE) — média sobre todos os frames')
+    axs[0].set_title('Erro Absoluto Médio (MAE) - média sobre todos os frames')
     axs[0].grid(True, alpha=0.4, which='both')
     axs[0].set_yscale('log')
 
     axs[1].plot(F_vals, mre_vals, 'g-o', linewidth=2, markersize=6)
     axs[1].set_ylabel('MRE')
-    axs[1].set_title('Erro Relativo Médio (MRE) — média sobre todos os frames')
+    axs[1].set_title('Erro Relativo Médio (MRE) - média sobre todos os frames')
     axs[1].grid(True, alpha=0.4, which='both')
     axs[1].set_yscale('log')
 
     axs[2].plot(F_vals, rmse_vals, 'm-o', linewidth=2, markersize=6)
     axs[2].set_ylabel('RMSE')
-    axs[2].set_title('Erro Quadrático Médio (RMSE) — média sobre todos os frames')
+    axs[2].set_title('Erro Quadrático Médio (RMSE) - média sobre todos os frames')
     axs[2].grid(True, alpha=0.4, which='both')
     axs[2].set_yscale('log')
 

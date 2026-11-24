@@ -26,14 +26,12 @@ module window_buffer #(
 );
 
   localparam int PTR_WIDTH = $clog2(FRAME_SIZE);
-  logic [PTR_WIDTH-1:0] frame_size, frame_step;
-  logic [PTR_WIDTH-1:0] wr_ptr;  // ponteiro de escrita no buffer circular 
-  logic [PTR_WIDTH-1:0] win_rd_idx;  // indice sequencial dentro da janela atual
-  logic [PTR_WIDTH-1:0] win_base_ptr;  // endereço base da janela
-  logic [PTR_WIDTH-1:0] rd_phys_addr;  // De fato onde a sample está no buffer
-
-  assign frame_size = FRAME_SIZE;
-  assign frame_step = FRAME_STEP;
+  logic [PTR_WIDTH-1:0] wr_ptr;        // ponteiro circular de escrita (continua entre quadros)
+  logic [PTR_WIDTH-1:0] win_rd_idx;    // indice sequencial dentro da janela atual
+  logic [PTR_WIDTH-1:0] win_base_ptr;  // endereco base da janela
+  logic [PTR_WIDTH-1:0] rd_phys_addr;  // De fato onde a sample esta no buffer
+  logic [PTR_WIDTH:0]   fill_need;     // amostras novas que ainda faltam ler da FIFO neste quadro
+  logic                 first_fill;    // 1 ate o fim do primeiro preenchimento (FRAME_SIZE amostras)
 
   typedef enum logic [2:0] {
     IDLE,
@@ -46,10 +44,9 @@ module window_buffer #(
   state_t current_state, next_state;
 
   logic [PTR_WIDTH:0] addr_sum;
-  logic diff_pointers;
+  logic [PTR_WIDTH:0] base_sum;
   assign addr_sum = win_base_ptr + win_rd_idx;
-
-  assign diff_pointers = rd_phys_addr != wr_ptr;
+  assign base_sum = win_base_ptr + FRAME_STEP;
 
   logic valid_to_read;
 
@@ -64,15 +61,21 @@ module window_buffer #(
   assign mem_waddr = wr_ptr;
   assign mem_raddr = rd_phys_addr;
 
-  // assign mem_we = fifo_rd_en_ff;
+  // ---------------------------------------------------------------------------
+  // mem_we acompanha EXATAMENTE os pops da FIFO:
+  //   pop na borda N  ->  read_data_o (registrado no FIFO) valido durante C(N)
+  //                    ->  escrita na memoria na borda N+1, ja com a amostra
+  //                    correta (elimina a escrita com dado "velho" fora do FILL,
+  //                    que desalinhava o inicio de cada janela).
+  // ---------------------------------------------------------------------------
   always_ff @(posedge clk) begin
-    mem_we <= ~fifo_empty_i;
+    mem_we <= fifo_rd_en_o && ~fifo_empty_i;
   end
   assign mem_re = valid_to_read;
 
 
   `ifdef SAED32
-      // TODO por hora fiz isso como um ajuste para a questão de 400 posições
+      // TODO por hora fiz isso como um ajuste para a questao de 400 posicoes
       localparam int NUM_BANKS = (FRAME_SIZE + 127) / 128;
       localparam int NUM_SLICES = WIDTH / 32;
 
@@ -134,7 +137,7 @@ module window_buffer #(
 
   `endif
 
-  
+
   always_ff @(posedge clk) begin
     if (!rst_n) begin
       current_state <= START;
@@ -154,13 +157,7 @@ module window_buffer #(
         if (start_move) next_state = MOVE;
       end
       START: next_state = REQUEST_DATA;
-      MOVE: begin
-        if (!fifo_empty_i) begin
-          next_state = FILL;
-        end else begin
-          next_state = REQUEST_DATA;
-        end
-      end 
+      MOVE: next_state = FILL;
       REQUEST_DATA: begin
         if (!fifo_empty_i) begin
           next_state = FILL;
@@ -169,12 +166,17 @@ module window_buffer #(
         end
       end
       FILL: begin
-        if (win_rd_idx == (frame_size - 1)) begin
+        if (win_rd_idx == (FRAME_SIZE - 1)) begin
           next_state = IDLE;
           done_o = 1;
         end
-        else if (fifo_empty_i) next_state = REQUEST_DATA;
-        else next_state = FILL;
+        // So volta a esperar a FIFO se ainda faltar amostra nova neste quadro;
+        // quando fill_need == 0 as leituras restantes vem do proprio buffer.
+        else if (fifo_empty_i && (fill_need != 0)) begin
+          next_state = REQUEST_DATA;
+        end else begin
+          next_state = FILL;
+        end
       end
       default: next_state = current_state;
     endcase
@@ -185,6 +187,7 @@ module window_buffer #(
   always_ff @(posedge clk) begin
     start_next_state_o          <= 0;
     fifo_rd_en_o                <= 0;
+    valid_to_read               <= 0;
 
     if (!rst_n) begin
       win_base_ptr <= 0;
@@ -192,43 +195,65 @@ module window_buffer #(
       win_rd_idx   <= 0;
       rd_phys_addr <= '0;
       valid_to_read <= '0;
+      fill_need    <= FRAME_SIZE;
+      first_fill   <= 1'b1;
     end else begin
-      rd_phys_addr <= (addr_sum >= frame_size) ? (addr_sum - frame_size) : addr_sum[PTR_WIDTH-1:0];
+      rd_phys_addr <= (addr_sum >= FRAME_SIZE) ? (addr_sum - FRAME_SIZE)
+                                               : addr_sum[PTR_WIDTH-1:0];
       valid_to_read <= '0;
-      
+
+      // Escrita circular: avanca 1 posicao por amostra REALMENTE lida da FIFO
+      // (mem_we) e NUNCA e resetado entre quadros. Invariante: apos o quadro n,
+      // wr_ptr aponta para a posicao da proxima amostra nova, que fica exatamente
+      // 240 posicoes atras do inicio da janela seguinte (win_base_ptr avanca
+      // FRAME_STEP por quadro).
+      if (mem_we) begin
+        wr_ptr <= (wr_ptr == (FRAME_SIZE - 1)) ? '0 : (wr_ptr + 1'b1);
+      end
+
+      // Contador de amostras novas restantes neste quadro:
+      //   - recarregado no MOVE (FRAME_SIZE no primeiro quadro, FRAME_STEP depois)
+      //   - decrementado a cada amostra realmente lida da FIFO (mem_we)
+      if (current_state == MOVE) begin
+        fill_need <= first_fill ? FRAME_SIZE : FRAME_STEP;
+      end else if (mem_we) begin
+        fill_need <= fill_need - 1'b1;
+      end
+
       case (current_state)
         START: begin
           win_base_ptr <= 0;
+          win_rd_idx   <= 0;
           start_next_state_o <= 1;
         end
         MOVE: begin
-          if (win_base_ptr + frame_step >= frame_size) begin
-            win_base_ptr <= win_base_ptr + frame_step - frame_size;
-          end else begin
-            win_base_ptr <= win_base_ptr + frame_step;
-          end
+          win_base_ptr <= (base_sum >= FRAME_SIZE) ? (base_sum - FRAME_SIZE)
+                                                   : base_sum[PTR_WIDTH-1:0];
+          win_rd_idx   <= 0;
           start_next_state_o <= 1;
-          fifo_rd_en_o <= ~fifo_empty_i && (win_rd_idx != frame_size - 1);
         end
         REQUEST_DATA: begin
-          fifo_rd_en_o <= 1;
+          // rd_en fica asserted continuamente enquanto faltar amostra: o pop
+          // acontece na borda em que o dado chega (borda de transicao para
+          // FILL), garantindo o alinhamento escrita x leitura da janela.
+          fifo_rd_en_o <= (fill_need > (mem_we + (fifo_rd_en_o && ~fifo_empty_i)));
         end
         FILL: begin
-          wr_ptr <= wr_ptr + 1;
-
           valid_to_read <= 1'b1;
-          win_rd_idx <= win_rd_idx + 1;
-          fifo_rd_en_o <= ~fifo_empty_i && (win_rd_idx != frame_size - 1);
-        end
-        IDLE: begin
-          if (start_move) begin
-            wr_ptr <= 0;
-            win_rd_idx <= 0;
+          win_rd_idx    <= win_rd_idx + 1'b1;
+
+          // Um pop por ciclo de FILL enquanto faltar amostra nova. O saldo
+          // subtrai o pop "em voo" da borda atual (fifo_rd_en_o && ~fifo_empty_i)
+          // e o pop da borda anterior (mem_we) para nao estourar fill_need.
+          fifo_rd_en_o <= (fill_need > (mem_we + (fifo_rd_en_o && ~fifo_empty_i)));
+
+          if (win_rd_idx == (FRAME_SIZE - 1)) begin
+            first_fill <= 1'b0;  // primeiro preenchimento (FRAME_SIZE) concluido
           end
         end
         default : begin
-          wr_ptr <= wr_ptr;
-          win_rd_idx <= win_rd_idx;
+          wr_ptr       <= wr_ptr;
+          win_rd_idx   <= win_rd_idx;
         end
       endcase
     end
