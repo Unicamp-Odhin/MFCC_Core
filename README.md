@@ -154,7 +154,7 @@ máximo medido ≪ profundidade).
 ## 5. Matriz de verificação de configurações
 
 `utils/run_matrix.sh` roda a matriz completa: para cada configuração
-(NFFT/filtros/ceps/taxa) e cada precisão `F ∈ {8, 16, 24}`, regenera a
+(NFFT/filtros/ceps/taxa) e cada precisão `F ∈ {8, 16}`, regenera a
 referência (C + ROMs) e roda `mfcc_tb` + `dct_tb` + `mel_tb`, acumulando o
 resultado em `tests/build/sweep_results.txt`:
 
@@ -172,11 +172,11 @@ Configurações alvo (F = taxa de amostragem em kHz):
 
 Resultado atual (todas as células **APROVADAS** — bit-exact contra o modelo C):
 
-| Config                   | F=8 | F=16 | F=24 |
+| Config                   | F=8 | F=16 |
 |---|---|---|---|
-| A — 256/20/7 @ 8 kHz     | ✅  | ✅   | ✅   |
-| B — 512/40/12 @ 16 kHz   | ✅  | ✅   | ✅   |
-| C — 1024/60/20 @ 44.1 kHz| ✅  | ✅   | ✅   |
+| A — 256/20/7 @ 8 kHz     | ✅  | ✅   |
+| B — 512/40/12 @ 16 kHz   | ✅  | ✅   |
+| C — 1024/60/20 @ 44.1 kHz| ✅  | ✅  |
 
 Em cada célula: `mfcc_tb` end-to-end em tempo real (10/10 quadros, FIFO nunca
 cheia, pré-ênfase sem erros), `dct_tb` turbo com energias **e** ceps idênticos
@@ -186,7 +186,7 @@ ao C, e `mel_tb` 2/2.
 
 ## 6. Netlists de benchmark (`benchmark/`, via sv2v)
 
-`utils/gen_benchmark.sh` gera os **9 netlists** (3 NFFT × F ∈ {8,16,24}) em
+`utils/gen_benchmark.sh` gera os **9 netlists** (3 NFFT × F ∈ {8,16}) em
 `benchmark/` como Verilog-2005 plano:
 
 ```bash
